@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VP3 — Virtual Pinball Leaderboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #060608;
+  --surface: #0d0d14;
+  --card: #12121c;
+  --border: #1e1e30;
+  --accent-cyan: #00e5ff;
+  --accent-pink: #ff00cc;
+  --accent-yellow: #ffe000;
+  --accent-gold: #ffd700;
+  --text: #eeeeff;
+  --muted: #55557a;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Header */
+header {
+  text-align: center;
+  padding: 2rem 1rem;
+  position: relative;
+}
+.logo-wrap {
+  display: inline-block;
+  position: relative;
+  z-index: 2;
+}
+.logo-wrap img {
+  height: 120px;
+  filter: drop-shadow(0 0 20px rgba(0, 229, 255, 0.3));
+}
+.tagline {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.4em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-top: 1rem;
+}
+
+/* Stats */
+.stats-row {
+  display: flex;
+  justify-content: center;
+  gap: 1px;
+  background: var(--border);
+  max-width: 800px;
+  margin: 0 auto;
+  border: 1px solid var(--border);
+}
+.stat-box {
+  flex: 1;
+  background: var(--surface);
+  text-align: center;
+  padding: 1rem;
+}
+.stat-box .num {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 900;
+  display: block;
+}
+.stat-box .lbl {
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-top: 4px;
+  display: block;
+}
+.s1 .num { color: var(--accent-cyan); text-shadow: 0 0 10px rgba(0,229,255,0.4); }
+.s2 .num { color: var(--accent-yellow); text-shadow: 0 0 10px rgba(255,224,0,0.4); }
+.s3 .num { color: var(--accent-pink); text-shadow: 0 0 10px rgba(255,0,204,0.4); }
+
+/* Tabs */
+.tabs {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem 1rem;
+}
+.tab-btn {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.7rem;
+  padding: 0.7rem 1.2rem;
+  border-radius: 4px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+.tab-btn.active {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  background: rgba(0, 229, 255, 0.05);
+}
+
+/* Grid */
+.fama-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.5rem;
+  padding: 0 2rem 4rem;
+}
+.fama-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.fama-card:hover { transform: translateY(-3px); border-color: var(--accent-gold); }
+.fama-title { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
+.fama-crown { font-size: 2rem; margin-bottom: 0.5rem; display: block; }
+.fama-player { font-family: 'Orbitron', sans-serif; font-size: 1.2rem; color: var(--accent-gold); font-weight: 900; }
+.fama-score { font-family: 'Orbitron', sans-serif; font-size: 1.6rem; color: var(--accent-yellow); margin-top: 0.5rem; }
+
+/* Views */
+.view { display: none; }
+.view.active { display: block; }
+
+/* Table */
+.table-section { padding: 0 2rem 4rem; }
+table { width: 100%; border-collapse: separate; border-spacing: 0 4px; }
+tbody tr { background: var(--card); }
+td { padding: 1rem; text-align: left; }
+.rank-b { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: var(--muted); }
+.score-val { color: var(--accent-yellow); font-family: 'Orbitron', sans-serif; font-weight: 700; }
+
+/* Footer */
+footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.7rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-wrap">
+    <img src="logo_vp3_png_1778001656953.png" alt="VP3">
+  </div>
+  <div class="tagline">◆ HIGH SCORES · VIRTUAL PINBALL 3 ◆</div>
+</header>
+
+<div class="stats-row">
+  <div class="stat-box s1"><span class="num" id="stat-total">0</span><span class="lbl">Puntajes</span></div>
+  <div class="stat-box s2"><span class="num" id="stat-tables">0</span><span class="lbl">Mesas</span></div>
+  <div class="stat-box s3"><span class="num" id="stat-players">0</span><span class="lbl">Jugadores</span></div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" id="btn-fama" onclick="setView('fama')">👑 Salón de la Fama</button>
+  <button class="tab-btn" id="btn-desafio" onclick="setView('desafio')">🔥 Desafío Semanal</button>
+  <button class="tab-btn" id="btn-ranking" onclick="setView('ranking')">📊 Ranking por Mesa</button>
+</div>
+
+<!-- VISTA FAMA -->
+<div id="view-fama" class="view active">
+  <div class="fama-grid" id="grid-fama"></div>
+</div>
+
+<!-- VISTA DESAFIO -->
+<div id="view-desafio" class="view" style="text-align:center;">
+  <div style="background:var(--surface); border:1px solid var(--accent-pink); padding:2rem; margin:0 2rem; border-radius:8px;">
+    <h2 style="color:var(--accent-pink); font-family:'Orbitron'; font-size:0.8rem; margin-bottom:1rem;">DESAFÍO DE LA SEMANA</h2>
+    <h3 id="challenge-name" style="font-size:2.5rem; font-family:'Orbitron'; margin-bottom:1rem;">---</h3>
+    <p id="challenge-timer" style="color:var(--accent-cyan);">Calculando...</p>
+  </div>
+  <div id="podium-desafio" style="margin-top:2rem;"></div>
+  <div class="table-section"><table id="table-desafio"><tbody id="body-desafio"></tbody></table></div>
+</div>
+
+<!-- VISTA RANKING -->
+<div id="view-ranking" class="view">
+  <div style="padding:0 2rem 1rem; display:flex; gap:1rem;">
+    <select id="filter-table" onchange="renderRanking()" style="background:var(--surface); color:#fff; border:1px solid var(--border); padding:0.5rem;"></select>
+  </div>
+  <div class="table-section">
+    <table><tbody id="body-ranking"></tbody></table>
+  </div>
+</div>
+
+<footer>SISTEMA VP3 ONLINE · <span id="last-update">...</span></footer>
+
+<script>
+const ALL_TABLES = [
+  "Attack from Mars", "Cactus Canyon", "Congo", "Creature from the Black Lagoon",
+  "Dirty Harry", "Indianapolis 500", "Johnny Mnemonic", "Junk Yard",
+  "Monster Bash", "NBA Fastbreak", "Red & Ted's Road Show", "Scared Stiff",
+  "The Addams Family", "The Flintstones", "Twilight Zone", "World Cup Soccer",
+  "Back to the Future", "Goldeneye", "Guns N' Roses", "Hook",
+  "Indiana Jones (Stern)", "Last Action Hero", "Lethal Weapon 3", "Mary Shelley's Frankenstein",
+  "Phantom of the Opera", "Teenage Mutant Ninja Turtles", "Funhouse", "Police Force",
+  "Skateball", "Rescue 911", "Tom & Jerry", "Musin"
+];
+
+const SUPABASE_URL = 'https://ckcjujadpmhdgcvyyahd.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_COrjv6wdGvLMbtGETo3xCQ__-Wdys3L';
+
+let allData = [];
+let currentView = 'fama';
+let challengeTable = "";
+
+async function fetchData() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/puntajes?select=*`, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+    
+    if (!res.ok) throw new Error('Error al conectar con Supabase');
+    
+    const rows = await res.json();
+    
+    allData = rows.map(r => {
+      return {
+        table: r.mesa,
+        player: r.jugador,
+        score: parseInt(r.puntaje) || 0,
+        date: r.fecha
+      };
+    }).filter(r => r.player);
+
+    updateStats();
+    populateFilters();
+    updateChallenge();
+    renderAll();
+    document.getElementById('last-update').textContent = new Date().toLocaleString();
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function updateStats() {
+  document.getElementById('stat-total').textContent = allData.length;
+  document.getElementById('stat-tables').textContent = ALL_TABLES.length;
+  document.getElementById('stat-players').textContent = [...new Set(allData.map(r => r.player))].length;
+}
+
+function populateFilters() {
+  const sel = document.getElementById('filter-table');
+  if (sel.options.length > 0) return;
+  ALL_TABLES.forEach(t => {
+    const o = document.createElement('option');
+    o.value = t; o.textContent = t; sel.appendChild(o);
+  });
+}
+
+function setView(v) {
+  currentView = v;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-' + v).classList.add('active');
+  document.querySelectorAll('.view').forEach(s => s.classList.remove('active'));
+  document.getElementById('view-' + v).classList.add('active');
+  renderAll();
+}
+
+function renderAll() {
+  if (currentView === 'fama') renderFama();
+  if (currentView === 'ranking') renderRanking();
+  if (currentView === 'desafio') renderChallenge();
+}
+
+function renderFama() {
+  const grid = document.getElementById('grid-fama');
+  grid.innerHTML = "";
+  ALL_TABLES.forEach(t => {
+    const best = allData.filter(r => r.table === t).sort((a,b) => b.score - a.score)[0];
+    const card = document.createElement('div');
+    card.className = 'fama-card';
+    if (!best) card.style.opacity = "0.5";
+    card.onclick = () => { document.getElementById('filter-table').value = t; setView('ranking'); };
+    card.innerHTML = `
+      <div class="fama-title">${t}</div>
+      <span class="fama-crown">${best ? '👑' : '🎰'}</span>
+      <div class="fama-player">${best ? best.player : '---'}</div>
+      <div class="fama-score">${best ? best.score.toLocaleString('es-AR') : '0'}</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function renderRanking() {
+  const table = document.getElementById('filter-table').value;
+  const data = allData.filter(r => r.table === table).sort((a,b) => b.score - a.score);
+  const body = document.getElementById('body-ranking');
+  body.innerHTML = "";
+  data.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><div class="rank-b">${i+1}</div></td><td>${r.player}</td><td class="score-val">${r.score.toLocaleString('es-AR')}</td><td>${r.date}</td>`;
+    body.appendChild(tr);
+  });
+}
+
+function updateChallenge() {
+  const baseDate = new Date('2026-05-06T00:00:00-03:00');
+  const now = new Date();
+  const diffMs = now - baseDate;
+  const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+  let weekIndex = Math.floor(diffMs / msPerWeek);
+  if (diffMs < 0) weekIndex = 0;
+  challengeTable = ALL_TABLES[weekIndex % ALL_TABLES.length];
+  document.getElementById('challenge-name').textContent = challengeTable;
+  const nextWed = new Date(baseDate.getTime() + (weekIndex + 1) * msPerWeek);
+  const left = nextWed - now;
+  const d = Math.floor(left / (1000 * 60 * 60 * 24));
+  const h = Math.floor((left % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  document.getElementById('challenge-timer').textContent = `Faltan ${d}d ${h}h`;
+}
+
+function renderChallenge() {
+  const data = allData.filter(r => r.table === challengeTable).sort((a,b) => b.score - a.score);
+  const body = document.getElementById('body-desafio');
+  body.innerHTML = "";
+  data.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><div class="rank-b">${i+1}</div></td><td>${r.player}</td><td class="score-val">${r.score.toLocaleString('es-AR')}</td><td>${r.date}</td>`;
+    body.appendChild(tr);
+  });
+}
+
+fetchData();
+setInterval(fetchData, 60000);
+</script>
+</body>
+</html>
