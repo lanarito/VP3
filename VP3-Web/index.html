@@ -129,9 +129,32 @@ header {
 }
 .fama-card:hover { transform: translateY(-3px); border-color: var(--accent-gold); }
 .fama-title { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
-.fama-crown { font-size: 2rem; margin-bottom: 0.5rem; display: block; }
+.fama-crown { font-size: 2rem; margin-bottom: 0.5rem; display: inline-block; }
 .fama-player { font-family: 'Orbitron', sans-serif; font-size: 1.2rem; color: var(--accent-gold); font-weight: 900; }
 .fama-score { font-family: 'Orbitron', sans-serif; font-size: 1.6rem; color: var(--accent-yellow); margin-top: 0.5rem; }
+
+.empty-card {
+  opacity: 0.5;
+  border-style: dashed;
+  border-color: var(--muted);
+  background: transparent;
+}
+.empty-card:hover {
+  opacity: 1;
+  border-style: solid;
+  border-color: var(--accent-cyan);
+}
+.fama-waiting {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  border: 1px solid var(--text-dim);
+  padding: 4px 12px;
+  border-radius: 12px;
+  display: inline-block;
+  margin: 1rem 0;
+}
 
 /* Views */
 .view { display: none; }
@@ -161,7 +184,16 @@ footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border);
 <div class="stats-row">
   <div class="stat-box s1"><span class="num" id="stat-total">0</span><span class="lbl">Puntajes</span></div>
   <div class="stat-box s2"><span class="num" id="stat-tables">0</span><span class="lbl">Mesas</span></div>
-  <div class="stat-box s3"><span class="num" id="stat-players">0</span><span class="lbl">Jugadores</span></div>
+  <div class="stat-box s3" style="cursor:pointer;" onclick="showPlayersModal()"><span class="num" id="stat-players">0</span><span class="lbl">Jugadores (Ver Detalle)</span></div>
+</div>
+
+<!-- MODAL JUGADORES -->
+<div id="players-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100; align-items:center; justify-content:center;">
+  <div style="background:var(--surface); border:1px solid var(--accent-cyan); padding:2rem; border-radius:8px; max-width:600px; width:90%; max-height:80vh; overflow-y:auto; position:relative;">
+    <button onclick="document.getElementById('players-modal').style.display='none'" style="position:absolute; top:10px; right:10px; background:transparent; border:none; color:var(--text); font-size:1.5rem; cursor:pointer;">&times;</button>
+    <h2 style="font-family:'Orbitron'; color:var(--accent-cyan); text-align:center; margin-bottom:1.5rem;">ESTADÍSTICAS POR JUGADOR</h2>
+    <div id="players-list"></div>
+  </div>
 </div>
 
 <div class="tabs">
@@ -207,7 +239,8 @@ const ALL_TABLES = [
   "Back to the Future", "Goldeneye", "Guns N' Roses", "Hook",
   "Indiana Jones (Stern)", "Last Action Hero", "Lethal Weapon 3", "Mary Shelley's Frankenstein",
   "Phantom of the Opera", "Teenage Mutant Ninja Turtles", "Funhouse", "Police Force",
-  "Skateball", "Rescue 911", "Tom & Jerry", "Musin"
+  "Skateball", "Rescue 911", "Tom & Jerry", "Musin",
+  "Fish Tales", "Terminator 2", "The Walking Dead"
 ];
 
 const SUPABASE_URL = 'https://ckcjujadpmhdgcvyyahd.supabase.co';
@@ -252,7 +285,46 @@ async function fetchData() {
 function updateStats() {
   document.getElementById('stat-total').textContent = allData.length;
   document.getElementById('stat-tables').textContent = ALL_TABLES.length;
-  document.getElementById('stat-players').textContent = [...new Set(allData.map(r => r.player))].length;
+  const players = [...new Set(allData.map(r => r.player))];
+  document.getElementById('stat-players').textContent = players.length;
+}
+
+function showPlayersModal() {
+  const modal = document.getElementById('players-modal');
+  const list = document.getElementById('players-list');
+  list.innerHTML = "";
+  
+  const players = [...new Set(allData.map(r => r.player))];
+  players.sort();
+  
+  players.forEach(p => {
+    const pData = allData.filter(r => r.player === p).sort((a,b) => b.score - a.score);
+    
+    // Contar cuántos Grand Champions tiene
+    let gcCount = 0;
+    ALL_TABLES.forEach(t => {
+        const best = allData.filter(r => r.table === t).sort((a,b) => b.score - a.score)[0];
+        if (best && best.player === p) gcCount++;
+    });
+
+    const div = document.createElement('div');
+    div.style.marginBottom = "1.5rem";
+    div.style.padding = "1rem";
+    div.style.background = "var(--card)";
+    div.style.border = "1px solid var(--border)";
+    div.style.borderRadius = "4px";
+    
+    let html = `<h3 style="color:var(--accent-gold); font-family:'Orbitron'; margin-bottom:0.5rem; border-bottom:1px solid var(--border); padding-bottom:5px;">${p} <span style="font-size:0.8rem; color:var(--muted); float:right;">Récords Totales: ${pData.length} | Grand Champions: ${gcCount}</span></h3>`;
+    html += `<ul style="list-style:none; font-size:0.9rem;">`;
+    pData.forEach(r => {
+      html += `<li style="padding:4px 0;"><span style="color:var(--accent-cyan); display:inline-block; width:200px;">${r.table}</span> <span style="color:var(--accent-yellow); font-family:'Orbitron';">${r.score.toLocaleString('es-AR')}</span></li>`;
+    });
+    html += `</ul>`;
+    div.innerHTML = html;
+    list.appendChild(div);
+  });
+  
+  modal.style.display = "flex";
 }
 
 function populateFilters() {
@@ -286,13 +358,13 @@ function renderFama() {
     const best = allData.filter(r => r.table === t).sort((a,b) => b.score - a.score)[0];
     const card = document.createElement('div');
     card.className = 'fama-card';
-    if (!best) card.style.opacity = "0.5";
+    if (!best) card.classList.add('empty-card');
     card.onclick = () => { document.getElementById('filter-table').value = t; setView('ranking'); };
     card.innerHTML = `
       <div class="fama-title">${t}</div>
-      <span class="fama-crown">${best ? '👑' : '🎰'}</span>
+      ${best ? '<span class="fama-crown">👑</span>' : '<span class="fama-waiting">⏳ VACANTE</span>'}
       <div class="fama-player">${best ? best.player : '---'}</div>
-      <div class="fama-score">${best ? best.score.toLocaleString('es-AR') : '0'}</div>
+      <div class="fama-score">${best ? best.score.toLocaleString('es-AR') : 'SÉ EL PRIMERO'}</div>
     `;
     grid.appendChild(card);
   });
