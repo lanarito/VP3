@@ -170,6 +170,84 @@ td { padding: 1rem; text-align: left; }
 
 /* Footer */
 footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.7rem; }
+
+/* Mobile Responsive Adjustments */
+@media (max-width: 768px) {
+  header { padding: 1.5rem 1rem 1rem; }
+  .logo-wrap img { height: 75px; }
+  .tagline { font-size: 0.5rem; letter-spacing: 0.3em; }
+  
+  .stats-row {
+    flex-direction: column;
+    max-width: 100%;
+    margin: 0 1rem;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .stat-box {
+    padding: 0.8rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .stat-box:last-child {
+    border-bottom: none;
+  }
+  
+  .tabs {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 1.5rem 1rem;
+  }
+  .tab-btn {
+    flex: 1;
+    min-width: 140px;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.65rem;
+  }
+  
+  .fama-grid {
+    padding: 0 1rem 3rem;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+  }
+  .fama-card {
+    padding: 1.2rem;
+  }
+  
+  .table-section {
+    padding: 0 1rem 3rem;
+  }
+  td {
+    padding: 0.8rem;
+    font-size: 0.9rem;
+  }
+  
+  /* Ajustes de Actualizaciones en Celulares */
+  .act-header {
+    flex-direction: column;
+    text-align: center;
+    padding: 0 1.5rem 1.5rem !important;
+  }
+  .act-header h2 {
+    font-size: 1.5rem !important;
+  }
+  .act-header p {
+    font-size: 0.75rem !important;
+  }
+  .act-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  
+  /* Ajustes para formularios de login/subida en móviles */
+  #admin-login-box, #admin-upload-box {
+    padding: 1.5rem !important;
+    margin: 1.5rem auto !important;
+  }
+  #admin-upload-box h2 {
+    font-size: 1.1rem !important;
+    margin-bottom: 1rem !important;
+  }
+}
 </style>
 </head>
 <body>
@@ -231,7 +309,7 @@ footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border);
 
 <!-- VISTA ACTUALIZACIONES -->
 <div id="view-actualizaciones" class="view">
-  <div style="padding:0 2rem 1.5rem; display:flex; justify-content:space-between; align-items:center; max-width:1200px; margin:0 auto; flex-wrap:wrap; gap:1rem;">
+  <div class="act-header" style="padding:0 2rem 1.5rem; display:flex; justify-content:space-between; align-items:center; max-width:1200px; margin:0 auto; flex-wrap:wrap; gap:1rem;">
     <div>
       <h2 style="color:var(--accent-cyan); font-family:'Orbitron'; font-size:1.8rem; text-shadow:0 0 10px rgba(0,229,255,0.3); margin-bottom:4px;">ZONA DE DESCARGAS</h2>
       <p style="color:var(--muted); font-size:0.8rem; letter-spacing:1px; text-transform:uppercase;">Mesas, ROMs, NVRAMs y herramientas para el sistema VP3</p>
@@ -240,14 +318,14 @@ footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border);
   </div>
   
   <div style="padding:0 2rem 4rem; max-width:1200px; margin:0 auto;">
-    <div id="lista-actualizaciones" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:1.5rem;">
+    <div id="lista-actualizaciones" class="act-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:1.5rem;">
       <!-- Tarjetas de actualización cargadas dinámicamente -->
     </div>
   </div>
 </div>
 
 <!-- MODAL ACTUALIZACIONES (LOGIN Y FORMULARIO DE SUBIDA) -->
-<div id="admin-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:100; align-items:center; justify-content:center; backdrop-filter:blur(5px);">
+<div id="admin-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:100; align-items:center; justify-content:center; backdrop-filter:blur(5px); overflow-y:auto; padding:1.5rem 0;">
   
   <!-- Bloque de Login -->
   <div id="admin-login-box" style="background:var(--surface); border:1px solid var(--accent-pink); padding:2rem; border-radius:8px; max-width:400px; width:90%; position:relative; box-shadow:0 0 30px rgba(255,0,204,0.15);">
