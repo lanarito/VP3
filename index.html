@@ -446,7 +446,16 @@ let allData = [];
 let actualizacionesData = [];
 let currentView = 'fama';
 let challengeTable = "";
+let challengeStartStr = "";
+let challengeEndStr = "";
 let isAdminLoggedIn = false;
+
+function getYYYYMMDD(dateObj) {
+  const y = dateObj.getFullYear();
+  const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const d = String(dateObj.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
 
 async function fetchData() {
   try {
@@ -641,12 +650,65 @@ function updateChallenge() {
   const d = Math.floor(left / (1000 * 60 * 60 * 24));
   const h = Math.floor((left % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   document.getElementById('challenge-timer').textContent = `Faltan ${d}d ${h}h`;
+  
+  // Guardar fechas de la semana actual del desafío para el filtrado por fecha
+  const weekStart = new Date(baseDate.getTime() + weekIndex * msPerWeek);
+  challengeStartStr = getYYYYMMDD(weekStart);
+  challengeEndStr = getYYYYMMDD(nextWed);
 }
 
 function renderChallenge() {
-  const data = allData.filter(r => r.table === challengeTable).sort((a,b) => b.score - a.score);
+  const data = allData.filter(r => {
+    return r.table === challengeTable && r.date >= challengeStartStr && r.date < challengeEndStr;
+  }).sort((a,b) => b.score - a.score);
+  
+  const podiumDiv = document.getElementById('podium-desafio');
   const body = document.getElementById('body-desafio');
   body.innerHTML = "";
+  
+  if (data.length === 0) {
+    if (podiumDiv) {
+      podiumDiv.innerHTML = `
+        <div style="text-align:center; padding:3rem 2rem; background:var(--card); border:1px dashed var(--border); border-radius:8px; color:var(--muted); margin:0 auto 2rem; max-width:600px; box-shadow:0 0 15px rgba(255,0,204,0.05);">
+          <span style="font-size:3.5rem; display:block; margin-bottom:1rem; filter:drop-shadow(0 0 10px rgba(255,0,204,0.15));">🔥</span>
+          <h4 style="font-family:'Orbitron'; font-size:1.1rem; color:#fff; margin-bottom:5px; letter-spacing:1px;">PODIO SEMANAL VACANTE</h4>
+          <p style="font-size:0.9rem; line-height:1.45;">¡Aún nadie ha registrado récords para el desafío de esta semana! Sé el primero en jugar en tu arcade, subir tus puntajes y coronar la cima del podio.</p>
+        </div>
+      `;
+    }
+    return;
+  }
+  
+  // Renderizar podio si hay datos
+  if (podiumDiv) {
+    podiumDiv.innerHTML = "";
+    const top3 = data.slice(0, 3);
+    let html = `<div style="display:flex; justify-content:center; gap:1.5rem; margin:0 auto 2rem; flex-wrap:wrap; max-width:600px; align-items:flex-end;">`;
+    
+    // Renderizado visual: 2do puesto, 1er puesto, 3er puesto
+    const visualOrder = [];
+    if (top3[1]) visualOrder.push({ pos: 2, item: top3[1], color: '#d1d1d1', text: '2ND PLACE', emoji: '🥈' });
+    if (top3[0]) visualOrder.push({ pos: 1, item: top3[0], color: 'var(--accent-gold)', text: 'CHAMPION', emoji: '👑' });
+    if (top3[2]) visualOrder.push({ pos: 3, item: top3[2], color: '#cd7f32', text: '3RD PLACE', emoji: '🥉' });
+    
+    visualOrder.forEach(p => {
+      const scale = p.pos === 1 ? 'scale(1.08)' : 'scale(1)';
+      const zIndex = p.pos === 1 ? '2' : '1';
+      html += `
+        <div style="background:var(--card); border:1px solid ${p.color}; border-radius:8px; padding:1.2rem; width:160px; text-align:center; box-shadow: 0 0 20px ${p.color}15; transform: ${scale}; z-index: ${zIndex}; margin-bottom: ${p.pos === 1 ? '10px' : '0'}; transition: all 0.2s;">
+          <span style="font-size:2.5rem; display:block; margin-bottom:0.3rem; filter: drop-shadow(0 0 5px ${p.color}44);">${p.emoji}</span>
+          <span style="font-family:'Orbitron'; font-size:0.65rem; color:${p.color}; font-weight:bold; letter-spacing:1px; display:block; margin-bottom:6px; opacity:0.85;">${p.text}</span>
+          <div style="font-family:'Orbitron'; font-size:1.4rem; font-weight:900; color:${p.color}; text-shadow: 0 0 8px ${p.color}22;">${p.item.player}</div>
+          <div style="font-family:'Orbitron'; font-size:1rem; color:var(--accent-yellow); margin-top:6px; font-weight:700;">${p.item.score.toLocaleString('es-AR')}</div>
+          <span style="font-size:0.7rem; color:var(--muted); opacity:0.7; display:block; margin-top:4px;">${p.item.date}</span>
+        </div>
+      `;
+    });
+    html += `</div>`;
+    podiumDiv.innerHTML = html;
+  }
+  
+  // Renderizar la tabla de puntuaciones debajo
   data.forEach((r, i) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `<td><div class="rank-b">${i+1}</div></td><td>${r.player}</td><td class="score-val">${r.score.toLocaleString('es-AR')}</td><td>${r.date}</td>`;
