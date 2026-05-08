@@ -324,6 +324,7 @@ footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border);
   </div>
   <div id="podium-desafio" style="margin-top:2rem;"></div>
   <div class="table-section"><table id="table-desafio"><tbody id="body-desafio"></tbody></table></div>
+  <div id="historial-campeones" style="margin-top:3.5rem; padding: 0 2rem 3rem;"></div>
 </div>
 
 <!-- VISTA RANKING -->
@@ -580,6 +581,7 @@ function populateFilters() {
 }
 
 function setView(v) {
+  playRetroSound('click');
   currentView = v;
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('btn-' + v).classList.add('active');
@@ -676,6 +678,7 @@ function renderChallenge() {
         </div>
       `;
     }
+    renderChampionsHistory();
     return;
   }
   
@@ -714,6 +717,8 @@ function renderChallenge() {
     tr.innerHTML = `<td><div class="rank-b">${i+1}</div></td><td>${r.player}</td><td class="score-val">${r.score.toLocaleString('es-AR')}</td><td>${r.date}</td>`;
     body.appendChild(tr);
   });
+  
+  renderChampionsHistory();
 }
 
 function renderActualizaciones() {
@@ -777,7 +782,7 @@ function renderActualizaciones() {
           Subido por <span style="color:var(--accent-gold); font-weight:bold; font-family:'Orbitron';">${act.subido_por}</span><br>
           <span style="font-size:0.7rem; color:var(--muted); opacity:0.7;">${dateFormatted}</span>
         </div>
-        <a href="${act.url_descarga}" target="_blank" style="text-decoration:none; background:rgba(0, 229, 255, 0.08); border:1px solid var(--accent-cyan); color:var(--accent-cyan); padding:0.6rem 1.1rem; border-radius:4px; font-family:'Orbitron'; font-size:0.75rem; font-weight:bold; letter-spacing:1px; transition:all 0.2s; cursor:pointer;" onmouseover="this.style.background='var(--accent-cyan)'; this.style.color='#000'; this.style.boxShadow='0 0 10px rgba(0,229,255,0.3)';" onmouseout="this.style.background='rgba(0, 229, 255, 0.08)'; this.style.color='var(--accent-cyan)'; this.style.boxShadow='none';">
+        <a href="${act.url_descarga}" target="_blank" onclick="playRetroSound('powerup')" style="text-decoration:none; background:rgba(0, 229, 255, 0.08); border:1px solid var(--accent-cyan); color:var(--accent-cyan); padding:0.6rem 1.1rem; border-radius:4px; font-family:'Orbitron'; font-size:0.75rem; font-weight:bold; letter-spacing:1px; transition:all 0.2s; cursor:pointer;" onmouseover="this.style.background='var(--accent-cyan)'; this.style.color='#000'; this.style.boxShadow='0 0 10px rgba(0,229,255,0.3)';" onmouseout="this.style.background='rgba(0, 229, 255, 0.08)'; this.style.color='var(--accent-cyan)'; this.style.boxShadow='none';">
           DESCARGAR
         </a>
       </div>
@@ -882,6 +887,134 @@ async function submitUpdate() {
     errBox.textContent = "⚠️ Error al guardar en Supabase. Verifica que se haya ejecutado la consulta SQL.";
     errBox.style.display = "block";
   }
+}
+
+// SINTETIZADOR DE SONIDOS RETRO (Web Audio API - Sin archivos externos)
+function playRetroSound(type) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const now = ctx.currentTime;
+    
+    if (type === 'coin') {
+      // Clásico doble sonido de moneda arcade (gong-gong)
+      const notes = [987.77, 1318.51]; // B5 y E6
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'square';
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        
+        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+        gain.gain.setValueAtTime(0.08, now + idx * 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.3);
+        
+        osc.start(now + idx * 0.08);
+        osc.stop(now + idx * 0.08 + 0.35);
+      });
+    } else if (type === 'click') {
+      // Pitido corto de click de interfaz retro
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.frequency.setValueAtTime(1400, now);
+      gain.gain.setValueAtTime(0.03, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      
+      osc.start(now);
+      osc.stop(now + 0.05);
+    } else if (type === 'powerup') {
+      // Barrido láser ascendente al hacer descargas
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.frequency.setValueAtTime(200, now);
+      osc.frequency.exponentialRampToValueAtTime(1000, now + 0.35);
+      
+      gain.gain.setValueAtTime(0.05, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      
+      osc.start(now);
+      osc.stop(now + 0.35);
+    }
+  } catch (err) {
+    console.error("Audio error:", err);
+  }
+}
+
+// Escuchar el primer clic en el documento para dar la bienvenida con el sonido de ficha
+document.addEventListener('click', function welcomeSound() {
+  playRetroSound('coin');
+  document.removeEventListener('click', welcomeSound);
+}, { once: true });
+
+// RENDERIZAR DINÁMICAMENTE EL HISTORIAL DE CAMPEONES SEMANALES (SALÓN DE CAMPEONES)
+function renderChampionsHistory() {
+  const container = document.getElementById('historial-campeones');
+  if (!container) return;
+  container.innerHTML = "";
+  
+  const baseDate = new Date('2026-05-06T00:00:00-03:00');
+  const now = new Date();
+  const diffMs = now - baseDate;
+  const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+  let currentWeekIndex = Math.floor(diffMs / msPerWeek);
+  if (diffMs < 0) currentWeekIndex = 0;
+  
+  // Listar todas las semanas pasadas ya finalizadas (desde 0 hasta la anterior a la actual)
+  if (currentWeekIndex === 0) {
+    container.innerHTML = `
+      <div style="text-align:center; padding:1.5rem; background:rgba(255,255,255,0.01); border:1px dashed var(--border); border-radius:8px; color:var(--muted); font-size:0.85rem; max-width:600px; margin:0 auto;">
+        ⏳ El historial de desafíos semanales se poblará automáticamente cada miércoles al finalizar el desafío actual.
+      </div>
+    `;
+    return;
+  }
+  
+  let html = `<h3 style="font-family:'Orbitron'; font-size:1rem; color:var(--accent-pink); margin-bottom:1.5rem; text-align:center; letter-spacing:1px; text-transform:uppercase; text-shadow:0 0 10px rgba(255,0,204,0.15);">🏆 SALÓN DE CAMPEONES SEMANALES</h3>`;
+  html += `<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:1.2rem; max-width:800px; margin:0 auto; text-align:left;">`;
+  
+  // Recorrer en reversa desde la última semana completada hacia atrás
+  for (let w = currentWeekIndex - 1; w >= 0; w--) {
+    const wStart = new Date(baseDate.getTime() + w * msPerWeek);
+    const wEnd = new Date(baseDate.getTime() + (w + 1) * msPerWeek);
+    const table = ALL_TABLES[w % ALL_TABLES.length];
+    
+    const startStr = getYYYYMMDD(wStart);
+    const endStr = getYYYYMMDD(wEnd);
+    
+    // Obtener los puntajes logrados en esa mesa durante esa semana específica
+    const weekScores = allData.filter(r => r.table === table && r.date >= startStr && r.date < endStr)
+                              .sort((a,b) => b.score - a.score);
+                              
+    const winner = weekScores[0]; // El primer puesto de esa semana es el campeón
+    
+    // Formatear rango de fechas visible de forma amigable (restando un día al final para que coincida con el martes fin)
+    const displayEndDate = getYYYYMMDD(new Date(wEnd.getTime() - 24 * 60 * 60 * 1000));
+    
+    html += `
+      <div style="background:var(--card); border:1px solid var(--border); border-radius:8px; padding:1.2rem; display:flex; align-items:center; gap:12px; box-shadow:0 5px 15px rgba(0,0,0,0.3); transition:all 0.2s;" onmouseover="this.style.borderColor='var(--accent-gold)'; this.style.boxShadow='0 0 15px rgba(255,191,0,0.15)';" onmouseout="this.style.borderColor='var(--border)'; this.style.boxShadow='0 5px 15px rgba(0,0,0,0.3)';">
+        <div style="font-size:2.2rem; filter: drop-shadow(0 0 5px rgba(255,191,0,0.4));">🏆</div>
+        <div style="flex:1; overflow:hidden;">
+          <div style="font-size:0.65rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px;">SEMANA ${w + 1} (${startStr} al ${displayEndDate})</div>
+          <div style="font-family:'Orbitron'; font-size:0.85rem; color:#fff; font-weight:700; margin:2px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Mesa: ${table}</div>
+          <div style="font-size:0.8rem; color:var(--text); opacity:0.9;">
+            Campeón: <strong style="color:var(--accent-gold); font-family:'Orbitron'; font-size:0.9rem;">${winner ? winner.player : 'VACANTE'}</strong>
+            ${winner ? `<br><span style="color:var(--accent-yellow); font-family:'Orbitron'; font-size:0.75rem;">${winner.score.toLocaleString('es-AR')} pts</span>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  html += `</div>`;
+  container.innerHTML = html;
 }
 
 fetchData();
