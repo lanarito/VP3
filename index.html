@@ -687,7 +687,7 @@ function renderAll() {
   if (currentView === 'actualizaciones') renderActualizaciones();
 }
 
-// RENDERIZAR DINÁMICAMENTE LA VISTA DE LOGROS Y MEDALLAS
+// RENDERIZAR DINÁMICAMENTE LA VISTA DE LOGROS, MEDALLAS Y DATOS CURIOSOS (ESTADÍSTICAS LOCAS)
 function renderLogros() {
   const container = document.getElementById('view-logros');
   if (!container) return;
@@ -695,48 +695,48 @@ function renderLogros() {
   
   const players = [...new Set(allData.map(r => r.player))].sort();
   
-  // Lista de logros con sus descripciones y colores representativos
+  // Lista de logros con sus descripciones y colores representativos (¡Legibilidad mejorada con resaltados!)
   const achievementsList = [
     {
       id: 'gc_master',
       emoji: '👑',
       title: 'Rey de Reyes',
-      desc: 'Tener el mejor puntaje (GC) en 3 o más mesas simultáneamente.',
+      desc: 'Tener el mejor puntaje (GC) en <span style="color:var(--accent-gold); font-weight:bold; text-shadow:0 0 8px rgba(255,215,0,0.4);">3 o más mesas</span> simultáneamente.',
       color: 'var(--accent-gold)'
     },
     {
       id: 'table_collector',
       emoji: '👾',
       title: 'Explorador Arcade',
-      desc: 'Haber registrado puntajes en 5 o más mesas diferentes.',
+      desc: 'Haber registrado puntajes en <span style="color:var(--accent-cyan); font-weight:bold; text-shadow:0 0 8px rgba(0,229,255,0.4);">5 o más mesas diferentes</span>.',
       color: 'var(--accent-cyan)'
     },
     {
       id: 'centurion',
       emoji: '💥',
       title: 'Centurión',
-      desc: 'Superar los 100 Millones de puntos (100M) en cualquier mesa.',
+      desc: 'Superar los <span style="color:var(--accent-pink); font-weight:bold; text-shadow:0 0 8px rgba(255,0,204,0.4);">100 Millones de puntos (100M)</span> en cualquier mesa.',
       color: 'var(--accent-pink)'
     },
     {
       id: 'billionaire',
       emoji: '🌌',
       title: 'Magnate del Cosmos',
-      desc: 'Superar los 1.000 Millones (1 Billón) en cualquier mesa.',
+      desc: 'Superar los <span style="color:#b380ff; font-weight:bold; text-shadow:0 0 8px rgba(138,43,226,0.5);">1.000 Millones (1 Billón)</span> en cualquier mesa.',
       color: '#8a2be2'
     },
     {
       id: 'constant_player',
       emoji: '🕹️',
       title: 'Vicioso del Pinball',
-      desc: 'Haber registrado 15 o más puntuaciones totales en el sistema.',
+      desc: 'Haber registrado <span style="color:var(--accent-yellow); font-weight:bold; text-shadow:0 0 8px rgba(255,255,0,0.4);">15 o más puntuaciones totales</span> en el sistema.',
       color: 'var(--accent-yellow)'
     },
     {
       id: 'weekly_hero',
       emoji: '🔥',
       title: 'Héroe de la Semana',
-      desc: 'Haber ganado al menos un Desafío Semanal de los miércoles.',
+      desc: 'Haber ganado <span style="color:#ff6b4a; font-weight:bold; text-shadow:0 0 8px rgba(255,107,74,0.4);">al menos un Desafío Semanal</span> de los miércoles.',
       color: '#ff4500'
     }
   ];
@@ -756,13 +756,13 @@ function renderLogros() {
     
     html += `
       <div style="background:var(--card); border:1px solid var(--border); border-radius:8px; padding:1.5rem; margin-bottom:1.5rem; display:flex; align-items:center; justify-content:space-between; gap:20px; box-shadow:0 5px 15px rgba(0,0,0,0.2); text-align:left; flex-wrap:wrap; transition:all 0.2s;" onmouseover="this.style.borderColor='${ach.color}'; this.style.boxShadow='0 0 15px ${ach.color}15';" onmouseout="this.style.borderColor='var(--border)'; this.style.boxShadow='0 5px 15px rgba(0,0,0,0.2)';">
-        <div style="display:flex; align-items:center; gap:15px; flex:1; min-width:280px;">
-          <div style="font-size:2.8rem; background:rgba(255,255,255,0.01); padding:10px; border-radius:50%; border:1px solid ${ach.color}; display:flex; align-items:center; justify-content:center; width:65px; height:65px; box-shadow:0 0 15px ${ach.color}22; filter:drop-shadow(0 0 5px ${ach.color}33);">
+        <div style="display:flex; align-items:center; gap:18px; flex:1; min-width:280px;">
+          <div style="font-size:2.8rem; background:rgba(255,255,255,0.01); padding:10px; border-radius:50%; border:1px solid ${ach.color}; display:flex; align-items:center; justify-content:center; width:65px; height:65px; box-shadow:0 0 15px ${ach.color}22; filter:drop-shadow(0 0 5px ${ach.color}33); flex-shrink:0;">
             ${ach.emoji}
           </div>
           <div>
-            <h3 style="font-family:'Orbitron'; font-size:1.1rem; color:#fff; margin-bottom:4px; letter-spacing:0.5px;">${ach.title}</h3>
-            <p style="font-size:0.85rem; color:var(--muted); line-height:1.4;">${ach.desc}</p>
+            <h3 style="font-family:'Orbitron'; font-size:1.15rem; color:#fff; margin-bottom:6px; letter-spacing:0.5px;">${ach.title}</h3>
+            <p style="font-size:0.88rem; color:#e2e8f0; line-height:1.5; letter-spacing:0.2px;">${ach.desc}</p>
           </div>
         </div>
         <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px; min-width:180px;">
@@ -783,8 +783,170 @@ function renderLogros() {
     `;
   });
   
-  html += `</div>`;
-  container.innerHTML = html;
+  // --- CÁLCULO DE ESTADÍSTICAS LOCAS (DATOS CURIOSOS) ---
+  const funStats = {
+    destronador: { player: '---', count: 0 },
+    sniper: { player: '---', pct: 0 },
+    battleground: { table: '---', gapPct: 100000 },
+    unstoppable: { player: '---', table: '---', gapPct: 0 },
+    dedication: { player: '---', count: 0 },
+    hotTable: { table: '---', count: 0 }
+  };
+  
+  if (allData.length > 0) {
+    // 1. El Destronador (Jugador con más primeros puestos GC)
+    const gcCounts = {};
+    players.forEach(p => gcCounts[p] = 0);
+    ALL_TABLES.forEach(t => {
+      const sorted = allData.filter(r => r.table === t).sort((a,b) => b.score - a.score);
+      if (sorted[0]) {
+        gcCounts[sorted[0].player]++;
+      }
+    });
+    let maxGC = 0;
+    players.forEach(p => {
+      if (gcCounts[p] > maxGC) {
+        maxGC = gcCounts[p];
+        funStats.destronador = { player: p, count: maxGC };
+      }
+    });
+    
+    // 2. Vicio Constante (Jugador con más puntajes totales registrados)
+    let maxCount = 0;
+    players.forEach(p => {
+      const count = allData.filter(r => r.player === p).length;
+      if (count > maxCount) {
+        maxCount = count;
+        funStats.dedication = { player: p, count: maxCount };
+      }
+    });
+    
+    // 3. Mesa Más Popular (Mesa con más registros totales)
+    let maxTableScores = 0;
+    ALL_TABLES.forEach(t => {
+      const count = allData.filter(r => r.table === t).length;
+      if (count > maxTableScores) {
+        maxTableScores = count;
+        funStats.hotTable = { table: t, count: maxTableScores };
+      }
+    });
+    
+    // 4. Frente de Batalla y Récord Inalcanzable (Diferencias porcentuales entre 1° y 2°)
+    let tightestGap = 100000;
+    let largestGap = 0;
+    
+    ALL_TABLES.forEach(t => {
+      const sorted = allData.filter(r => r.table === t).sort((a,b) => b.score - a.score);
+      if (sorted.length >= 2) {
+        const first = sorted[0].score;
+        const second = sorted[1].score;
+        if (second > 0) {
+          const gapPct = ((first - second) / second) * 100;
+          
+          if (gapPct < tightestGap) {
+            tightestGap = gapPct;
+            funStats.battleground = { table: t, gapPct: gapPct.toFixed(1) };
+          }
+          
+          if (gapPct > largestGap) {
+            largestGap = gapPct;
+            funStats.unstoppable = { player: sorted[0].player, table: t, gapPct: gapPct.toFixed(1) };
+          }
+        }
+      }
+    });
+    
+    // 5. El Francotirador (Porcentaje de efectividad de podio)
+    let bestSniperPct = 0;
+    players.forEach(p => {
+      const pScores = allData.filter(r => r.player === p);
+      if (pScores.length > 0) {
+        let top3Count = 0;
+        pScores.forEach(ps => {
+          const tableScores = allData.filter(r => r.table === ps.table).sort((a,b) => b.score - a.score);
+          const rankIndex = tableScores.findIndex(r => r.player === p && r.score === ps.score);
+          if (rankIndex >= 0 && rankIndex < 3) {
+            top3Count++;
+          }
+        });
+        const pct = (top3Count / pScores.length) * 100;
+        if (pct > bestSniperPct) {
+          bestSniperPct = pct;
+          funStats.sniper = { player: p, pct: pct.toFixed(1) };
+        }
+      }
+    });
+  }
+  
+  html += `
+    <div style="margin-top:4.5rem; padding-top:3.5rem; border-top:1px dashed var(--border); text-align:center;">
+      <h2 style="color:var(--accent-pink); font-family:'Orbitron'; font-size:1.6rem; text-shadow:0 0 10px rgba(255,0,204,0.3); margin-bottom:0.5rem; text-transform:uppercase;">🔮 DATOS CURIOSOS DEL SALÓN</h2>
+      <p style="color:var(--muted); font-size:0.85rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:3rem;">Estadísticas locas calculadas automáticamente en tiempo real</p>
+      
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1.5rem; max-width:1000px; margin:0 auto; text-align:left;">
+        
+        <!-- Tarjeta 1: El Destronador -->
+        <div style="background:var(--card); border:1px solid rgba(255,215,0,0.15); border-radius:8px; padding:1.2rem; display:flex; align-items:center; gap:12px; box-shadow:0 5px 15px rgba(0,0,0,0.25); transition:all 0.2s;" onmouseover="this.style.borderColor='var(--accent-gold)';" onmouseout="this.style.borderColor='rgba(255,215,0,0.15)';">
+          <div style="font-size:2.2rem; filter: drop-shadow(0 0 5px rgba(255,215,0,0.4)); flex-shrink:0;">🔨</div>
+          <div>
+            <div style="font-size:0.65rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">EL DESTRONADOR</div>
+            <div style="font-family:'Orbitron'; font-size:1.1rem; color:var(--accent-gold); font-weight:bold; margin:2px 0;">${funStats.destronador.player}</div>
+            <div style="font-size:0.8rem; color:#c1c1c1; line-height:1.4;">Sostiene la corona de Gran Campeón en <strong style="color:#fff; font-family:'Orbitron';">${funStats.destronador.count} mesas</strong> simultáneamente.</div>
+          </div>
+        </div>
+        
+        <!-- Tarjeta 2: El Francotirador -->
+        <div style="background:var(--card); border:1px solid rgba(0,229,255,0.15); border-radius:8px; padding:1.2rem; display:flex; align-items:center; gap:12px; box-shadow:0 5px 15px rgba(0,0,0,0.25); transition:all 0.2s;" onmouseover="this.style.borderColor='var(--accent-cyan)';" onmouseout="this.style.borderColor='rgba(0,229,255,0.15)';">
+          <div style="font-size:2.2rem; filter: drop-shadow(0 0 5px rgba(0,229,255,0.4)); flex-shrink:0;">🎯</div>
+          <div>
+            <div style="font-size:0.65rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">EL FRANCOTIRADOR</div>
+            <div style="font-family:'Orbitron'; font-size:1.1rem; color:var(--accent-cyan); font-weight:bold; margin:2px 0;">${funStats.sniper.player}</div>
+            <div style="font-size:0.8rem; color:#c1c1c1; line-height:1.4;">Efectividad letal: el <strong style="color:#fff; font-family:'Orbitron';">${funStats.sniper.pct}%</strong> de todas sus partidas registradas terminaron en el Podio (Top 3).</div>
+          </div>
+        </div>
+        
+        <!-- Tarjeta 3: Vicio Constante -->
+        <div style="background:var(--card); border:1px solid rgba(255,255,0,0.15); border-radius:8px; padding:1.2rem; display:flex; align-items:center; gap:12px; box-shadow:0 5px 15px rgba(0,0,0,0.25); transition:all 0.2s;" onmouseover="this.style.borderColor='var(--accent-yellow)';" onmouseout="this.style.borderColor='rgba(255,255,0,0.15)';">
+          <div style="font-size:2.2rem; filter: drop-shadow(0 0 5px rgba(255,255,0,0.4)); flex-shrink:0;">🕹️</div>
+          <div>
+            <div style="font-size:0.65rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">VICIO CONSTANTE</div>
+            <div style="font-family:'Orbitron'; font-size:1.1rem; color:var(--accent-yellow); font-weight:bold; margin:2px 0;">${funStats.dedication.player}</div>
+            <div style="font-size:0.8rem; color:#c1c1c1; line-height:1.4;">El más dedicado de las máquinas con un total de <strong style="color:#fff; font-family:'Orbitron';">${funStats.dedication.count} récords</strong> subidos al sistema.</div>
+          </div>
+        </div>
+        
+        <!-- Tarjeta 4: Frente de Batalla -->
+        <div style="background:var(--card); border:1px solid rgba(255,0,204,0.15); border-radius:8px; padding:1.2rem; display:flex; align-items:center; gap:12px; box-shadow:0 5px 15px rgba(0,0,0,0.25); transition:all 0.2s;" onmouseover="this.style.borderColor='var(--accent-pink)';" onmouseout="this.style.borderColor='rgba(255,0,204,0.15)';">
+          <div style="font-size:2.2rem; filter: drop-shadow(0 0 5px rgba(255,0,204,0.4)); flex-shrink:0;">⚡</div>
+          <div>
+            <div style="font-size:0.65rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">FRENTE DE BATALLA</div>
+            <div style="font-family:'Orbitron'; font-size:0.95rem; color:var(--accent-pink); font-weight:bold; margin:2px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;">${funStats.battleground.table}</div>
+            <div style="font-size:0.8rem; color:#c1c1c1; line-height:1.4;">La mesa más peleada: el puesto #1 y el #2 están separados por un mínimo margen del <strong style="color:#fff; font-family:'Orbitron';">${funStats.battleground.gapPct}%</strong>.</div>
+          </div>
+        </div>
+        
+        <!-- Tarjeta 5: Récord Inalcanzable -->
+        <div style="background:var(--card); border:1px solid rgba(138,43,226,0.20); border-radius:8px; padding:1.2rem; display:flex; align-items:center; gap:12px; box-shadow:0 5px 15px rgba(0,0,0,0.25); transition:all 0.2s;" onmouseover="this.style.borderColor='#8a2be2';" onmouseout="this.style.borderColor='rgba(138,43,226,0.20)';">
+          <div style="font-size:2.2rem; filter: drop-shadow(0 0 5px rgba(138,43,226,0.4)); flex-shrink:0;">🌌</div>
+          <div>
+            <div style="font-size:0.65rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">RÉCORD INALCANZABLE</div>
+            <div style="font-family:'Orbitron'; font-size:0.95rem; color:#a855f7; font-weight:bold; margin:2px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;">${funStats.unstoppable.player}</div>
+            <div style="font-size:0.8rem; color:#c1c1c1; line-height:1.4;">Ventaja aplastante en <span style="color:#fff; font-weight:bold;">${funStats.unstoppable.table}</span>: le sacó un <strong style="color:#fff; font-family:'Orbitron';">${funStats.unstoppable.gapPct}%</strong> de diferencia al segundo.</div>
+          </div>
+        </div>
+        
+        <!-- Tarjeta 6: Mesa Favorita -->
+        <div style="background:var(--card); border:1px solid rgba(255,69,0,0.15); border-radius:8px; padding:1.2rem; display:flex; align-items:center; gap:12px; box-shadow:0 5px 15px rgba(0,0,0,0.25); transition:all 0.2s;" onmouseover="this.style.borderColor='#ff4500';" onmouseout="this.style.borderColor='rgba(255,69,0,0.15)';">
+          <div style="font-size:2.2rem; filter: drop-shadow(0 0 5px rgba(255,69,0,0.4)); flex-shrink:0;">🔥</div>
+          <div>
+            <div style="font-size:0.65rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">MESA MÁS POPULAR</div>
+            <div style="font-family:'Orbitron'; font-size:0.95rem; color:#ff4500; font-weight:bold; margin:2px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;">${funStats.hotTable.table}</div>
+            <div style="font-size:0.8rem; color:#c1c1c1; line-height:1.4;">La favorita indiscutida del grupo con un total de <strong style="color:#fff; font-family:'Orbitron';">${funStats.hotTable.count} registros</strong> subidos a la base.</div>
+          </div>
+        </div>
+        
+      </div>
+    </div>
 }
 
 function renderFama() {
