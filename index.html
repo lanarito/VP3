@@ -325,6 +325,7 @@ footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border);
 
 <!-- VISTA FAMA -->
 <div id="view-fama" class="view active">
+  <div id="dominance-container" style="max-width:1000px; margin:1.5rem auto 2.5rem; padding:0 2rem; text-align:center;"></div>
   <div class="fama-grid" id="grid-fama"></div>
 </div>
 
@@ -1147,6 +1148,94 @@ function renderLogros() {
 function renderFama() {
   const grid = document.getElementById('grid-fama');
   grid.innerHTML = "";
+  
+  // --- CÁLCULO DE CONTROL DE TERRITORIO (DOMINANCIA) ---
+  const players = [...new Set(allData.map(r => r.player))].sort();
+  const gcCounts = {};
+  players.forEach(p => gcCounts[p] = 0);
+  
+  let totalGC = 0;
+  ALL_TABLES.forEach(t => {
+    const best = allData.filter(r => r.table === t).sort((a,b) => b.score - a.score)[0];
+    if (best) {
+      gcCounts[best.player]++;
+      totalGC++;
+    }
+  });
+  
+  const playerColors = {
+    'HER': 'var(--accent-gold)',   // Dorado
+    'ARI': 'var(--accent-cyan)',   // Cian
+    'LAL': 'var(--accent-pink)',   // Rosa
+    'AGU': '#00ff66',              // Verde Neón
+    'VAL': '#b380ff',              // Violeta
+    'LUIS': '#ff4500'              // Naranja
+  };
+  const fallbackColors = ['#00e5ff', '#ff00cc', '#ffd700', '#00ff66', '#b380ff', '#ff4500'];
+  
+  const sortedDominance = Object.keys(gcCounts)
+    .map((p, idx) => {
+      const count = gcCounts[p];
+      const pct = totalGC > 0 ? (count / ALL_TABLES.length) * 100 : 0;
+      const color = playerColors[p] || fallbackColors[idx % fallbackColors.length];
+      return { player: p, count, pct, color };
+    })
+    .sort((a, b) => b.count - a.count);
+    
+  let barHtml = `
+    <div style="display:flex; height:24px; border-radius:12px; overflow:hidden; background:rgba(255,255,255,0.04); border:1px solid var(--border); box-shadow:inset 0 0 10px rgba(0,0,0,0.5); margin-bottom:1rem;">
+  `;
+  
+  sortedDominance.forEach(pd => {
+    if (pd.pct > 0) {
+      barHtml += `
+        <div style="width: ${pd.pct}%; background:${pd.color}; height:100%; display:flex; align-items:center; justify-content:center; color:#000; font-family:'Orbitron'; font-size:0.75rem; font-weight:900; text-shadow:0 1px 1px rgba(255,255,255,0.3); transition:all 0.5s;" title="${pd.player}: ${pd.pct.toFixed(0)}%">
+          ${pd.pct >= 10 ? pd.player : ''}
+        </div>
+       `;
+    }
+  });
+  
+  const vacantPct = totalGC < ALL_TABLES.length ? ((ALL_TABLES.length - totalGC) / ALL_TABLES.length) * 100 : 0;
+  if (vacantPct > 0) {
+    barHtml += `
+      <div style="width: ${vacantPct}%; background:rgba(255,255,255,0.05); height:100%; display:flex; align-items:center; justify-content:center; color:var(--muted); font-family:'Orbitron'; font-size:0.7rem;" title="Mesas Vacantes">
+        VACANTE (${vacantPct.toFixed(0)}%)
+      </div>
+    `;
+  }
+  barHtml += `</div>`;
+  
+  let legendHtml = `<div style="display:flex; justify-content:center; gap:1.2rem; flex-wrap:wrap;">`;
+  sortedDominance.forEach(pd => {
+    if (pd.count > 0) {
+      legendHtml += `
+        <div style="display:flex; align-items:center; gap:8px; background:var(--card); border:1px solid ${pd.color}33; border-radius:20px; padding:4px 12px; box-shadow:0 3px 8px rgba(0,0,0,0.2); transition:all 0.2s;" onmouseover="this.style.borderColor='${pd.color}'; this.style.boxShadow='0 0 10px ${pd.color}22';" onmouseout="this.style.borderColor='${pd.color}33'; this.style.boxShadow='0 3px 8px rgba(0,0,0,0.2)';">
+          <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:${pd.color}; box-shadow:0 0 6px ${pd.color};"></span>
+          <span style="font-family:'Orbitron'; font-size:0.8rem; font-weight:bold; color:#fff;">${pd.player}</span>
+          <span style="font-size:0.75rem; color:var(--muted); margin-left:4px;">${pd.count} ${pd.count === 1 ? 'mesa' : 'mesas'} (${pd.pct.toFixed(0)}%)</span>
+        </div>
+      `;
+    }
+  });
+  legendHtml += `</div>`;
+  
+  const domContainer = document.getElementById('dominance-container');
+  if (domContainer) {
+    if (totalGC > 0) {
+      domContainer.innerHTML = `
+        <h3 style="color:var(--accent-cyan); font-family:'Orbitron'; font-size:1.1rem; text-shadow:0 0 10px rgba(0,229,255,0.2); margin-bottom:1.2rem; text-transform:uppercase; letter-spacing:1px; display:flex; align-items:center; justify-content:center; gap:8px;">
+          ⚔️ CONTROL DE TERRITORIO DEL SALÓN
+        </h3>
+        ${barHtml}
+        ${legendHtml}
+      `;
+    } else {
+      domContainer.innerHTML = "";
+    }
+  }
+  
+  // --- RENDER DE TARJETAS DE MESAS ---
   ALL_TABLES.forEach(t => {
     const best = allData.filter(r => r.table === t).sort((a,b) => b.score - a.score)[0];
     const card = document.createElement('div');
