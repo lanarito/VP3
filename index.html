@@ -85,6 +85,7 @@ header {
 .s1 .num { color: var(--accent-cyan); text-shadow: 0 0 10px rgba(0,229,255,0.4); }
 .s2 .num { color: var(--accent-yellow); text-shadow: 0 0 10px rgba(255,224,0,0.4); }
 .s3 .num { color: var(--accent-pink); text-shadow: 0 0 10px rgba(255,0,204,0.4); }
+.s4 .num { color: #b380ff; text-shadow: 0 0 10px rgba(179,128,255,0.5); }
 
 /* Tabs */
 .tabs {
@@ -293,6 +294,7 @@ footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border);
   <div class="stat-box s1"><span class="num" id="stat-total">0</span><span class="lbl">Puntajes</span></div>
   <div class="stat-box s2"><span class="num" id="stat-tables">0</span><span class="lbl">Mesas</span></div>
   <div class="stat-box s3" style="cursor:pointer;" onclick="showPlayersModal()"><span class="num" id="stat-players">0</span><span class="lbl">Jugadores (Ver Detalle)</span></div>
+  <div class="stat-box s4" style="cursor:pointer;" onclick="showFunStatsModal()"><span class="num">🔮</span><span class="lbl">Datos Curiosos (Ver)</span></div>
 </div>
 
 <!-- MODAL JUGADORES -->
@@ -301,6 +303,15 @@ footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border);
     <button onclick="document.getElementById('players-modal').style.display='none'" style="position:absolute; top:10px; right:10px; background:transparent; border:none; color:var(--text); font-size:1.5rem; cursor:pointer;">&times;</button>
     <h2 style="font-family:'Orbitron'; color:var(--accent-cyan); text-align:center; margin-bottom:1.5rem;">ESTADÍSTICAS POR JUGADOR</h2>
     <div id="players-list"></div>
+  </div>
+</div>
+
+<!-- MODAL DATOS CURIOSOS -->
+<div id="fun-stats-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100; align-items:center; justify-content:center;">
+  <div style="background:var(--surface); border:1px solid var(--accent-pink); padding:2rem; border-radius:8px; max-width:600px; width:90%; max-height:80vh; overflow-y:auto; position:relative;">
+    <button onclick="document.getElementById('fun-stats-modal').style.display='none'" style="position:absolute; top:10px; right:10px; background:transparent; border:none; color:var(--text); font-size:1.5rem; cursor:pointer;">&times;</button>
+    <h2 style="font-family:'Orbitron'; color:var(--accent-pink); text-align:center; margin-bottom:1.5rem; text-transform:uppercase;">🔮 DATOS CURIOSOS DEL SALÓN</h2>
+    <div id="fun-stats-modal-list" style="max-height:60vh; overflow-y:auto; padding-right:5px;"></div>
   </div>
 </div>
 
@@ -650,7 +661,190 @@ function showPlayersModal() {
   modal.style.display = "flex";
 }
 
+
+function showFunStatsModal() {
+  playRetroSound('click');
+  const modal = document.getElementById('fun-stats-modal');
+  const list = document.getElementById('fun-stats-modal-list');
+  if (!modal || !list) return;
+  list.innerHTML = "";
+  
+  const players = [...new Set(allData.map(r => r.player))].sort();
+  const funStats = {
+    destronador: { player: '---', count: 0 },
+    sniper: { player: '---', pct: 0 },
+    battleground: { table: '---', gapPct: 100000 },
+    unstoppable: { player: '---', table: '---', gapPct: 0 },
+    dedication: { player: '---', count: 0 },
+    hotTable: { table: '---', count: 0 }
+  };
+  
+  if (allData.length > 0) {
+    // 1. El Destronador (Jugador con más primeros puestos GC)
+    const gcCounts = {};
+    players.forEach(p => gcCounts[p] = 0);
+    ALL_TABLES.forEach(t => {
+      const sorted = allData.filter(r => r.table === t).sort((a,b) => b.score - a.score);
+      if (sorted[0]) {
+        gcCounts[sorted[0].player]++;
+      }
+    });
+    let maxGC = 0;
+    players.forEach(p => {
+      if (gcCounts[p] > maxGC) {
+        maxGC = gcCounts[p];
+        funStats.destronador = { player: p, count: maxGC };
+      }
+    });
+    
+    // 2. Vicio Constante (Jugador con más puntajes totales registrados)
+    let maxCount = 0;
+    players.forEach(p => {
+      const count = allData.filter(r => r.player === p).length;
+      if (count > maxCount) {
+        maxCount = count;
+        funStats.dedication = { player: p, count: maxCount };
+      }
+    });
+    
+    // 3. Mesa Más Popular (Mesa con más registros totales)
+    let maxTableScores = 0;
+    ALL_TABLES.forEach(t => {
+      const count = allData.filter(r => r.table === t).length;
+      if (count > maxTableScores) {
+        maxTableScores = count;
+        funStats.hotTable = { table: t, count: maxTableScores };
+      }
+    });
+    
+    // 4. Frente de Batalla y Récord Inalcanzable (Diferencias porcentuales entre 1° y 2°)
+    let tightestGap = 100000;
+    let largestGap = 0;
+    
+    ALL_TABLES.forEach(t => {
+      const sorted = allData.filter(r => r.table === t).sort((a,b) => b.score - a.score);
+      if (sorted.length >= 2) {
+        const first = sorted[0].score;
+        const second = sorted[1].score;
+        if (second > 0) {
+          const gapPct = ((first - second) / second) * 100;
+          
+          if (gapPct < tightestGap) {
+            tightestGap = gapPct;
+            funStats.battleground = { table: t, gapPct: gapPct.toFixed(1) };
+          }
+          
+          if (gapPct > largestGap) {
+            largestGap = gapPct;
+            funStats.unstoppable = { player: sorted[0].player, table: t, gapPct: gapPct.toFixed(1) };
+          }
+        }
+      }
+    });
+    
+    // 5. El Francotirador (Porcentaje de efectividad de podio)
+    let bestSniperPct = 0;
+    players.forEach(p => {
+      const pScores = allData.filter(r => r.player === p);
+      if (pScores.length > 0) {
+        let top3Count = 0;
+        pScores.forEach(ps => {
+          const tableScores = allData.filter(r => r.table === ps.table).sort((a,b) => b.score - a.score);
+          const rankIndex = tableScores.findIndex(r => r.player === p && r.score === ps.score);
+          if (rankIndex >= 0 && rankIndex < 3) {
+            top3Count++;
+          }
+        });
+        const pct = (top3Count / pScores.length) * 100;
+        if (pct > bestSniperPct) {
+          bestSniperPct = pct;
+          funStats.sniper = { player: p, pct: pct.toFixed(1) };
+        }
+      }
+    });
+  }
+  
+  let html = `<div style="display:flex; flex-direction:column; gap:1.2rem;">`;
+  
+  // Card 1: El Destronador
+  html += `
+    <div style="background:rgba(255,215,0,0.03); border:1px solid rgba(255,215,0,0.25); border-radius:6px; padding:1rem; display:flex; align-items:center; gap:15px; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+      <div style="font-size:2rem; filter: drop-shadow(0 0 5px rgba(255,215,0,0.3)); flex-shrink:0;">🔨</div>
+      <div>
+        <div style="font-size:0.6rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">EL DESTRONADOR</div>
+        <div style="font-family:'Orbitron'; font-size:1.1rem; color:var(--accent-gold); font-weight:bold; margin:2px 0;">${funStats.destronador.player}</div>
+        <div style="font-size:0.8rem; color:#e0e0e0; line-height:1.4;">Sostiene la corona de Gran Campeón en <strong style="color:#fff; font-family:'Orbitron';">${funStats.destronador.count} mesas</strong> simultáneamente.</div>
+      </div>
+    </div>
+  `;
+  
+  // Card 2: El Francotirador
+  html += `
+    <div style="background:rgba(0,229,255,0.03); border:1px solid rgba(0,229,255,0.25); border-radius:6px; padding:1rem; display:flex; align-items:center; gap:15px; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+      <div style="font-size:2rem; filter: drop-shadow(0 0 5px rgba(0,229,255,0.3)); flex-shrink:0;">🎯</div>
+      <div>
+        <div style="font-size:0.6rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">EL FRANCOTIRADOR</div>
+        <div style="font-family:'Orbitron'; font-size:1.1rem; color:var(--accent-cyan); font-weight:bold; margin:2px 0;">${funStats.sniper.player}</div>
+        <div style="font-size:0.8rem; color:#e0e0e0; line-height:1.4;">Efectividad letal: el <strong style="color:#fff; font-family:'Orbitron';">${funStats.sniper.pct}%</strong> de todas sus partidas registradas terminaron en el Podio (Top 3).</div>
+      </div>
+    </div>
+  `;
+  
+  // Card 3: Vicio Constante
+  html += `
+    <div style="background:rgba(255,255,0,0.03); border:1px solid rgba(255,255,0,0.25); border-radius:6px; padding:1rem; display:flex; align-items:center; gap:15px; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+      <div style="font-size:2rem; filter: drop-shadow(0 0 5px rgba(255,255,0,0.3)); flex-shrink:0;">🕹️</div>
+      <div>
+        <div style="font-size:0.6rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">VICIO CONSTANTE</div>
+        <div style="font-family:'Orbitron'; font-size:1.1rem; color:var(--accent-yellow); font-weight:bold; margin:2px 0;">${funStats.dedication.player}</div>
+        <div style="font-size:0.8rem; color:#e0e0e0; line-height:1.4;">El más dedicado de las máquinas con un total de <strong style="color:#fff; font-family:'Orbitron';">${funStats.dedication.count} récords</strong> subidos al sistema.</div>
+      </div>
+    </div>
+  `;
+  
+  // Card 4: Frente de Batalla
+  html += `
+    <div style="background:rgba(255,0,204,0.03); border:1px solid rgba(255,0,204,0.25); border-radius:6px; padding:1rem; display:flex; align-items:center; gap:15px; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+      <div style="font-size:2rem; filter: drop-shadow(0 0 5px rgba(255,0,204,0.3)); flex-shrink:0;">⚡</div>
+      <div>
+        <div style="font-size:0.6rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">FRENTE DE BATALLA</div>
+        <div style="font-family:'Orbitron'; font-size:1rem; color:var(--accent-pink); font-weight:bold; margin:2px 0;">${funStats.battleground.table}</div>
+        <div style="font-size:0.8rem; color:#e0e0e0; line-height:1.4;">La mesa más peleada: el puesto #1 y el #2 están separados por un mínimo margen del <strong style="color:#fff; font-family:'Orbitron';">${funStats.battleground.gapPct}%</strong>.</div>
+      </div>
+    </div>
+  `;
+  
+  // Card 5: Récord Inalcanzable
+  html += `
+    <div style="background:rgba(138,43,226,0.04); border:1px solid rgba(138,43,226,0.3); border-radius:6px; padding:1rem; display:flex; align-items:center; gap:15px; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+      <div style="font-size:2rem; filter: drop-shadow(0 0 5px rgba(138,43,226,0.3)); flex-shrink:0;">🌌</div>
+      <div>
+        <div style="font-size:0.6rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">RÉCORD INALCANZABLE</div>
+        <div style="font-family:'Orbitron'; font-size:1rem; color:#a855f7; font-weight:bold; margin:2px 0;">${funStats.unstoppable.player} (${funStats.unstoppable.table})</div>
+        <div style="font-size:0.8rem; color:#e0e0e0; line-height:1.4;">Ventaja aplastante: le sacó un <strong style="color:#fff; font-family:'Orbitron';">${funStats.unstoppable.gapPct}%</strong> de diferencia al segundo.</div>
+      </div>
+    </div>
+  `;
+  
+  // Card 6: Mesa Favorita
+  html += `
+    <div style="background:rgba(255,69,0,0.03); border:1px solid rgba(255,69,0,0.25); border-radius:6px; padding:1rem; display:flex; align-items:center; gap:15px; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+      <div style="font-size:2rem; filter: drop-shadow(0 0 5px rgba(255,69,0,0.3)); flex-shrink:0;">🔥</div>
+      <div>
+        <div style="font-size:0.6rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">MESA MÁS POPULAR</div>
+        <div style="font-family:'Orbitron'; font-size:1rem; color:#ff4500; font-weight:bold; margin:2px 0;">${funStats.hotTable.table}</div>
+        <div style="font-size:0.8rem; color:#e0e0e0; line-height:1.4;">La favorita indiscutida del grupo con un total de <strong style="color:#fff; font-family:'Orbitron';">${funStats.hotTable.count} registros</strong> subidos a la base.</div>
+      </div>
+    </div>
+  `;
+  
+  html += `</div>`;
+  list.innerHTML = html;
+  modal.style.display = "flex";
+}
+
 function populateFilters() {
+
   const sel = document.getElementById('filter-table');
   if (sel.options.length > 0) return;
   ALL_TABLES.forEach(t => {
