@@ -308,6 +308,7 @@ footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border);
   <button class="tab-btn active" id="btn-fama" onclick="setView('fama')">👑 Salón de la Fama</button>
   <button class="tab-btn" id="btn-desafio" onclick="setView('desafio')">🔥 Desafío Semanal</button>
   <button class="tab-btn" id="btn-ranking" onclick="setView('ranking')">📊 Ranking por Mesa</button>
+  <button class="tab-btn" id="btn-logros" onclick="setView('logros')">🏅 Logros y Medallas</button>
   <button class="tab-btn" id="btn-actualizaciones" onclick="setView('actualizaciones')">📦 Actualizaciones <span id="badge-update" class="badge-new" style="display:none;">¡NUEVO!</span></button>
 </div>
 
@@ -337,6 +338,9 @@ footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border);
     <table><tbody id="body-ranking"></tbody></table>
   </div>
 </div>
+
+<!-- VISTA LOGROS -->
+<div id="view-logros" class="view"></div>
 
 <!-- VISTA ACTUALIZACIONES -->
 <div id="view-actualizaciones" class="view">
@@ -534,6 +538,69 @@ function updateStats() {
   document.getElementById('stat-players').textContent = players.length;
 }
 
+// OBTENER LOS LOGROS CONQUISTADOS POR UN JUGADOR
+function getUnlockedAchievements(p) {
+  const pData = allData.filter(r => r.player === p);
+  const unlocked = [];
+  
+  // 1. Rey de Reyes (GC en 3 o más mesas)
+  let gcCount = 0;
+  ALL_TABLES.forEach(t => {
+    const best = allData.filter(r => r.table === t).sort((a,b) => b.score - a.score)[0];
+    if (best && best.player === p) gcCount++;
+  });
+  if (gcCount >= 3) {
+    unlocked.push({ id: 'gc_master', emoji: '👑', title: 'Rey de Reyes', color: 'var(--accent-gold)' });
+  }
+  
+  // 2. Explorador Arcade (Puntajes en 5 o más mesas)
+  const uniqueTables = [...new Set(pData.map(r => r.table))];
+  if (uniqueTables.length >= 5) {
+    unlocked.push({ id: 'table_collector', emoji: '👾', title: 'Explorador Arcade', color: 'var(--accent-cyan)' });
+  }
+  
+  // 3. Centurión (> 100 Millones)
+  if (pData.some(r => r.score >= 100000000)) {
+    unlocked.push({ id: 'centurion', emoji: '💥', title: 'Centurión', color: 'var(--accent-pink)' });
+  }
+  
+  // 4. Magnate del Cosmos (> 1.000 Millones / 1 Billón)
+  if (pData.some(r => r.score >= 1000000000)) {
+    unlocked.push({ id: 'billionaire', emoji: '🌌', title: 'Magnate del Cosmos', color: '#8a2be2' });
+  }
+  
+  // 5. Vicioso del Pinball (15 o más récords totales registrados)
+  if (pData.length >= 15) {
+    unlocked.push({ id: 'constant_player', emoji: '🕹️', title: 'Vicioso del Pinball', color: 'var(--accent-yellow)' });
+  }
+  
+  // 6. Héroe de la Semana (Haber ganado al menos un desafío semanal histórico)
+  const baseDate = new Date('2026-05-06T00:00:00-03:00');
+  const now = new Date();
+  const diffMs = now - baseDate;
+  const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+  let currentWeekIndex = Math.floor(diffMs / msPerWeek);
+  if (diffMs < 0) currentWeekIndex = 0;
+  
+  let wonChallenge = false;
+  for (let w = 0; w < currentWeekIndex; w++) {
+    const wStart = getYYYYMMDD(new Date(baseDate.getTime() + w * msPerWeek));
+    const wEnd = getYYYYMMDD(new Date(baseDate.getTime() + (w + 1) * msPerWeek));
+    const table = ALL_TABLES[w % ALL_TABLES.length];
+    const weekScores = allData.filter(r => r.table === table && r.date >= wStart && r.date < wEnd)
+                              .sort((a,b) => b.score - a.score);
+    if (weekScores[0] && weekScores[0].player === p) {
+      wonChallenge = true;
+      break;
+    }
+  }
+  if (wonChallenge) {
+    unlocked.push({ id: 'weekly_hero', emoji: '🔥', title: 'Héroe de la Semana', color: '#ff4500' });
+  }
+  
+  return unlocked;
+}
+
 function showPlayersModal() {
   const modal = document.getElementById('players-modal');
   const list = document.getElementById('players-list');
@@ -544,6 +611,7 @@ function showPlayersModal() {
   
   players.forEach(p => {
     const pData = allData.filter(r => r.player === p).sort((a,b) => b.score - a.score);
+    const achievements = getUnlockedAchievements(p);
     
     // Contar cuántos Grand Champions tiene
     let gcCount = 0;
@@ -559,7 +627,17 @@ function showPlayersModal() {
     div.style.border = "1px solid var(--border)";
     div.style.borderRadius = "4px";
     
-    let html = `<h3 style="color:var(--accent-gold); font-family:'Orbitron'; margin-bottom:0.5rem; border-bottom:1px solid var(--border); padding-bottom:5px;">${p} <span style="font-size:0.8rem; color:var(--muted); float:right;">Récords Totales: ${pData.length} | Grand Champions: ${gcCount}</span></h3>`;
+    // Dibujar medallas flotantes
+    let medalsHtml = `<div style="display:inline-flex; gap:6px; margin-left:12px; vertical-align:middle;">`;
+    achievements.forEach(ach => {
+      medalsHtml += `<span title="${ach.title}" style="cursor:help; font-size:1.1rem; display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:rgba(255,255,255,0.03); border:1px solid ${ach.color}; box-shadow:0 0 5px ${ach.color}44;">${ach.emoji}</span>`;
+    });
+    medalsHtml += `</div>`;
+    
+    let html = `<h3 style="color:var(--accent-gold); font-family:'Orbitron'; margin-bottom:0.5rem; border-bottom:1px solid var(--border); padding-bottom:5px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                  <span>${p} ${medalsHtml}</span>
+                  <span style="font-size:0.8rem; color:var(--muted); font-weight:normal;">Récords: ${pData.length} | GC: ${gcCount}</span>
+                </h3>`;
     html += `<ul style="list-style:none; font-size:0.9rem;">`;
     pData.forEach(r => {
       html += `<li style="padding:4px 0;"><span style="color:var(--accent-cyan); display:inline-block; width:200px;">${r.table}</span> <span style="color:var(--accent-yellow); font-family:'Orbitron';">${r.score.toLocaleString('es-AR')}</span></li>`;
@@ -605,7 +683,108 @@ function renderAll() {
   if (currentView === 'fama') renderFama();
   if (currentView === 'ranking') renderRanking();
   if (currentView === 'desafio') renderChallenge();
+  if (currentView === 'logros') renderLogros();
   if (currentView === 'actualizaciones') renderActualizaciones();
+}
+
+// RENDERIZAR DINÁMICAMENTE LA VISTA DE LOGROS Y MEDALLAS
+function renderLogros() {
+  const container = document.getElementById('view-logros');
+  if (!container) return;
+  container.innerHTML = "";
+  
+  const players = [...new Set(allData.map(r => r.player))].sort();
+  
+  // Lista de logros con sus descripciones y colores representativos
+  const achievementsList = [
+    {
+      id: 'gc_master',
+      emoji: '👑',
+      title: 'Rey de Reyes',
+      desc: 'Tener el mejor puntaje (GC) en 3 o más mesas simultáneamente.',
+      color: 'var(--accent-gold)'
+    },
+    {
+      id: 'table_collector',
+      emoji: '👾',
+      title: 'Explorador Arcade',
+      desc: 'Haber registrado puntajes en 5 o más mesas diferentes.',
+      color: 'var(--accent-cyan)'
+    },
+    {
+      id: 'centurion',
+      emoji: '💥',
+      title: 'Centurión',
+      desc: 'Superar los 100 Millones de puntos (100M) en cualquier mesa.',
+      color: 'var(--accent-pink)'
+    },
+    {
+      id: 'billionaire',
+      emoji: '🌌',
+      title: 'Magnate del Cosmos',
+      desc: 'Superar los 1.000 Millones (1 Billón) en cualquier mesa.',
+      color: '#8a2be2'
+    },
+    {
+      id: 'constant_player',
+      emoji: '🕹️',
+      title: 'Vicioso del Pinball',
+      desc: 'Haber registrado 15 o más puntuaciones totales en el sistema.',
+      color: 'var(--accent-yellow)'
+    },
+    {
+      id: 'weekly_hero',
+      emoji: '🔥',
+      title: 'Héroe de la Semana',
+      desc: 'Haber ganado al menos un Desafío Semanal de los miércoles.',
+      color: '#ff4500'
+    }
+  ];
+  
+  let html = `
+    <div style="padding:0 2rem 4rem; max-width:1000px; margin:0 auto; text-align:center;">
+      <h2 style="color:var(--accent-cyan); font-family:'Orbitron'; font-size:1.8rem; text-shadow:0 0 10px rgba(0,229,255,0.3); margin-bottom:0.5rem; text-transform:uppercase;">🏆 SISTEMA DE LOGROS Y MEDALLAS</h2>
+      <p style="color:var(--muted); font-size:0.85rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:2.5rem;">Desafíos globales y medallas desbloqueadas por los jugadores</p>
+  `;
+  
+  achievementsList.forEach(ach => {
+    // Filtrar qué jugadores tienen este logro
+    const unlockedPlayers = players.filter(p => {
+      const pAchievements = getUnlockedAchievements(p);
+      return pAchievements.some(a => a.id === ach.id);
+    });
+    
+    html += `
+      <div style="background:var(--card); border:1px solid var(--border); border-radius:8px; padding:1.5rem; margin-bottom:1.5rem; display:flex; align-items:center; justify-content:space-between; gap:20px; box-shadow:0 5px 15px rgba(0,0,0,0.2); text-align:left; flex-wrap:wrap; transition:all 0.2s;" onmouseover="this.style.borderColor='${ach.color}'; this.style.boxShadow='0 0 15px ${ach.color}15';" onmouseout="this.style.borderColor='var(--border)'; this.style.boxShadow='0 5px 15px rgba(0,0,0,0.2)';">
+        <div style="display:flex; align-items:center; gap:15px; flex:1; min-width:280px;">
+          <div style="font-size:2.8rem; background:rgba(255,255,255,0.01); padding:10px; border-radius:50%; border:1px solid ${ach.color}; display:flex; align-items:center; justify-content:center; width:65px; height:65px; box-shadow:0 0 15px ${ach.color}22; filter:drop-shadow(0 0 5px ${ach.color}33);">
+            ${ach.emoji}
+          </div>
+          <div>
+            <h3 style="font-family:'Orbitron'; font-size:1.1rem; color:#fff; margin-bottom:4px; letter-spacing:0.5px;">${ach.title}</h3>
+            <p style="font-size:0.85rem; color:var(--muted); line-height:1.4;">${ach.desc}</p>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px; min-width:180px;">
+          <span style="font-size:0.65rem; text-transform:uppercase; letter-spacing:1px; font-family:'Orbitron'; color:var(--accent-gold); font-weight:bold;">Conquistadores:</span>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            ${unlockedPlayers.length > 0 ? unlockedPlayers.map(up => `
+              <span style="background:rgba(255,215,0,0.05); border:1px solid var(--accent-gold); color:var(--accent-gold); padding:3px 10px; border-radius:12px; font-family:'Orbitron'; font-size:0.75rem; font-weight:bold; text-shadow:0 0 4px rgba(255,215,0,0.2);">
+                ${up}
+              </span>
+            `).join('') : `
+              <span style="background:rgba(255,255,255,0.01); border:1px solid var(--border); color:var(--muted); padding:3px 10px; border-radius:12px; font-family:'Orbitron'; font-size:0.75rem;">
+                BLOQUEADO 🔒
+              </span>
+            `}
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  
+  html += `</div>`;
+  container.innerHTML = html;
 }
 
 function renderFama() {
