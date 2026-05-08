@@ -134,6 +134,66 @@ header {
 .fama-player { font-family: 'Orbitron', sans-serif; font-size: 1.2rem; color: var(--accent-gold); font-weight: 900; }
 .fama-score { font-family: 'Orbitron', sans-serif; font-size: 1.6rem; color: var(--accent-yellow); margin-top: 0.5rem; }
 
+/* Podium Desktop Styles */
+.podium-container {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin: 0 auto 2rem;
+  max-width: 600px;
+  align-items: flex-end;
+}
+.podium-card {
+  background: var(--card);
+  border-radius: 8px;
+  padding: 1.2rem;
+  width: 160px;
+  text-align: center;
+  transition: all 0.2s;
+}
+.podium-card.pos-1 {
+  transform: scale(1.08);
+  z-index: 2;
+  margin-bottom: 10px;
+}
+.podium-card.pos-2, .podium-card.pos-3 {
+  transform: scale(1);
+  z-index: 1;
+}
+.podium-card .emoji-span {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 0.3rem;
+}
+.podium-card .text-span {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.65rem;
+  font-weight: bold;
+  letter-spacing: 1px;
+  display: block;
+  margin-bottom: 6px;
+  opacity: 0.85;
+}
+.podium-card .player-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 900;
+}
+.podium-card .score-span {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1rem;
+  color: var(--accent-yellow);
+  margin-top: 6px;
+  font-weight: 700;
+}
+.podium-card .date-span {
+  font-size: 0.7rem;
+  color: var(--muted);
+  opacity: 0.7;
+  display: block;
+  margin-top: 4px;
+}
+
 .empty-card {
   opacity: 0.5;
   border-style: dashed;
@@ -247,6 +307,61 @@ footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border);
   #admin-upload-box h2 {
     font-size: 1.1rem !important;
     margin-bottom: 1rem !important;
+  }
+  
+  /* Ajustes del Podio en Celulares */
+  .podium-container {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 0.8rem !important;
+    padding: 0 1rem;
+  }
+  .podium-card {
+    width: 100% !important;
+    max-width: 320px !important;
+    transform: none !important;
+    margin-bottom: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    text-align: left !important;
+    gap: 15px !important;
+    padding: 0.8rem 1.2rem !important;
+  }
+  .podium-card.pos-1 {
+    order: 1 !important;
+  }
+  .podium-card.pos-2 {
+    order: 2 !important;
+  }
+  .podium-card.pos-3 {
+    order: 3 !important;
+  }
+  .podium-card .emoji-span {
+    font-size: 2.2rem !important;
+    margin-bottom: 0 !important;
+    flex-shrink: 0;
+  }
+  .podium-card .text-span {
+    display: none !important;
+  }
+  .podium-card .info-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .podium-card .player-name {
+    font-size: 1.2rem !important;
+    margin: 0 !important;
+    line-height: 1.2;
+  }
+  .podium-card .score-span {
+    font-size: 0.95rem !important;
+    margin-top: 2px !important;
+  }
+  .podium-card .date-span {
+    font-size: 0.65rem !important;
+    margin-top: 2px !important;
+    display: block !important;
   }
 }
 
@@ -1312,7 +1427,7 @@ function renderChallenge() {
   if (podiumDiv) {
     podiumDiv.innerHTML = "";
     const top3 = data.slice(0, 3);
-    let html = `<div style="display:flex; justify-content:center; gap:1.5rem; margin:0 auto 2rem; flex-wrap:wrap; max-width:600px; align-items:flex-end;">`;
+    let html = `<div class="podium-container">`;
     
     // Renderizado visual: 2do puesto, 1er puesto, 3er puesto
     const visualOrder = [];
@@ -1321,15 +1436,15 @@ function renderChallenge() {
     if (top3[2]) visualOrder.push({ pos: 3, item: top3[2], color: '#cd7f32', text: '3RD PLACE', emoji: '🥉' });
     
     visualOrder.forEach(p => {
-      const scale = p.pos === 1 ? 'scale(1.08)' : 'scale(1)';
-      const zIndex = p.pos === 1 ? '2' : '1';
       html += `
-        <div style="background:var(--card); border:1px solid ${p.color}; border-radius:8px; padding:1.2rem; width:160px; text-align:center; box-shadow: 0 0 20px ${p.color}15; transform: ${scale}; z-index: ${zIndex}; margin-bottom: ${p.pos === 1 ? '10px' : '0'}; transition: all 0.2s;">
-          <span style="font-size:2.5rem; display:block; margin-bottom:0.3rem; filter: drop-shadow(0 0 5px ${p.color}44);">${p.emoji}</span>
-          <span style="font-family:'Orbitron'; font-size:0.65rem; color:${p.color}; font-weight:bold; letter-spacing:1px; display:block; margin-bottom:6px; opacity:0.85;">${p.text}</span>
-          <div style="font-family:'Orbitron'; font-size:1.4rem; font-weight:900; color:${p.color}; text-shadow: 0 0 8px ${p.color}22;">${p.item.player}</div>
-          <div style="font-family:'Orbitron'; font-size:1rem; color:var(--accent-yellow); margin-top:6px; font-weight:700;">${p.item.score.toLocaleString('es-AR')}</div>
-          <span style="font-size:0.7rem; color:var(--muted); opacity:0.7; display:block; margin-top:4px;">${p.item.date}</span>
+        <div class="podium-card pos-${p.pos}" style="border:1px solid ${p.color}; box-shadow: 0 0 20px ${p.color}15;">
+          <span class="emoji-span" style="filter: drop-shadow(0 0 5px ${p.color}44);">${p.emoji}</span>
+          <div class="info-wrap">
+            <span class="text-span" style="color:${p.color};">${p.text}</span>
+            <div class="player-name" style="color:${p.color}; text-shadow: 0 0 8px ${p.color}22;">${p.item.player}</div>
+            <div class="score-span">${p.item.score.toLocaleString('es-AR')}</div>
+            <span class="date-span">${p.item.date}</span>
+          </div>
         </div>
       `;
     });
