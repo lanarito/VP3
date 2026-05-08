@@ -248,6 +248,35 @@ footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border);
     margin-bottom: 1rem !important;
   }
 }
+
+/* Badge de Nueva Actualización con Animación Flasheante */
+.badge-new {
+  background: var(--accent-pink);
+  color: #fff;
+  font-size: 0.55rem;
+  padding: 2px 7px;
+  border-radius: 10px;
+  margin-left: 6px;
+  font-weight: 900;
+  font-family: 'Orbitron', sans-serif;
+  display: inline-block;
+  vertical-align: middle;
+  box-shadow: 0 0 10px rgba(255, 0, 204, 0.6);
+  animation: badge-flash 0.8s infinite alternate;
+}
+
+@keyframes badge-flash {
+  0% {
+    opacity: 0.6;
+    transform: scale(0.95);
+    box-shadow: 0 0 4px rgba(255, 0, 204, 0.4);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(255, 0, 204, 0.8);
+  }
+}
 </style>
 </head>
 <body>
@@ -278,7 +307,7 @@ footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border);
   <button class="tab-btn active" id="btn-fama" onclick="setView('fama')">👑 Salón de la Fama</button>
   <button class="tab-btn" id="btn-desafio" onclick="setView('desafio')">🔥 Desafío Semanal</button>
   <button class="tab-btn" id="btn-ranking" onclick="setView('ranking')">📊 Ranking por Mesa</button>
-  <button class="tab-btn" id="btn-actualizaciones" onclick="setView('actualizaciones')">📦 Actualizaciones</button>
+  <button class="tab-btn" id="btn-actualizaciones" onclick="setView('actualizaciones')">📦 Actualizaciones <span id="badge-update" class="badge-new" style="display:none;">¡NUEVO!</span></button>
 </div>
 
 <!-- VISTA FAMA -->
@@ -467,6 +496,20 @@ async function fetchActualizaciones() {
       actualizacionesData = await res.json();
       // Ordenar por fecha descendente
       actualizacionesData.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+      
+      // Controlar el badge de novedades (flasheante)
+      const latestUpdate = actualizacionesData[0];
+      if (latestUpdate) {
+        const lastSeen = localStorage.getItem('last_seen_update');
+        const badge = document.getElementById('badge-update');
+        if (badge) {
+          if (!lastSeen || lastSeen !== latestUpdate.id) {
+            badge.style.display = 'inline-block';
+          } else {
+            badge.style.display = 'none';
+          }
+        }
+      }
     }
   } catch (e) {
     console.error("Error al cargar actualizaciones:", e);
@@ -533,6 +576,16 @@ function setView(v) {
   document.getElementById('btn-' + v).classList.add('active');
   document.querySelectorAll('.view').forEach(s => s.classList.remove('active'));
   document.getElementById('view-' + v).classList.add('active');
+  
+  if (v === 'actualizaciones') {
+    const latestUpdate = actualizacionesData[0];
+    if (latestUpdate) {
+      localStorage.setItem('last_seen_update', latestUpdate.id);
+    }
+    const badge = document.getElementById('badge-update');
+    if (badge) badge.style.display = 'none';
+  }
+  
   renderAll();
 }
 
