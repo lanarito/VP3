@@ -231,6 +231,15 @@ footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border);
 <footer>SISTEMA VP3 ONLINE · <span id="last-update">...</span></footer>
 
 <script>
+function getPlayerColor(player) {
+  const p = (player || "").toUpperCase().trim();
+  if (p === "LAL") return "#00c3ff"; // Luis: Azul
+  if (p === "ARI") return "#00ff66"; // Ariel: Verde
+  if (p === "HER") return "#ff007f"; // Hernán: Rosa
+  if (p === "AGU") return "#ffcc00"; // Agus: Amarillo
+  return "#ffffff"; // Blanco por defecto
+}
+
 const ALL_TABLES = [
   "Attack from Mars", "Cactus Canyon", "Congo", "Creature from the Black Lagoon",
   "Dirty Harry", "Indianapolis 500", "Johnny Mnemonic", "Junk Yard",
@@ -314,7 +323,7 @@ function showPlayersModal() {
     div.style.border = "1px solid var(--border)";
     div.style.borderRadius = "4px";
     
-    let html = `<h3 style="color:var(--accent-gold); font-family:'Orbitron'; margin-bottom:0.5rem; border-bottom:1px solid var(--border); padding-bottom:5px;">${p} <span style="font-size:0.8rem; color:var(--muted); float:right;">Récords Totales: ${pData.length} | Grand Champions: ${gcCount}</span></h3>`;
+    let html = `<h3 style="color:var(--accent-gold); font-family:'Orbitron'; margin-bottom:0.5rem; border-bottom:1px solid var(--border); padding-bottom:5px;"><span style="color:${getPlayerColor(p)};">${p}</span> <span style="font-size:0.8rem; color:var(--muted); float:right;">Récords Totales: ${pData.length} | Grand Champions: ${gcCount}</span></h3>`;
     html += `<ul style="list-style:none; font-size:0.9rem;">`;
     pData.forEach(r => {
       html += `<li style="padding:4px 0;"><span style="color:var(--accent-cyan); display:inline-block; width:200px;">${r.table}</span> <span style="color:var(--accent-yellow); font-family:'Orbitron';">${r.score.toLocaleString('es-AR')}</span></li>`;
@@ -363,7 +372,7 @@ function renderFama() {
     card.innerHTML = `
       <div class="fama-title">${t}</div>
       ${best ? '<span class="fama-crown">👑</span>' : '<span class="fama-waiting">⏳ VACANTE</span>'}
-      <div class="fama-player">${best ? best.player : '---'}</div>
+      <div class="fama-player" style="color: ${best ? getPlayerColor(best.player) : 'var(--accent-gold)'};">${best ? best.player : '---'}</div>
       <div class="fama-score">${best ? best.score.toLocaleString('es-AR') : 'SÉ EL PRIMERO'}</div>
     `;
     grid.appendChild(card);
@@ -377,7 +386,7 @@ function renderRanking() {
   body.innerHTML = "";
   data.forEach((r, i) => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><div class="rank-b">${i+1}</div></td><td>${r.player}</td><td class="score-val">${r.score.toLocaleString('es-AR')}</td><td>${r.date}</td>`;
+    tr.innerHTML = `<td><div class="rank-b">${i+1}</div></td><td style="color:${getPlayerColor(r.player)}; font-weight:bold; font-family:'Orbitron', sans-serif;">${r.player}</td><td class="score-val">${r.score.toLocaleString('es-AR')}</td><td>${r.date}</td>`;
     body.appendChild(tr);
   });
 }
@@ -404,7 +413,7 @@ function renderChallenge() {
   body.innerHTML = "";
   data.forEach((r, i) => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><div class="rank-b">${i+1}</div></td><td>${r.player}</td><td class="score-val">${r.score.toLocaleString('es-AR')}</td><td>${r.date}</td>`;
+    tr.innerHTML = `<td><div class="rank-b">${i+1}</div></td><td style="color:${getPlayerColor(r.player)}; font-weight:bold; font-family:'Orbitron', sans-serif;">${r.player}</td><td class="score-val">${r.score.toLocaleString('es-AR')}</td><td>${r.date}</td>`;
     body.appendChild(tr);
   });
 }
