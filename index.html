@@ -570,8 +570,21 @@ function getPlayerColor(player) {
   if (p === "ARI") return "#00ff66"; // Ariel: Verde
   if (p === "HER") return "#ff007f"; // Hernán: Rosa
   if (p === "AGU") return "#ffcc00"; // Agus: Amarillo
-  return "#ffffff"; // Blanco por defecto
+  if (!p || p === "---") return "#ffffff";
+
+  // Paleta retro premium para nuevos jugadores (colores de alta visibilidad en fondo oscuro)
+  const RETRO_COLORS = [
+    "#ff3366", "#33ff66", "#3366ff", "#ffcc00", "#ff00ff", "#00ffff", 
+    "#ff6600", "#9933ff", "#33ffcc", "#ff3399", "#ccff33", "#00ffcc"
+  ];
+  let hash = 0;
+  for (let i = 0; i < p.length; i++) {
+    hash = p.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % RETRO_COLORS.length;
+  return RETRO_COLORS[index];
 }
+
 
 const ALL_TABLES = [
   "Attack from Mars", "Cactus Canyon", "Congo", "Creature from the Black Lagoon",
