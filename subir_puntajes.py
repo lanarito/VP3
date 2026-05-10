@@ -90,14 +90,47 @@ def leer_con_pinemhi(nombre_archivo):
             print("❌ ERROR CRITICO: ¡No encuentro pinemhi.exe en esta carpeta!")
             return scores
 
+        rom_a_leer = nombre_archivo
+        respaldo_hlywoodh = None
+        creado_temporal = False
+
+        # Si es el archivo de Tom y Jerry, hacemos el truco de pasarlo por Hollywood Heat (hlywoodh)
+        if "tomjerry" in nombre_archivo.lower():
+            import shutil
+            orig_path = os.path.join(NVRAM_PATH, nombre_archivo)
+            temp_path = os.path.join(NVRAM_PATH, "hlywoodh.nv")
+            
+            if os.path.exists(orig_path):
+                # Si ya existe un hlywoodh.nv, lo respaldamos
+                if os.path.exists(temp_path):
+                    respaldo_hlywoodh = temp_path + ".bak"
+                    shutil.copy2(temp_path, respaldo_hlywoodh)
+                
+                # Copiamos tomjerry.nv como hlywoodh.nv
+                shutil.copy2(orig_path, temp_path)
+                rom_a_leer = "hlywoodh.nv"
+                creado_temporal = True
+
         startupinfo = None
         if os.name == 'nt':
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
-        result = subprocess.run(["pinemhi.exe", nombre_archivo], capture_output=True, text=True, startupinfo=startupinfo, timeout=5)
+        result = subprocess.run(["pinemhi.exe", rom_a_leer], capture_output=True, text=True, startupinfo=startupinfo, timeout=5)
         texto_limpio = result.stdout
         
+        # Limpieza del truco temporal de Tom y Jerry
+        if creado_temporal:
+            import shutil
+            temp_path = os.path.join(NVRAM_PATH, "hlywoodh.nv")
+            try:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                if respaldo_hlywoodh and os.path.exists(respaldo_hlywoodh):
+                    shutil.move(respaldo_hlywoodh, temp_path)
+            except Exception as e_limpieza:
+                print(f"⚠️ Error limpiando alias temporal de Tom y Jerry: {e_limpieza}")
+
         vistos = set()
         for linea in texto_limpio.split('\n'):
             nombres = re.findall(r'\b[A-Z]{3}\b', linea)
