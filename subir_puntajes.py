@@ -33,64 +33,6 @@ NVRAM_PATH      = r"C:\vPinball\VisualPinball\VPinMAME\nvram"
 SUPABASE_URL = "https://ckcjujadpmhdgcvyyahd.supabase.co/rest/v1/puntajes"
 SUPABASE_KEY = "sb_publishable_COrjv6wdGvLMbtGETo3xCQ__-Wdys3L"
 
-# ============================================================
-# DETECCION DE PROPIETARIO DE LA MAQUINA (EVITAR COLISIONES POR CLONACION)
-# ============================================================
-OWNER_FILE = "vpin_owner.txt"
-OWNER = None
-
-def detectar_y_guardar_propietario():
-    global OWNER
-    if os.path.exists(OWNER_FILE):
-        try:
-            with open(OWNER_FILE, "r", encoding="utf-8") as f:
-                contenido = f.read().strip().upper()
-                coincidencias = re.findall(r'\b(HER|ARI|LAL|AGU)\b', contenido)
-                if coincidencias:
-                    OWNER = coincidencias[0]
-                    print(f"👤 Propietario de la maquina cargado desde {OWNER_FILE}: {OWNER}")
-                    return OWNER
-        except Exception as e:
-            print(f"⚠️ Error leyendo {OWNER_FILE}: {e}")
-
-    # Si no existe o no es valido, auto-detectamos por el usuario de Windows
-    username = os.environ.get('USERNAME', '').lower()
-    if not username:
-        try:
-            username = os.getlogin().lower()
-        except Exception:
-            pass
-
-    if "luis" in username or "lala" in username:
-        OWNER = "LAL"
-    elif "hernan" in username or "her" in username:
-        OWNER = "HER"
-    elif "ariel" in username or "ari" in username:
-        OWNER = "ARI"
-    elif "agustin" in username or "agu" in username:
-        OWNER = "AGU"
-    else:
-        OWNER = None
-
-    if OWNER:
-        print(f"🔍 Propietario auto-detectado por usuario de Windows ({username}): {OWNER}")
-        try:
-            with open(OWNER_FILE, "w", encoding="utf-8") as f:
-                f.write(f"# Iniciales del propietario de esta maquina (HER, ARI, LAL, AGU).\n")
-                f.write(f"# Al definirlo, la maquina solo subira puntajes de este jugador,\n")
-                f.write(f"# evitando subir puntajes de otros desde maquinas clonadas.\n")
-                f.write(f"{OWNER}\n")
-            print(f"💾 Guardado propietario '{OWNER}' en {OWNER_FILE} para futuras ejecuciones.")
-        except Exception as e:
-            print(f"⚠️ No se pudo guardar {OWNER_FILE}: {e}")
-    else:
-        print(f"⚠️ No se pudo auto-detectar el propietario (Usuario Windows: '{username}'). Se sincronizaran todos los jugadores.")
-    
-    return OWNER
-
-# Inicializar propietario al cargar el script
-detectar_y_guardar_propietario()
-
 # Iniciales de fábrica conocidas (lista negra global) para bloquearlas de raíz en cualquier máquina
 DEFAULT_INITIALS = {
     # Williams / Bally / Sega / Data East / Gottlieb / Stern defaults
@@ -257,40 +199,51 @@ def procesar_y_subir():
     nuevos_puntajes = []
     
     # Cargar récords base para ignorar (Formato nuevo/viejo auto-detectable)
-    base_records = {"baselined_tables": [], "signatures": []}
+    current_user = os.environ.get('USERNAME', '').lower()
+    if not current_user:
+        try:
+            current_user = os.getlogin().lower()
+        except Exception:
+            current_user = "unknown"
+
+    base_records = {"baselined_tables": [], "signatures": [], "machine_user": current_user}
+    clon_detectado = False
     if os.path.exists("base_records.json"):
         try:
             with open("base_records.json", "r") as f:
                 data = json.load(f)
                 if isinstance(data, list):
                     base_records["signatures"] = data
-                    # Extraer de las firmas solo las mesas que realmente tienen firmas registradas
+                    # Convertir formato antiguo
                     mesas_con_firmas = set()
-                    for f in data:
-                        partes = f.split('-')
+                    for sig in data:
+                        partes = sig.split('-')
                         if partes:
                             mesas_con_firmas.add(partes[0])
                     base_records["baselined_tables"] = list(mesas_con_firmas)
+                    base_records["machine_user"] = current_user
+                    modificado_base_records = True
                 elif isinstance(data, dict):
                     base_records = data
-            print(f"✅ Filtro activado: {len(base_records.get('baselined_tables', []))} mesas inicializadas, ignorando {len(base_records.get('signatures', []))} récords base.")
+                    saved_user = base_records.get("machine_user")
+                    if saved_user and saved_user != current_user:
+                        print(f"🔄 ¡Detección de máquina clonada! El usuario anterior era '{saved_user}' y el actual es '{current_user}'.")
+                        clon_detectado = True
+                        base_records["machine_user"] = current_user
+                        # Forzar re-baselineado completo: vaciamos las mesas registradas para que se registren todas de nuevo con sus valores actuales
+                        base_records["baselined_tables"] = []
+                        modificado_base_records = True
+                    elif not saved_user:
+                        base_records["machine_user"] = current_user
+                        modificado_base_records = True
+            if not clon_detectado:
+                print(f"✅ Filtro activado: {len(base_records.get('baselined_tables', []))} mesas inicializadas, ignorando {len(base_records.get('signatures', []))} récords base.")
         except Exception as e:
             print(f"⚠️ Error al leer base_records.json, se creara uno nuevo: {e}")
     else:
         print("📋 No se encontro base_records.json. Se creara y actualizara automaticamente.")
     
-    # Auto-limpieza preventiva de firmas de jugadores reales de base_records (auto-healing)
     modificado_base_records = False
-    if "signatures" in base_records:
-        original_signatures_count = len(base_records["signatures"])
-        jugadores_a_limpiar = [OWNER] if OWNER else ["HER", "ARI", "LAL", "AGU"]
-        base_records["signatures"] = [
-            sig for sig in base_records["signatures"]
-            if not any(f"-{p}-" in sig for p in jugadores_a_limpiar)
-        ]
-        if len(base_records["signatures"]) < original_signatures_count:
-            print(f"🛡️ Auto-healing: Se removieron {original_signatures_count - len(base_records['signatures'])} firmas incorrectas de jugadores reales de base_records.json.")
-            modificado_base_records = True
             
     # DIAGNOSTICO: Verificamos la carpeta base
     if not os.path.exists(NVRAM_PATH):
@@ -311,11 +264,12 @@ def procesar_y_subir():
             # Si esta mesa no ha sido baselineada, la registramos ahora mismo como línea base
             if mesa["nombre"] not in base_records.get("baselined_tables", []):
                 print(f"📋 Registrando linea base automatica para la mesa: {mesa['nombre']}")
-                jugadores_reales = [OWNER] if OWNER else ["HER", "ARI", "LAL", "AGU"]
                 for s in scores:
-                    # Los récords del propietario real NO se bloquean en la línea base para que se suban de inmediato
-                    if s["jugador"] in jugadores_reales:
-                        continue
+                    # Si es un clon detectado, bloqueamos ABSOLUTAMENTE TODOS los puntajes actuales (incluyendo reales)
+                    # para evitar que la máquina clonada suba puntajes del dueño anterior.
+                    if not clon_detectado:
+                        if s["jugador"] in ["HER", "ARI", "LAL", "AGU"]:
+                            continue
                     firma = f"{mesa['nombre']}-{s['jugador']}-{s['puntaje']}"
                     if firma not in base_records["signatures"]:
                         base_records["signatures"].append(firma)
@@ -324,11 +278,7 @@ def procesar_y_subir():
                 base_records["baselined_tables"].append(mesa["nombre"])
                 modificado_base_records = True
             
-            jugadores_reales = [OWNER] if OWNER else ["HER", "ARI", "LAL", "AGU"]
             for s in scores:
-                # 0. Enforce authorized players strictly to prevent any factory or non-authorized initials from syncing
-                if s["jugador"] not in jugadores_reales:
-                    continue
                 
                 # 1. Filtrar iniciales de fábrica globalmente conocidas (lista negra)
                 if s["jugador"] in DEFAULT_INITIALS:
@@ -402,8 +352,7 @@ def procesar_y_subir():
                         puntaje = r_hist.get("puntaje")
                         if mesa_nombre and jugador and puntaje:
                             # Los jugadores reales autorizados NUNCA deben ser añadidos a la lista negra
-                            jugadores_reales = [OWNER] if OWNER else ["HER", "ARI", "LAL", "AGU"]
-                            if jugador in jugadores_reales:
+                            if jugador in ["HER", "ARI", "LAL", "AGU"]:
                                 continue
                             firma = f"{mesa_nombre}-{jugador}-{puntaje}"
                             firmas_nuevas_blacklist.add(firma)
