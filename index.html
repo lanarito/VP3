@@ -594,9 +594,55 @@ const ALL_TABLES = [
   "Back to the Future", "Goldeneye", "Guns N' Roses", "Hook",
   "Indiana Jones", "Last Action Hero", "Lethal Weapon 3", "Mary Shelley's Frankenstein",
   "Phantom of the Opera", "Teenage Mutant Ninja Turtles", "Funhouse", "Police Force",
-  "Skateball", "Rescue 911", "Tom & Jerry", "Musin",
-  "Fish Tales", "Terminator 2", "The Walking Dead"
+  "Rescue 911", "Tom & Jerry", "Mousin'",
+  "Fish Tales", "Terminator 2", "The Walking Dead", "X-Men",
+  "The Getaway: High Speed II", "Cyclone"
 ];
+
+const TABLE_YEARS = {
+  "Attack from Mars": "1996",
+  "Cactus Canyon": "1998",
+  "Congo": "1995",
+  "Creature from the Black Lagoon": "1992",
+  "Dirty Harry": "1995",
+  "Indianapolis 500": "1995",
+  "Johnny Mnemonic": "1995",
+  "Junk Yard": "1996",
+  "Monster Bash": "1998",
+  "NBA Fastbreak": "1997",
+  "Red & Ted's Road Show": "1994",
+  "Scared Stiff": "1996",
+  "The Addams Family": "1992",
+  "The Flintstones": "1994",
+  "Twilight Zone": "1993",
+  "World Cup Soccer": "1994",
+  "Back to the Future": "1990",
+  "Goldeneye": "1996",
+  "Guns N' Roses": "1994",
+  "Hook": "1992",
+  "Indiana Jones": "1993",
+  "Last Action Hero": "1993",
+  "Lethal Weapon 3": "1992",
+  "Mary Shelley's Frankenstein": "1995",
+  "Phantom of the Opera": "1990",
+  "Teenage Mutant Ninja Turtles": "1991",
+  "Funhouse": "1990",
+  "Police Force": "1989",
+  "Rescue 911": "1994",
+  "Tom & Jerry": "1992",
+  "Mousin'": "1989",
+  "Fish Tales": "1992",
+  "Terminator 2": "1991",
+  "The Walking Dead": "2014",
+  "X-Men": "2012",
+  "The Getaway: High Speed II": "1992",
+  "Cyclone": "1988"
+};
+
+function getTableDisplayName(table) {
+  const year = TABLE_YEARS[table];
+  return year ? `${table} (${year})` : table;
+}
 
 const SUPABASE_URL = 'https://ckcjujadpmhdgcvyyahd.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_COrjv6wdGvLMbtGETo3xCQ__-Wdys3L';
@@ -793,7 +839,7 @@ function showPlayersModal() {
                 </h3>`;
     html += `<ul style="list-style:none; font-size:0.9rem;">`;
     pData.forEach(r => {
-      html += `<li style="padding:4px 0;"><span style="color:var(--accent-cyan); display:inline-block; width:200px;">${r.table}</span> <span style="color:var(--accent-yellow); font-family:'Orbitron';">${r.score.toLocaleString('es-AR')}</span></li>`;
+      html += `<li style="padding:4px 0;"><span style="color:var(--accent-cyan); display:inline-block; width:200px;">${getTableDisplayName(r.table)}</span> <span style="color:var(--accent-yellow); font-family:'Orbitron';">${r.score.toLocaleString('es-AR')}</span></li>`;
     });
     html += `</ul>`;
     div.innerHTML = html;
@@ -950,7 +996,7 @@ function showFunStatsModal() {
       <div style="font-size:2rem; filter: drop-shadow(0 0 5px rgba(255,0,204,0.3)); flex-shrink:0;">⚡</div>
       <div>
         <div style="font-size:0.6rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">FRENTE DE BATALLA</div>
-        <div style="font-family:'Orbitron'; font-size:1rem; color:var(--accent-pink); font-weight:bold; margin:2px 0;">${funStats.battleground.table}</div>
+        <div style="font-family:'Orbitron'; font-size:1rem; color:var(--accent-pink); font-weight:bold; margin:2px 0;">${getTableDisplayName(funStats.battleground.table)}</div>
         <div style="font-size:0.8rem; color:#e0e0e0; line-height:1.4;">La mesa más peleada: el puesto #1 y el #2 están separados por un mínimo margen del <strong style="color:#fff; font-family:'Orbitron';">${funStats.battleground.gapPct}%</strong>.</div>
       </div>
     </div>
@@ -962,7 +1008,7 @@ function showFunStatsModal() {
       <div style="font-size:2rem; filter: drop-shadow(0 0 5px rgba(138,43,226,0.3)); flex-shrink:0;">🌌</div>
       <div>
         <div style="font-size:0.6rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">RÉCORD INALCANZABLE</div>
-        <div style="font-family:'Orbitron'; font-size:1rem; color:#a855f7; font-weight:bold; margin:2px 0;">${funStats.unstoppable.player} (${funStats.unstoppable.table})</div>
+        <div style="font-family:'Orbitron'; font-size:1rem; color:#a855f7; font-weight:bold; margin:2px 0;">${funStats.unstoppable.player} (${getTableDisplayName(funStats.unstoppable.table)})</div>
         <div style="font-size:0.8rem; color:#e0e0e0; line-height:1.4;">Ventaja aplastante: le sacó un <strong style="color:#fff; font-family:'Orbitron';">${funStats.unstoppable.gapPct}%</strong> de diferencia al segundo.</div>
       </div>
     </div>
@@ -974,7 +1020,7 @@ function showFunStatsModal() {
       <div style="font-size:2rem; filter: drop-shadow(0 0 5px rgba(255,69,0,0.3)); flex-shrink:0;">🔥</div>
       <div>
         <div style="font-size:0.6rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">MESA MÁS POPULAR</div>
-        <div style="font-family:'Orbitron'; font-size:1rem; color:#ff4500; font-weight:bold; margin:2px 0;">${funStats.hotTable.table}</div>
+        <div style="font-family:'Orbitron'; font-size:1rem; color:#ff4500; font-weight:bold; margin:2px 0;">${getTableDisplayName(funStats.hotTable.table)}</div>
         <div style="font-size:0.8rem; color:#e0e0e0; line-height:1.4;">La favorita indiscutida del grupo con un total de <strong style="color:#fff; font-family:'Orbitron';">${funStats.hotTable.count} registros</strong> subidos a la base.</div>
       </div>
     </div>
@@ -991,7 +1037,7 @@ function populateFilters() {
   if (sel.options.length > 0) return;
   ALL_TABLES.forEach(t => {
     const o = document.createElement('option');
-    o.value = t; o.textContent = t; sel.appendChild(o);
+    o.value = t; o.textContent = getTableDisplayName(t); sel.appendChild(o);
   });
 }
 
@@ -1256,7 +1302,7 @@ function renderLogros() {
           <div style="font-size:2.2rem; filter: drop-shadow(0 0 5px rgba(255,0,204,0.4)); flex-shrink:0;">⚡</div>
           <div>
             <div style="font-size:0.65rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">FRENTE DE BATALLA</div>
-            <div style="font-family:'Orbitron'; font-size:0.95rem; color:var(--accent-pink); font-weight:bold; margin:2px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;">${funStats.battleground.table}</div>
+            <div style="font-family:'Orbitron'; font-size:0.95rem; color:var(--accent-pink); font-weight:bold; margin:2px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;">${getTableDisplayName(funStats.battleground.table)}</div>
             <div style="font-size:0.8rem; color:#c1c1c1; line-height:1.4;">La mesa más peleada: el puesto #1 y el #2 están separados por un mínimo margen del <strong style="color:#fff; font-family:'Orbitron';">${funStats.battleground.gapPct}%</strong>.</div>
           </div>
         </div>
@@ -1267,7 +1313,7 @@ function renderLogros() {
           <div>
             <div style="font-size:0.65rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">RÉCORD INALCANZABLE</div>
             <div style="font-family:'Orbitron'; font-size:0.95rem; color:#a855f7; font-weight:bold; margin:2px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;">${funStats.unstoppable.player}</div>
-            <div style="font-size:0.8rem; color:#c1c1c1; line-height:1.4;">Ventaja aplastante en <span style="color:#fff; font-weight:bold;">${funStats.unstoppable.table}</span>: le sacó un <strong style="color:#fff; font-family:'Orbitron';">${funStats.unstoppable.gapPct}%</strong> de diferencia al segundo.</div>
+            <div style="font-size:0.8rem; color:#c1c1c1; line-height:1.4;">Ventaja aplastante en <span style="color:#fff; font-weight:bold;">${getTableDisplayName(funStats.unstoppable.table)}</span>: le sacó un <strong style="color:#fff; font-family:'Orbitron';">${funStats.unstoppable.gapPct}%</strong> de diferencia al segundo.</div>
           </div>
         </div>
         
@@ -1276,7 +1322,7 @@ function renderLogros() {
           <div style="font-size:2.2rem; filter: drop-shadow(0 0 5px rgba(255,69,0,0.4)); flex-shrink:0;">🔥</div>
           <div>
             <div style="font-size:0.65rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">MESA MÁS POPULAR</div>
-            <div style="font-family:'Orbitron'; font-size:0.95rem; color:#ff4500; font-weight:bold; margin:2px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;">${funStats.hotTable.table}</div>
+            <div style="font-family:'Orbitron'; font-size:0.95rem; color:#ff4500; font-weight:bold; margin:2px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;">${getTableDisplayName(funStats.hotTable.table)}</div>
             <div style="font-size:0.8rem; color:#c1c1c1; line-height:1.4;">La favorita indiscutida del grupo con un total de <strong style="color:#fff; font-family:'Orbitron';">${funStats.hotTable.count} registros</strong> subidos a la base.</div>
           </div>
         </div>
@@ -1384,7 +1430,7 @@ function renderFama() {
     if (!best) card.classList.add('empty-card');
     card.onclick = () => { document.getElementById('filter-table').value = t; setView('ranking'); };
     card.innerHTML = `
-      <div class="fama-title">${t}</div>
+      <div class="fama-title">${getTableDisplayName(t)}</div>
       ${best ? '<span class="fama-crown">👑</span>' : '<span class="fama-waiting">⏳ VACANTE</span>'}
       <div class="fama-player" style="color: ${best ? getPlayerColor(best.player) : 'var(--accent-gold)'};">${best ? best.player : '---'}</div>
       <div class="fama-score">${best ? best.score.toLocaleString('es-AR') : 'SÉ EL PRIMERO'}</div>
@@ -1413,7 +1459,7 @@ function updateChallenge() {
   let weekIndex = Math.floor(diffMs / msPerWeek);
   if (diffMs < 0) weekIndex = 0;
   challengeTable = ALL_TABLES[weekIndex % ALL_TABLES.length];
-  document.getElementById('challenge-name').textContent = challengeTable;
+  document.getElementById('challenge-name').textContent = getTableDisplayName(challengeTable);
   const nextWed = new Date(baseDate.getTime() + (weekIndex + 1) * msPerWeek);
   const left = nextWed - now;
   const d = Math.floor(left / (1000 * 60 * 60 * 24));

@@ -142,18 +142,20 @@ MESAS_CONFIG = [
     {"prefijo": "ij",     "nombre": "Indiana Jones"},
     {"prefijo": "lah_",   "nombre": "Last Action Hero"},
     {"prefijo": "lw3_",   "nombre": "Lethal Weapon 3"},
-    {"prefijo": "franken_", "nombre": "Mary Shelley's Frankenstein"},
+    {"prefijo": "frankst", "nombre": "Mary Shelley's Frankenstein"},
     {"prefijo": "phantom_", "nombre": "Phantom of the Opera"},
     {"prefijo": "tmnt_",  "nombre": "Teenage Mutant Ninja Turtles"},
     {"prefijo": "fh_",    "nombre": "Funhouse"},
     {"prefijo": "pf_",    "nombre": "Police Force"},
-    {"prefijo": "skatebal", "nombre": "Skateball"},
     {"prefijo": "rescu911", "nombre": "Rescue 911"},
     {"prefijo": "tomjerry", "nombre": "Tom & Jerry"},
-    {"prefijo": "musinic",  "nombre": "Musin"},
+    {"prefijo": "mousn_",  "nombre": "Mousin'"},
     {"prefijo": "ft_",    "nombre": "Fish Tales"},
     {"prefijo": "t2_",    "nombre": "Terminator 2"},
     {"prefijo": "twd_",   "nombre": "The Walking Dead"},
+    {"prefijo": "xmn_",   "nombre": "X-Men"},
+    {"prefijo": "gw_",    "nombre": "The Getaway: High Speed II"},
+    {"prefijo": "cycln_",  "nombre": "Cyclone"},
 ]
 
 # ============================================================
@@ -230,6 +232,10 @@ def procesar_y_subir():
                 modificado_base_records = True
             
             for s in scores:
+                # 0. Enforce authorized players strictly to prevent any factory or non-authorized initials from syncing
+                if s["jugador"] not in ["HER", "ARI", "LAL", "AGU"]:
+                    continue
+                
                 # 1. Filtrar iniciales de fábrica globalmente conocidas (lista negra)
                 if s["jugador"] in DEFAULT_INITIALS:
                     continue
