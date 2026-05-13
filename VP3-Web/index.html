@@ -39,9 +39,25 @@ header {
   position: relative;
   z-index: 2;
 }
-.logo-wrap img {
-  height: 120px;
-  filter: drop-shadow(0 0 20px rgba(0, 229, 255, 0.3));
+.logo-crop {
+  display: inline-block;
+  position: relative;
+  height: 180px;
+  overflow: hidden;
+}
+/* Overlay to fade edges into the background color safely */
+.logo-crop::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  box-shadow: inset 0 0 30px 15px #060608;
+  pointer-events: none;
+}
+.logo-crop video {
+  height: 212px;
+  width: auto;
+  object-fit: contain;
+  display: block;
 }
 .tagline {
   font-family: 'Orbitron', sans-serif;
@@ -170,13 +186,26 @@ td { padding: 1rem; text-align: left; }
 
 /* Footer */
 footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.7rem; }
+
+/* Mobile Responsive Adjustments */
+@media (max-width: 768px) {
+  header { padding: 1.5rem 1rem 1rem; }
+  .logo-crop { height: 100px; }
+  .logo-crop video { height: 118px; }
+  .tagline { font-size: 0.5rem; letter-spacing: 0.3em; }
+}
 </style>
 </head>
 <body>
 
 <header>
   <div class="logo-wrap">
-    <img src="logo_vp3_png_1778001656953.png" alt="VP3">
+    <div class="logo-crop">
+      <video autoplay loop muted playsinline>
+        <source src="logo_mov.mp4" type="video/mp4">
+        <source src="logo mov.mp4" type="video/mp4">
+      </video>
+    </div>
   </div>
   <div class="tagline">◆ HIGH SCORES · VIRTUAL PINBALL 3 ◆</div>
 </header>
