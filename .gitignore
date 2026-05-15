@@ -21,3 +21,7 @@ dist_auto/
 # Backups locales (no son parte del sistema distribuible)
 BACKUP_VP3_COMPLETO_*.zip
 BACKUPS_SISTEMA/
+
+# Logs generados automaticamente
+publicar_log.txt
+instalar_log.txt
