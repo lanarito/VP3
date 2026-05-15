@@ -1,0 +1,63 @@
+===========================================================================
+🏆 MANUAL DE ACTUALIZACIÓN DE MESAS - PARA NACHO 🏆
+===========================================================================
+
+Este manual te explica paso a paso cómo empaquetar una mesa que hayas 
+arreglado o modificado para que el resto del grupo pueda descargarla y 
+actualizarla automáticamente con un solo clic, sin saber nada de carpetas.
+
+---
+PASO 1: CREAR EL EJECUTABLE (.exe) DE LA MESA CON WINRAR
+---
+1. Ubica los archivos de la mesa que arreglaste (generalmente el archivo .vpx 
+   y el archivo de pantalla .directb2s).
+2. Selecciona ambos archivos, haz CLIC DERECHO y elige "Añadir al archivo..." 
+   (Debes tener WinRAR instalado).
+3. En la pestaña "General", marca la casilla que dice:
+   [X] Crear un archivo autoextraíble (Create SFX archive).
+   (Verás que el nombre del archivo cambia a .exe, ej: "Terminator_2.exe").
+4. Ve a la pestaña "Avanzado" (Advanced) y haz clic en "Opciones autoextraíbles...".
+5. En esta nueva ventana, configura estas tres pestañas clave:
+   
+   A) Pestaña General -> Ruta de extracción: 
+      Escribe exactamente esto:  C:\vPinball\VisualPinball\Tables
+      (Esto asume que todos tienen el sistema instalado en el disco C).
+
+   B) Pestaña Modos (Modes) -> Modo silencioso: 
+      Selecciona "Ocultar todo" (Hide all).
+      (Esto hará que la instalación sea invisible y no moleste al jugador).
+
+   C) Pestaña Avanzado (o Actualizar) -> Modo de sobrescritura:
+      Selecciona "Sobrescribir todos los ficheros" (Overwrite all files).
+      (Esto pisa la versión vieja de la mesa con tu nueva versión arreglada).
+
+6. Haz clic en "Aceptar" en todas las ventanas. WinRAR procesará los archivos y 
+   te dejará un archivo .exe listo (Ej: Terminator_2.exe).
+
+---
+PASO 2: SUBIR EL ARCHIVO A LA NUBE
+---
+Como las mesas pesan entre 100MB y 300MB, no se suben directo a la web.
+1. Abre tu Google Drive, Mega, Dropbox o MediaFire.
+2. Sube tu nuevo archivo .exe ahí.
+3. Haz clic derecho en el archivo subido y genera el "Enlace para compartir". 
+   Asegúrate de que los permisos estén en "Cualquier persona con el enlace puede ver/descargar".
+
+---
+PASO 3: PUBLICAR EN EL TABLÓN VP3
+---
+1. Entra a la página web de VP3.
+2. Ve a la pestaña "📦 Actualizaciones".
+3. Haz clic en el botón rosa "⚡ Subir Actualización".
+4. Inicia sesión con el usuario y contraseña de administrador.
+5. Completa el formulario:
+   - Nombre: Ej. "Terminator 2 - Físicas Arregladas"
+   - Categoría: "Mesa VPX"
+   - Quién lo sube: "Nacho"
+   - Enlace: Pega el link de Google Drive/Mega que copiaste en el Paso 2.
+   - Descripción: "Se le subió la fuerza al flipper derecho".
+6. Haz clic en PUBLICAR ACTUALIZACIÓN.
+
+¡LISTO! A partir de ese momento, cualquier persona verá la notificación en la 
+web, descargará el .exe, le hará doble clic en su computadora y la mesa se 
+actualizará sola en 1 segundo en la ruta correcta.

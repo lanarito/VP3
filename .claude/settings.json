@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Select-String -Path \"c:\\\\Github repos\\\\VP3 COMPLETO\\\\backup_semanal.ps1\" -Pattern \"git|zip|github|push\" -CaseSensitive:$false)",
+      "Read(//c/Github repos/VP3 COMPLETO/**)",
+      "PowerShell(schtasks /Create /TN \"VP3_Publicar_Automatico\" /TR \"powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File \\\\\"C:\\\\Github repos\\\\VP3 COMPLETO\\\\publicar.ps1\\\\\"\" /SC MINUTE /MO 30 /F 2>&1)",
+      "PowerShell(schtasks /Create /TN \"VP3_Publicar_Automatico\" /TR \"powershell.exe -ExecutionPolicy Bypass -WindowStyle Hidden -File \\\\\"C:\\\\Github repos\\\\VP3 COMPLETO\\\\publicar.ps1\\\\\"\" /SC MINUTE /MO 30 /RL HIGHEST /F /RU $env:USERNAME 2>&1)",
+      "PowerShell(Get-ScheduledTask -TaskName \"VP3_Publicar_Automatico\" -ErrorAction SilentlyContinue)",
+      "Skill(update-config)",
+      "Skill(update-config:*)"
+    ]
+  }
+}

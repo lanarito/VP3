@@ -3,6 +3,10 @@
 # Ejecutar UNA SOLA VEZ con clic derecho -> "Ejecutar como administrador"
 # ============================================================
 
+# Guardar log por si la ventana se cierra rapido
+$logInstalador = "C:\Github repos\VP3 COMPLETO\instalar_log.txt"
+Start-Transcript -Path $logInstalador -Force
+
 Write-Host "============================================"
 Write-Host "   VP3 - Instalando publicacion automatica"
 Write-Host "============================================"
@@ -46,5 +50,8 @@ if ($tarea) {
     Write-Host "Asegurate de haber ejecutado este archivo como Administrador."
 }
 
+Write-Host ""
+Stop-Transcript
+Write-Host "Log guardado en: $logInstalador"
 Write-Host ""
 Read-Host "Presiona Enter para cerrar"
