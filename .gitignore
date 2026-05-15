@@ -1,0 +1,17 @@
+# Credenciales - NUNCA subir al repo público
+config.ini
+MAQUINAS_VP3/config.ini
+
+# Archivos de estado local de la máquina (se generan solos al correr)
+base_records.json
+historial_nube.json
+MAQUINAS_VP3/base_records.json
+MAQUINAS_VP3/historial_nube.json
+
+# Python
+__pycache__/
+*.pyc
+
+# Backups locales (no son parte del sistema distribuible)
+BACKUP_VP3_COMPLETO_*.zip
+BACKUPS_SISTEMA/

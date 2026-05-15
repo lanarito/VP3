@@ -1,0 +1,13 @@
+[supabase]
+url = https://TU_PROYECTO.supabase.co/rest/v1/puntajes
+key = TU_SUPABASE_KEY
+
+[telegram]
+token = TOKEN_DE_TU_BOT
+chat_id = -ID_DE_TU_GRUPO
+
+[sistema]
+; Ruta a la carpeta de memorias NVRAM de VPinMAME
+nvram_path = C:\vPinball\VisualPinball\VPinMAME\nvram
+; Iniciales de los jugadores reales autorizados (separadas por coma, sin espacios)
+jugadores_autorizados = HER,ARI,LAL,AGU
