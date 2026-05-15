@@ -12,6 +12,12 @@ MAQUINAS_VP3/historial_nube.json
 __pycache__/
 *.pyc
 
+# PyInstaller (archivos temporales de compilacion)
+build/
+dist/
+dist_auto/
+*.spec
+
 # Backups locales (no son parte del sistema distribuible)
 BACKUP_VP3_COMPLETO_*.zip
 BACKUPS_SISTEMA/
