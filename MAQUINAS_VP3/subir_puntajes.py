@@ -2,7 +2,6 @@ import os, sys, subprocess, time, re
 import urllib.request
 import urllib.parse
 import json
-import traceback
 import glob
 import configparser
 from datetime import datetime
@@ -281,12 +280,8 @@ def procesar_y_subir():
                 modificado_base_records = True
             
             for s in scores:
-                
-                # 1. Filtrar iniciales de fábrica globalmente conocidas (lista negra)
-                if s["jugador"] in DEFAULT_INITIALS:
-                    continue
-                
-                # 2. Comprobar si es un récord de máquina baselined locally (por si acaso)
+
+                # Comprobar si es un récord de la línea base local (puntaje de fábrica registrado al instalar)
                 firma = f"{mesa['nombre']}-{s['jugador']}-{s['puntaje']}"
                 if firma in base_records.get("signatures", []):
                     continue # Lo ignoramos
@@ -396,7 +391,7 @@ def procesar_y_subir():
             for r in existentes:
                 # Comprobar si por algún motivo está en la lista negra
                 firma_r = f"{r['mesa']}-{r['jugador']}-{r['puntaje']}"
-                if r["jugador"] in DEFAULT_INITIALS or firma_r in base_records.get("signatures", []) or firma_r in firmas_nuevas_blacklist:
+                if firma_r in base_records.get("signatures", []) or firma_r in firmas_nuevas_blacklist:
                     continue
                 if r["id_record"] not in mapa_final:
                     mapa_final[r["id_record"]] = {
