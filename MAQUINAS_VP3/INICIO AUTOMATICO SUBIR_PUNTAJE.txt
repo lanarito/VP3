@@ -1,0 +1,9 @@
+💡 Consejo Pro para el Inicio Automático en tu Arcade:
+Para que subir_puntajes.exe se ejecute de forma invisible cuando prendes la máquina sin interferir con Pinup Popper:
+
+Una vez que hayas desbloqueado el archivo con el Método A o B.
+Presiona la combinación de teclas Windows + R, escribe shell:startup y presiona Enter. (Esto abrirá la carpeta de "Inicio" de Windows).
+Crea un Acceso Directo de tu subir_puntajes.exe y pégalo dentro de esa carpeta.
+Al prender el arcade, el programa se abrirá en silencio en segundo plano, no mostrará ninguna advertencia y Pinup Popper cargará por encima normalmente mientras el script ya está escaneando los récords en silencio cada 10 segundos.
+
+¡Ya estás listo para dejar las 3 máquinas impecables y automatizadas!

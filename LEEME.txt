@@ -1,0 +1,25 @@
+=== SISTEMA DE PUNTAJES VP3 (PLUG & PLAY) ===
+
+¿CÓMO INSTALAR EN UNA MÁQUINA ARCADE NUEVA?
+
+PASO 1: Copiar la carpeta "MAQUINAS_VP3" completa al disco C: de la máquina (para que quede en C:\MAQUINAS_VP3\).
+PASO 2: Entrar a la carpeta y abrir "subir_puntajes.exe".
+
+¡Y LISTO! Ya no hay que hacer ningún paso extra.
+
+¿CÓMO FUNCIONA EL SISTEMA?
+- La primera vez que el programa detecta una mesa, registra los puntajes por defecto de fábrica de esa máquina para bloquearlos automáticamente.
+- Si en esa máquina ya hay récords reales de ustedes (HER, ARI, LAL, AGU), el sistema NO los bloquea y los sube de inmediato a la web.
+- Cualquier récord nuevo que hagan tus clientes con cualquier nombre o iniciales se detectará al instante y se subirá solo.
+
+--------------------------------------------------
+🔄 ¿CÓMO ACTUALIZAR ROMS Y MEMORIAS (NVRAM)?
+--------------------------------------------------
+Si Nacho te pasa ROMS o NVRAMS modificadas con récords de fábrica más bajos, haz esto:
+
+PASO 1: Copia y reemplaza las nuevas memorias/ROMs en las carpetas de VPinMAME como siempre.
+PASO 2: Borra el archivo "base_records.json" (está en esta misma carpeta, al lado de subir_puntajes.exe).
+PASO 3: Ejecuta "RESET_NUBE.exe" (para limpiar la web y empezar este nuevo set de récords desde cero).
+PASO 4: Ejecuta "subir_puntajes.exe" (para que escanee las nuevas memorias y bloquee los nuevos récords de fábrica automáticamente).
+
+RECOMENDACIÓN: Crear un acceso directo de "subir_puntajes.exe" y ponerlo en la carpeta de "Inicio" de Windows del arcade para que arranque solo al encender la máquina.

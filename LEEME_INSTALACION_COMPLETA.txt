@@ -1,0 +1,114 @@
+===========================================================================
+🏆 MANUAL MAESTRO DE INSTALACIÓN Y MANTENIMIENTO - SISTEMA DE PUNTAJES VP3 🏆
+===========================================================================
+
+Este manual está diseñado para que CUALQUIERA de los muchachos (Ariel, Hernán o Luis) 
+pueda configurar, instalar y mantener el sistema de récords de Pinball y alertas 
+de Telegram desde cero en cualquier máquina arcade, paso a paso y de forma fácil.
+
+---
+
+📖 ÍNDICE DE CONTENIDOS:
+1. FASE 1: Preparación y Desbloqueo de archivos en Windows.
+2. FASE 2: Configurar el Inicio Automático con PinUp Popper.
+3. FASE 3: Cómo subir actualizaciones a Internet usando GitHub Desktop.
+4. FASE 4: Actualización de Memorias (ROMs/NVRAMs) y reinicio de récords.
+
+===========================================================================
+FASE 1: PREPARACIÓN Y DESBLOQUEO DE ARCHIVOS EN LA MÁQUINA ARCADE
+===========================================================================
+
+Cuando descargas programas de internet, Windows 10/11 suele bloquearlos por 
+"seguridad" y muestra pantallas azules o rojas que interrumpen el juego. 
+Sigue estos pasos para evitarlo:
+
+PASO 1. Descarga el archivo "MAQUINAS_VP3.zip" desde tu página web de distribución.
+PASO 2. Extrae la carpeta "MAQUINAS_VP3" del archivo ZIP.
+PASO 3. DESBLOQUEO CRÍTICO DE WINDOWS (Hacerlo antes de copiar la carpeta):
+   * Ve dentro de la carpeta extraída.
+   * Busca el archivo "subir_puntajes.exe".
+   * Haz CLIC DERECHO sobre él y selecciona "Propiedades".
+   * En la pestaña "General" (abajo de todo), verás un mensaje de seguridad que dice: 
+     "Este archivo proviene de otro equipo..." 
+   * MARCA LA CASILLA que dice "Desbloquear" (o "Unblock").
+   * Haz clic en "Aplicar" y luego en "Aceptar".
+   * ¡IMPORTANTE! Repite este mismo proceso de desbloqueo para los siguientes archivos:
+     - "RESET_NUBE.exe"
+     - "pinemhi.exe"
+PASO 4. Copia la carpeta "MAQUINAS_VP3" ya desbloqueada completa directamente en la 
+   raíz de tu disco C: de modo que quede exactamente en la ruta:
+   👉 C:\MAQUINAS_VP3\
+
+===========================================================================
+FASE FASE 2: CONFIGURACIÓN DEL INICIO AUTOMÁTICO EN PINUP POPPER
+===========================================================================
+
+Para que el sistema de puntajes se ejecute solo al prender el arcade de forma invisible, 
+sin tener que salir al escritorio de Windows, lo enganchamos directo a PinUp Popper:
+
+PASO 1. Entra en la carpeta donde está tu PinUp Popper (usualmente C:\vPinball\PinUpSystem\).
+PASO 2. Abre el archivo ejecutable llamado "PinUpMenuSetup.exe" (tiene el logo azul).
+PASO 3. En el menú de configuración que se abre, haz clic en el botón "Popper Setup" 
+        (arriba a la izquierda) y luego selecciona "System Setup".
+PASO 4. En la ventana que se abre ("Global Settings"), haz clic en la pestaña "StartUP".
+PASO 5. Verás varios cuadros de texto. Ubica el cuadro del extremo superior derecho 
+        llamado "Menu Startup Script".
+PASO 6. Ve abajo de todo el texto que ya exista en ese cuadro, presiona Enter para crear 
+        una línea nueva vacía y pega exactamente esta línea:
+        
+        START /min "" "C:\MAQUINAS_VP3\subir_puntajes.exe"
+        
+PASO 7. Haz clic en el botón grande de la izquierda llamado "Save" (Guardar) y cierra el programa.
+
+¡Listo! Cuando enciendas el arcade, PinUp Popper cargará normalmente y encenderá por 
+debajo el script en silencio, notificando los récords al grupo de Telegram al instante.
+
+===========================================================================
+FASE 3: INSTALACIÓN Y USO DE GITHUB DESKTOP (PARA LA PC PRINCIPAL DE LUIS)
+===========================================================================
+
+Si realizas cambios en el diseño de la web o si quieres actualizar el archivo zip de 
+descarga para las máquinas de tus amigos, debes subir los archivos actualizados a Internet. 
+Para esto se usa GitHub Desktop:
+
+¿CÓMO INSTALAR GITHUB DESKTOP DESDE CERO?
+1. En tu computadora de desarrollo, ve a: https://desktop.github.com/ y descárgalo.
+2. Instálalo siguiendo los pasos en pantalla.
+3. Al abrirlo, haz clic en "Sign in to GitHub.com" e inicia sesión con el usuario y 
+   contraseña de la cuenta de GitHub de Luis.
+4. Una vez abierta la sesión, te saldrá una lista de tus repositorios. Elige el repositorio 
+   llamado "VP3" y haz clic en "Clone" (clonar) para descargarlo en tu computadora. 
+
+¿CÓMO SUBIR CAMBIOS Y NUEVAS VERSIONES A INTERNET?
+Cada vez que edites la web (index.html), modifiques el script (subir_puntajes.py) o 
+reemplaces el archivo "MAQUINAS_VP3.zip" con una nueva versión:
+1. Abre el programa "GitHub Desktop".
+2. En la barra superior, asegúrate de que el repositorio seleccionado sea "VP3".
+3. A la izquierda verás una lista con todos los archivos que modificaste marcados en color.
+4. Abajo a la izquierda, donde pide un título obligatorio (Summary), escribe un título corto, 
+   por ejemplo: "Actualización de filtros y Telegram".
+5. Haz clic en el botón azul que dice "Commit to main" (o "Commit").
+6. Por último, haz clic en el botón que aparecerá arriba en el centro o derecha que dice 
+   "Push origin" (o "Push"). 
+
+¡Listo! En unos segundos, los cambios estarán subidos a internet y la web se actualizará sola.
+
+===========================================================================
+FASE 4: ACTUALIZACIÓN DE MEMORIAS (ROMS / NVRAM) Y REINICIO DE RÉCORDS
+===========================================================================
+
+Si en el futuro se actualizan o modifican las memorias físicas (.nv) del arcade (por ejemplo, 
+si Nacho les pasa memorias limpias con récords iniciales más bajos o restablecidos):
+
+PASO 1. Copia y reemplaza las nuevas memorias (.nv) en la carpeta tradicional de VPinMAME:
+        👉 C:\vPinball\VisualPinball\VPinMAME\nvram\
+PASO 2. Ve a la carpeta C:\MAQUINAS_VP3\ y BORRA el archivo llamado "base_records.json".
+PASO 3. Ejecuta el archivo "RESET_NUBE.exe" haciendo doble clic. (Esto vaciará por completo 
+        el ranking en la base de datos de Supabase para empezar limpios desde cero).
+PASO 4. Ejecuta "subir_puntajes.exe". El programa detectará que no hay "base_records.json", 
+        leerá las nuevas memorias limpias y bloqueará automáticamente los puntajes por defecto 
+        de fábrica para que no se suban.
+PASO 5. ¡A jugar! Los nuevos récords que hagan empezarán a registrarse y avisar en Telegram.
+===========================================================================
+🚀 EL SISTEMA QUEDA TOTALMENTE AUTOMATIZADO, ROBUSTO Y DISPONIBLE PARA TODOS.
+===========================================================================

@@ -1,0 +1,1873 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VP3 — Virtual Pinball Leaderboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #060608;
+  --surface: #0d0d14;
+  --card: #12121c;
+  --border: #1e1e30;
+  --accent-cyan: #00e5ff;
+  --accent-pink: #ff00cc;
+  --accent-yellow: #ffe000;
+  --accent-gold: #ffd700;
+  --text: #eeeeff;
+  --muted: #55557a;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Rajdhani', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Header */
+header {
+  text-align: center;
+  padding: 2rem 1rem;
+  position: relative;
+}
+.logo-wrap {
+  display: inline-block;
+  position: relative;
+  z-index: 2;
+}
+.logo-crop {
+  display: inline-block;
+  position: relative;
+  height: 180px;
+  overflow: hidden;
+}
+/* Overlay to fade edges into the background color safely */
+.logo-crop::after {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  box-shadow: inset 0 0 30px 15px #060608;
+  pointer-events: none;
+}
+.logo-crop video {
+  height: 212px;
+  width: auto;
+  object-fit: contain;
+  display: block;
+}
+.tagline {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.4em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-top: 1rem;
+}
+
+/* Stats */
+.stats-row {
+  display: flex;
+  justify-content: center;
+  gap: 1px;
+  background: var(--border);
+  max-width: 800px;
+  margin: 0 auto;
+  border: 1px solid var(--border);
+}
+.stat-box {
+  flex: 1;
+  background: var(--surface);
+  text-align: center;
+  padding: 1rem;
+}
+.stat-box .num {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 900;
+  display: block;
+}
+.stat-box .lbl {
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-top: 4px;
+  display: block;
+}
+.s1 .num { color: var(--accent-cyan); text-shadow: 0 0 10px rgba(0,229,255,0.4); }
+.s2 .num { color: var(--accent-yellow); text-shadow: 0 0 10px rgba(255,224,0,0.4); }
+.s3 .num { color: var(--accent-pink); text-shadow: 0 0 10px rgba(255,0,204,0.4); }
+.s4 .num { color: #b380ff; text-shadow: 0 0 10px rgba(179,128,255,0.5); }
+
+/* Tabs */
+.tabs {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem 1rem;
+}
+.tab-btn {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.7rem;
+  padding: 0.7rem 1.2rem;
+  border-radius: 4px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s;
+}
+.tab-btn.active {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  background: rgba(0, 229, 255, 0.05);
+}
+
+/* Grid */
+.fama-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 1.5rem;
+  padding: 0 2rem 4rem;
+}
+.fama-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.fama-card:hover { transform: translateY(-3px); border-color: var(--accent-gold); }
+.fama-title { font-size: 1rem; font-weight: 700; margin-bottom: 1rem; }
+.fama-crown { font-size: 2rem; margin-bottom: 0.5rem; display: inline-block; }
+.fama-player { font-family: 'Orbitron', sans-serif; font-size: 1.2rem; color: var(--accent-gold); font-weight: 900; }
+.fama-score { font-family: 'Orbitron', sans-serif; font-size: 1.6rem; color: var(--accent-yellow); margin-top: 0.5rem; }
+
+/* Podium Desktop Styles */
+.podium-container {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin: 0 auto 2rem;
+  max-width: 600px;
+  align-items: flex-end;
+}
+.podium-card {
+  background: var(--card);
+  border-radius: 8px;
+  padding: 1.2rem;
+  width: 160px;
+  text-align: center;
+  transition: all 0.2s;
+}
+.podium-card.pos-1 {
+  transform: scale(1.08);
+  z-index: 2;
+  margin-bottom: 10px;
+}
+.podium-card.pos-2, .podium-card.pos-3 {
+  transform: scale(1);
+  z-index: 1;
+}
+.podium-card .emoji-span {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 0.3rem;
+}
+.podium-card .text-span {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.65rem;
+  font-weight: bold;
+  letter-spacing: 1px;
+  display: block;
+  margin-bottom: 6px;
+  opacity: 0.85;
+}
+.podium-card .player-name {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1.4rem;
+  font-weight: 900;
+}
+.podium-card .score-span {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1rem;
+  color: var(--accent-yellow);
+  margin-top: 6px;
+  font-weight: 700;
+}
+.podium-card .date-span {
+  font-size: 0.7rem;
+  color: var(--muted);
+  opacity: 0.7;
+  display: block;
+  margin-top: 4px;
+}
+
+.empty-card {
+  opacity: 0.5;
+  border-style: dashed;
+  border-color: var(--muted);
+  background: transparent;
+}
+.empty-card:hover {
+  opacity: 1;
+  border-style: solid;
+  border-color: var(--accent-cyan);
+}
+.fama-waiting {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  border: 1px solid var(--text-dim);
+  padding: 4px 12px;
+  border-radius: 12px;
+  display: inline-block;
+  margin: 1rem 0;
+}
+
+/* Views */
+.view { display: none; }
+.view.active { display: block; }
+
+/* Table */
+.table-section { padding: 0 2rem 4rem; }
+table { width: 100%; border-collapse: separate; border-spacing: 0 4px; }
+tbody tr { background: var(--card); }
+td { padding: 1rem; text-align: left; }
+.rank-b { width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: var(--muted); }
+.score-val { color: var(--accent-yellow); font-family: 'Orbitron', sans-serif; font-weight: 700; }
+
+/* Footer */
+footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.7rem; }
+
+/* Mobile Responsive Adjustments */
+@media (max-width: 768px) {
+  header { padding: 1.5rem 1rem 1rem; }
+  .logo-crop { height: 100px; }
+  .logo-crop video { height: 118px; }
+  .tagline { font-size: 0.5rem; letter-spacing: 0.3em; }
+  
+  .stats-row {
+    flex-direction: column;
+    max-width: 100%;
+    margin: 0 1rem;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .stat-box {
+    padding: 0.8rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .stat-box:last-child {
+    border-bottom: none;
+  }
+  
+  .tabs {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    padding: 1.5rem 1rem;
+  }
+  .tab-btn {
+    flex: 1;
+    min-width: 140px;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.65rem;
+  }
+  
+  .fama-grid {
+    padding: 0 1rem 3rem;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+  }
+  .fama-card {
+    padding: 1.2rem;
+  }
+  
+  .table-section {
+    padding: 0 1rem 3rem;
+  }
+  td {
+    padding: 0.8rem;
+    font-size: 0.9rem;
+  }
+  
+  /* Ajustes de Actualizaciones en Celulares */
+  .act-header {
+    flex-direction: column;
+    text-align: center;
+    padding: 0 1.5rem 1.5rem !important;
+  }
+  .act-header h2 {
+    font-size: 1.5rem !important;
+  }
+  .act-header p {
+    font-size: 0.75rem !important;
+  }
+  .act-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+  
+  /* Ajustes para formularios de login/subida en móviles */
+  #admin-login-box, #admin-upload-box {
+    padding: 1.5rem !important;
+    margin: 1.5rem auto !important;
+  }
+  #admin-upload-box h2 {
+    font-size: 1.1rem !important;
+    margin-bottom: 1rem !important;
+  }
+  
+  /* Ajustes del Podio en Celulares (¡Tipo Podio Real Lado a Lado!) */
+  .podium-container {
+    flex-direction: row !important;
+    justify-content: center !important;
+    align-items: flex-end !important;
+    gap: 0.4rem !important;
+    padding: 0 0.5rem !important;
+    margin: 1.5rem auto 2rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  .podium-card {
+    flex: 1 !important;
+    min-width: 0 !important;
+    transform: none !important;
+    margin-bottom: 0 !important;
+    display: block !important;
+    text-align: center !important;
+    padding: 0.6rem 0.2rem !important;
+    box-sizing: border-box !important;
+  }
+  .podium-card.pos-1 {
+    transform: scale(1.05) translateY(-8px) !important;
+    z-index: 2 !important;
+  }
+  .podium-card.pos-2, .podium-card.pos-3 {
+    transform: none !important;
+    z-index: 1 !important;
+  }
+  .podium-card .emoji-span {
+    font-size: 1.8rem !important;
+    margin-bottom: 0.2rem !important;
+  }
+  .podium-card.pos-1 .emoji-span {
+    font-size: 2.1rem !important;
+  }
+  .podium-card .text-span {
+    display: none !important;
+  }
+  .podium-card .info-wrap {
+    display: block !important;
+  }
+  .podium-card .player-name {
+    font-size: 0.95rem !important;
+    font-weight: 900 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+  .podium-card .score-span {
+    font-size: 0.72rem !important;
+    margin-top: 4px !important;
+    font-weight: bold !important;
+  }
+  .podium-card .date-span {
+    display: none !important;
+  }
+}
+
+/* Badge de Nueva Actualización con Animación Flasheante */
+.badge-new {
+  background: var(--accent-pink);
+  color: #fff;
+  font-size: 0.55rem;
+  padding: 2px 7px;
+  border-radius: 10px;
+  margin-left: 6px;
+  font-weight: 900;
+  font-family: 'Orbitron', sans-serif;
+  display: inline-block;
+  vertical-align: middle;
+  box-shadow: 0 0 10px rgba(255, 0, 204, 0.6);
+  animation: badge-flash 0.8s infinite alternate;
+}
+
+@keyframes badge-flash {
+  0% {
+    opacity: 0.6;
+    transform: scale(0.95);
+    box-shadow: 0 0 4px rgba(255, 0, 204, 0.4);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(255, 0, 204, 0.8);
+  }
+}
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-wrap">
+    <div class="logo-crop">
+      <video autoplay loop muted playsinline>
+        <source src="logo_mov.mp4" type="video/mp4">
+        <source src="logo mov.mp4" type="video/mp4">
+      </video>
+    </div>
+  </div>
+  <div class="tagline">◆ HIGH SCORES · VIRTUAL PINBALL 3 ◆</div>
+</header>
+
+<div class="stats-row">
+  <div class="stat-box s1"><span class="num" id="stat-total">0</span><span class="lbl">Puntajes</span></div>
+  <div class="stat-box s2"><span class="num" id="stat-tables">0</span><span class="lbl">Mesas</span></div>
+  <div class="stat-box s3" style="cursor:pointer;" onclick="showPlayersModal()"><span class="num" id="stat-players">0</span><span class="lbl">Jugadores (Ver Detalle)</span></div>
+  <div class="stat-box s4" style="cursor:pointer;" onclick="showFunStatsModal()"><span class="num">🔮</span><span class="lbl">Datos Curiosos (Ver)</span></div>
+</div>
+
+<!-- MODAL JUGADORES -->
+<div id="players-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100; align-items:center; justify-content:center;">
+  <div style="background:var(--surface); border:1px solid var(--accent-cyan); padding:2rem; border-radius:8px; max-width:600px; width:90%; max-height:80vh; overflow-y:auto; position:relative;">
+    <button onclick="document.getElementById('players-modal').style.display='none'" style="position:absolute; top:10px; right:10px; background:transparent; border:none; color:var(--text); font-size:1.5rem; cursor:pointer;">&times;</button>
+    <h2 style="font-family:'Orbitron'; color:var(--accent-cyan); text-align:center; margin-bottom:1.5rem;">ESTADÍSTICAS POR JUGADOR</h2>
+    <div id="players-list"></div>
+  </div>
+</div>
+
+<!-- MODAL DATOS CURIOSOS -->
+<div id="fun-stats-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100; align-items:center; justify-content:center;">
+  <div style="background:var(--surface); border:1px solid var(--accent-pink); padding:2rem; border-radius:8px; max-width:600px; width:90%; max-height:80vh; overflow-y:auto; position:relative;">
+    <button onclick="document.getElementById('fun-stats-modal').style.display='none'" style="position:absolute; top:10px; right:10px; background:transparent; border:none; color:var(--text); font-size:1.5rem; cursor:pointer;">&times;</button>
+    <h2 style="font-family:'Orbitron'; color:var(--accent-pink); text-align:center; margin-bottom:1.5rem; text-transform:uppercase;">🔮 DATOS CURIOSOS DEL SALÓN</h2>
+    <div id="fun-stats-modal-list" style="max-height:60vh; overflow-y:auto; padding-right:5px;"></div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" id="btn-fama" onclick="setView('fama')">👑 Salón de la Fama</button>
+  <button class="tab-btn" id="btn-desafio" onclick="setView('desafio')">🔥 Desafío Semanal</button>
+  <button class="tab-btn" id="btn-ranking" onclick="setView('ranking')">📊 Ranking por Mesa</button>
+  <button class="tab-btn" id="btn-logros" onclick="setView('logros')">🏅 Logros y Medallas</button>
+  <button class="tab-btn" id="btn-actualizaciones" onclick="setView('actualizaciones')">📦 Actualizaciones <span id="badge-update" class="badge-new" style="display:none;">¡NUEVO!</span></button>
+</div>
+
+<!-- VISTA FAMA -->
+<div id="view-fama" class="view active">
+  <div id="dominance-container" style="max-width:1000px; margin:1.5rem auto 2.5rem; padding:0 2rem; text-align:center;"></div>
+  <div class="fama-grid" id="grid-fama"></div>
+</div>
+
+<!-- VISTA DESAFIO -->
+<div id="view-desafio" class="view" style="text-align:center;">
+  <div style="background:var(--surface); border:1px solid var(--accent-pink); padding:2rem; margin:0 2rem; border-radius:8px;">
+    <h2 style="color:var(--accent-pink); font-family:'Orbitron'; font-size:0.8rem; margin-bottom:1rem;">DESAFÍO DE LA SEMANA</h2>
+    <h3 id="challenge-name" style="font-size:2.5rem; font-family:'Orbitron'; margin-bottom:1rem;">---</h3>
+    <p id="challenge-timer" style="color:var(--accent-cyan);">Calculando...</p>
+  </div>
+  <div id="podium-desafio" style="margin-top:2rem;"></div>
+  <div class="table-section"><table id="table-desafio"><tbody id="body-desafio"></tbody></table></div>
+  <div id="historial-campeones" style="margin-top:3.5rem; padding: 0 2rem 3rem;"></div>
+</div>
+
+<!-- VISTA RANKING -->
+<div id="view-ranking" class="view">
+  <div style="padding:0 2rem 1rem; display:flex; gap:1rem;">
+    <select id="filter-table" onchange="renderRanking()" style="background:var(--surface); color:#fff; border:1px solid var(--border); padding:0.5rem;"></select>
+  </div>
+  <div class="table-section">
+    <table><tbody id="body-ranking"></tbody></table>
+  </div>
+</div>
+
+<!-- VISTA LOGROS -->
+<div id="view-logros" class="view"></div>
+
+<!-- VISTA ACTUALIZACIONES -->
+<div id="view-actualizaciones" class="view">
+  <div class="act-header" style="padding:0 2rem 1.5rem; display:flex; justify-content:space-between; align-items:center; max-width:1200px; margin:0 auto; flex-wrap:wrap; gap:1rem;">
+    <div>
+      <h2 style="color:var(--accent-cyan); font-family:'Orbitron'; font-size:1.8rem; text-shadow:0 0 10px rgba(0,229,255,0.3); margin-bottom:4px;">ZONA DE DESCARGAS</h2>
+      <p style="color:var(--muted); font-size:0.8rem; letter-spacing:1px; text-transform:uppercase;">Mesas, ROMs, NVRAMs y herramientas para el sistema VP3</p>
+    </div>
+    <button class="tab-btn" style="border-color:var(--accent-pink); color:var(--accent-pink); background:rgba(255,0,204,0.05); text-shadow:0 0 10px rgba(255,0,204,0.2);" onclick="showAdminModal()">⚡ Subir Actualización</button>
+  </div>
+  
+  <div style="padding:0 2rem 4rem; max-width:1200px; margin:0 auto;">
+    <div id="lista-actualizaciones" class="act-grid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap:1.5rem;">
+      <!-- Tarjetas de actualización cargadas dinámicamente -->
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ACTUALIZACIONES (LOGIN Y FORMULARIO DE SUBIDA) -->
+<div id="admin-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:100; align-items:center; justify-content:center; backdrop-filter:blur(5px); overflow-y:auto; padding:1.5rem 0;">
+  
+  <!-- Bloque de Login -->
+  <div id="admin-login-box" style="background:var(--surface); border:1px solid var(--accent-pink); padding:2rem; border-radius:8px; max-width:400px; width:90%; position:relative; box-shadow:0 0 30px rgba(255,0,204,0.15);">
+    <button onclick="closeAdminModal()" style="position:absolute; top:15px; right:15px; background:transparent; border:none; color:var(--text); font-size:1.5rem; cursor:pointer; opacity:0.7;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">&times;</button>
+    <h2 style="font-family:'Orbitron'; color:var(--accent-pink); text-align:center; margin-bottom:1.5rem; font-size:1.2rem; letter-spacing:1px;">ACCESO ADMINISTRADOR</h2>
+    
+    <div style="margin-bottom:1rem;">
+      <label style="display:block; font-size:0.75rem; color:var(--muted); text-transform:uppercase; margin-bottom:5px; letter-spacing:1px;">Usuario</label>
+      <input type="text" id="admin-user" placeholder="ej: admin o vp3" style="width:100%; padding:0.7rem; background:var(--card); border:1px solid var(--border); color:#fff; border-radius:4px; font-family:sans-serif;">
+    </div>
+    <div style="margin-bottom:1.5rem;">
+      <label style="display:block; font-size:0.75rem; color:var(--muted); text-transform:uppercase; margin-bottom:5px; letter-spacing:1px;">Contraseña</label>
+      <input type="password" id="admin-pass" placeholder="Contraseña" style="width:100%; padding:0.7rem; background:var(--card); border:1px solid var(--border); color:#fff; border-radius:4px; font-family:sans-serif;">
+    </div>
+    
+    <button onclick="loginAdmin()" style="width:100%; padding:0.8rem; background:var(--accent-pink); color:#fff; border:none; border-radius:4px; font-family:'Orbitron'; cursor:pointer; font-weight:bold; letter-spacing:1px; font-size:0.8rem; box-shadow:0 0 15px rgba(255,0,204,0.3); transition:all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 0 20px rgba(255,0,204,0.5)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 0 15px rgba(255,0,204,0.3)'">INGRESAR AL PANEL</button>
+    <p id="login-error" style="color:#ff3333; font-size:0.8rem; text-align:center; margin-top:1rem; display:none; font-weight:bold;">⚠️ Credenciales incorrectas</p>
+  </div>
+  
+  <!-- Bloque de Formulario de Subida -->
+  <div id="admin-upload-box" style="display:none; background:var(--surface); border:1px solid var(--accent-cyan); padding:2rem; border-radius:8px; max-width:550px; width:95%; position:relative; box-shadow:0 0 30px rgba(0,229,255,0.15);">
+    <button onclick="closeAdminModal()" style="position:absolute; top:15px; right:15px; background:transparent; border:none; color:var(--text); font-size:1.5rem; cursor:pointer; opacity:0.7;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.7">&times;</button>
+    <h2 style="font-family:'Orbitron'; color:var(--accent-cyan); text-align:center; margin-bottom:1.5rem; font-size:1.2rem; letter-spacing:1px;">NUEVA ACTUALIZACIÓN</h2>
+    
+    <div style="margin-bottom:1rem;">
+      <label style="display:block; font-size:0.75rem; color:var(--muted); text-transform:uppercase; margin-bottom:5px; letter-spacing:1px;">Nombre del Archivo o Herramienta</label>
+      <input type="text" id="up-name" placeholder="ej: MAQUINAS_VP3.zip" style="width:100%; padding:0.7rem; background:var(--card); border:1px solid var(--border); color:#fff; border-radius:4px; font-family:sans-serif;">
+    </div>
+    
+    <div style="display:flex; gap:1rem; margin-bottom:1rem;">
+      <div style="flex:1;">
+        <label style="display:block; font-size:0.75rem; color:var(--muted); text-transform:uppercase; margin-bottom:5px; letter-spacing:1px;">Categoría</label>
+        <select id="up-category" style="width:100%; padding:0.7rem; background:var(--card); border:1px solid var(--border); color:#fff; border-radius:4px; font-family:'Rajdhani', sans-serif; font-size:0.9rem;">
+          <option value="Mesa VPX">Mesa VPX</option>
+          <option value="Sistema completo">Sistema completo</option>
+          <option value="ROM / NVRAM">ROM / NVRAM</option>
+          <option value="Otro">Otro</option>
+        </select>
+      </div>
+      <div style="flex:1;">
+        <label style="display:block; font-size:0.75rem; color:var(--muted); text-transform:uppercase; margin-bottom:5px; letter-spacing:1px;">Versión</label>
+        <input type="text" id="up-version" placeholder="ej: v2.1" style="width:100%; padding:0.7rem; background:var(--card); border:1px solid var(--border); color:#fff; border-radius:4px; font-family:sans-serif;">
+      </div>
+    </div>
+    
+    <div style="margin-bottom:1rem;">
+      <label style="display:block; font-size:0.75rem; color:var(--muted); text-transform:uppercase; margin-bottom:5px; letter-spacing:1px;">¿Quién lo sube?</label>
+      <select id="up-author" style="width:100%; padding:0.7rem; background:var(--card); border:1px solid var(--border); color:#fff; border-radius:4px; font-family:'Rajdhani', sans-serif; font-size:0.9rem;">
+        <option value="Luis">Luis</option>
+        <option value="Hernan">Hernán</option>
+        <option value="Ariel">Ariel</option>
+      </select>
+    </div>
+    
+    <div style="margin-bottom:1rem;">
+      <label style="display:block; font-size:0.75rem; color:var(--muted); text-transform:uppercase; margin-bottom:5px; letter-spacing:1px;">Enlace de Descarga (Google Drive, Mega, Dropbox, etc.)</label>
+      <input type="text" id="up-url" placeholder="https://..." style="width:100%; padding:0.7rem; background:var(--card); border:1px solid var(--border); color:#fff; border-radius:4px; font-family:sans-serif;">
+    </div>
+    
+    <div style="margin-bottom:1.5rem;">
+      <label style="display:block; font-size:0.75rem; color:var(--muted); text-transform:uppercase; margin-bottom:5px; letter-spacing:1px;">Descripción de los cambios / Mejoras</label>
+      <textarea id="up-desc" rows="3" placeholder="ej: Mejorado el sonido de los bumpers y corregidas físicas." style="width:100%; padding:0.7rem; background:var(--card); border:1px solid var(--border); color:#fff; border-radius:4px; font-family:sans-serif; resize:none; font-size:0.85rem;"></textarea>
+    </div>
+    
+    <button onclick="submitUpdate()" style="width:100%; padding:0.8rem; background:var(--accent-cyan); color:#000; border:none; border-radius:4px; font-family:'Orbitron'; cursor:pointer; font-weight:bold; letter-spacing:1px; font-size:0.8rem; box-shadow:0 0 15px rgba(0,229,255,0.3); transition:all 0.2s;" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 0 20px rgba(0,229,255,0.5)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 0 15px rgba(0,229,255,0.3)'">PUBLICAR ACTUALIZACIÓN</button>
+    <p id="upload-error" style="color:#ff3333; font-size:0.8rem; text-align:center; margin-top:1rem; display:none; font-weight:bold;">⚠️ Error</p>
+  </div>
+</div>
+
+<footer>SISTEMA VP3 ONLINE · <span id="last-update">...</span></footer>
+
+<script>
+function getPlayerColor(player) {
+  const p = (player || "").toUpperCase().trim();
+  if (p === "LAL") return "#00c3ff"; // Luis: Azul
+  if (p === "ARI") return "#00ff66"; // Ariel: Verde
+  if (p === "HER") return "#ff007f"; // Hernán: Rosa
+  if (p === "AGU") return "#ffcc00"; // Agus: Amarillo
+  if (!p || p === "---") return "#ffffff";
+
+  // Paleta retro premium para nuevos jugadores (colores de alta visibilidad en fondo oscuro)
+  const RETRO_COLORS = [
+    "#ff3366", "#33ff66", "#3366ff", "#ffcc00", "#ff00ff", "#00ffff", 
+    "#ff6600", "#9933ff", "#33ffcc", "#ff3399", "#ccff33", "#00ffcc"
+  ];
+  let hash = 0;
+  for (let i = 0; i < p.length; i++) {
+    hash = p.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % RETRO_COLORS.length;
+  return RETRO_COLORS[index];
+}
+
+
+const ALL_TABLES = [
+  "Attack from Mars", "Cactus Canyon", "Congo", "Creature from the Black Lagoon",
+  "Dirty Harry", "Indianapolis 500", "Johnny Mnemonic", "Junk Yard",
+  "Monster Bash", "NBA Fastbreak", "Red & Ted's Road Show", "Scared Stiff",
+  "The Addams Family", "The Flintstones", "Twilight Zone", "World Cup Soccer",
+  "Back to the Future", "Goldeneye", "Guns N' Roses", "Hook",
+  "Indiana Jones", "Last Action Hero", "Lethal Weapon 3", "Mary Shelley's Frankenstein",
+  "Phantom of the Opera", "Teenage Mutant Ninja Turtles", "Funhouse", "Police Force",
+  "Rescue 911", "Tom & Jerry", "Mousin'",
+  "Fish Tales", "Terminator 2", "The Walking Dead", "X-Men",
+  "The Getaway: High Speed II", "Cyclone"
+];
+
+const TABLE_YEARS = {
+  "Attack from Mars": "1996",
+  "Cactus Canyon": "1998",
+  "Congo": "1995",
+  "Creature from the Black Lagoon": "1992",
+  "Dirty Harry": "1995",
+  "Indianapolis 500": "1995",
+  "Johnny Mnemonic": "1995",
+  "Junk Yard": "1996",
+  "Monster Bash": "1998",
+  "NBA Fastbreak": "1997",
+  "Red & Ted's Road Show": "1994",
+  "Scared Stiff": "1996",
+  "The Addams Family": "1992",
+  "The Flintstones": "1994",
+  "Twilight Zone": "1993",
+  "World Cup Soccer": "1994",
+  "Back to the Future": "1990",
+  "Goldeneye": "1996",
+  "Guns N' Roses": "1994",
+  "Hook": "1992",
+  "Indiana Jones": "1993",
+  "Last Action Hero": "1993",
+  "Lethal Weapon 3": "1992",
+  "Mary Shelley's Frankenstein": "1995",
+  "Phantom of the Opera": "1990",
+  "Teenage Mutant Ninja Turtles": "1991",
+  "Funhouse": "1990",
+  "Police Force": "1989",
+  "Rescue 911": "1994",
+  "Tom & Jerry": "1992",
+  "Mousin'": "1989",
+  "Fish Tales": "1992",
+  "Terminator 2": "1991",
+  "The Walking Dead": "2014",
+  "X-Men": "2012",
+  "The Getaway: High Speed II": "1992",
+  "Cyclone": "1988"
+};
+
+function getTableDisplayName(table) {
+  const year = TABLE_YEARS[table];
+  return year ? `${table} (${year})` : table;
+}
+
+const SUPABASE_URL = 'https://ckcjujadpmhdgcvyyahd.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_COrjv6wdGvLMbtGETo3xCQ__-Wdys3L';
+
+let allData = [];
+let actualizacionesData = [];
+let currentView = 'fama';
+let challengeTable = "";
+let challengeStartStr = "";
+let challengeEndStr = "";
+let isAdminLoggedIn = false;
+
+function getYYYYMMDD(dateObj) {
+  const y = dateObj.getFullYear();
+  const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const d = String(dateObj.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+async function fetchData() {
+  try {
+    // Cargar Récords
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/puntajes?select=*`, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+    
+    if (!res.ok) throw new Error('Error al conectar con Supabase');
+    
+    const rows = await res.json();
+    
+    allData = rows.map(r => {
+      return {
+        table: r.mesa,
+        player: r.jugador,
+        score: parseInt(r.puntaje) || 0,
+        date: r.fecha
+      };
+    }).filter(r => r.player);
+
+    // Cargar Actualizaciones
+    await fetchActualizaciones();
+
+    updateStats();
+    populateFilters();
+    updateChallenge();
+    renderAll();
+    document.getElementById('last-update').textContent = new Date().toLocaleString();
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+async function fetchActualizaciones() {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/actualizaciones?select=*`, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+    if (res.ok) {
+      actualizacionesData = await res.json();
+      // Ordenar por fecha descendente
+      actualizacionesData.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+      
+      // Controlar el badge de novedades (flasheante)
+      const latestUpdate = actualizacionesData[0];
+      if (latestUpdate) {
+        const lastSeen = localStorage.getItem('last_seen_update');
+        const badge = document.getElementById('badge-update');
+        if (badge) {
+          if (!lastSeen || lastSeen !== latestUpdate.id) {
+            badge.style.display = 'inline-block';
+          } else {
+            badge.style.display = 'none';
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Error al cargar actualizaciones:", e);
+  }
+}
+
+function updateStats() {
+  document.getElementById('stat-total').textContent = allData.length;
+  document.getElementById('stat-tables').textContent = ALL_TABLES.length;
+  const players = [...new Set(allData.map(r => r.player))];
+  document.getElementById('stat-players').textContent = players.length;
+}
+
+// OBTENER LOS LOGROS CONQUISTADOS POR UN JUGADOR
+function getUnlockedAchievements(p) {
+  const pData = allData.filter(r => r.player === p);
+  const unlocked = [];
+  
+  // 1. Rey de Reyes (GC en 3 o más mesas)
+  let gcCount = 0;
+  ALL_TABLES.forEach(t => {
+    const best = allData.filter(r => r.table === t).sort((a,b) => b.score - a.score)[0];
+    if (best && best.player === p) gcCount++;
+  });
+  if (gcCount >= 3) {
+    unlocked.push({ id: 'gc_master', emoji: '👑', title: 'Rey de Reyes', color: 'var(--accent-gold)' });
+  }
+  
+  // 2. Explorador Arcade (Puntajes en 5 o más mesas)
+  const uniqueTables = [...new Set(pData.map(r => r.table))];
+  if (uniqueTables.length >= 5) {
+    unlocked.push({ id: 'table_collector', emoji: '👾', title: 'Explorador Arcade', color: 'var(--accent-cyan)' });
+  }
+  
+  // 3. Centurión (> 100 Millones)
+  if (pData.some(r => r.score >= 100000000)) {
+    unlocked.push({ id: 'centurion', emoji: '💥', title: 'Centurión', color: 'var(--accent-pink)' });
+  }
+  
+  // 4. Magnate del Cosmos (> 1.000 Millones / 1 Billón)
+  if (pData.some(r => r.score >= 1000000000)) {
+    unlocked.push({ id: 'billionaire', emoji: '🌌', title: 'Magnate del Cosmos', color: '#8a2be2' });
+  }
+  
+  // 5. Vicioso del Pinball (15 o más récords totales registrados)
+  if (pData.length >= 15) {
+    unlocked.push({ id: 'constant_player', emoji: '🕹️', title: 'Vicioso del Pinball', color: 'var(--accent-yellow)' });
+  }
+  
+  // 6. Héroe de la Semana (Haber ganado al menos un desafío semanal histórico)
+  const baseDate = new Date('2026-05-06T00:00:00-03:00');
+  const now = new Date();
+  const diffMs = now - baseDate;
+  const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+  let currentWeekIndex = Math.floor(diffMs / msPerWeek);
+  if (diffMs < 0) currentWeekIndex = 0;
+  
+  let wonChallenge = false;
+  for (let w = 0; w < currentWeekIndex; w++) {
+    const wStart = getYYYYMMDD(new Date(baseDate.getTime() + w * msPerWeek));
+    const wEnd = getYYYYMMDD(new Date(baseDate.getTime() + (w + 1) * msPerWeek));
+    const table = ALL_TABLES[w % ALL_TABLES.length];
+    const weekScores = allData.filter(r => r.table === table && r.date >= wStart && r.date < wEnd)
+                              .sort((a,b) => b.score - a.score);
+    if (weekScores[0] && weekScores[0].player === p) {
+      wonChallenge = true;
+      break;
+    }
+  }
+  if (wonChallenge) {
+    unlocked.push({ id: 'weekly_hero', emoji: '🔥', title: 'Héroe de la Semana', color: '#ff4500' });
+  }
+  
+  return unlocked;
+}
+
+function showPlayersModal() {
+  const modal = document.getElementById('players-modal');
+  const list = document.getElementById('players-list');
+  list.innerHTML = "";
+  
+  const players = [...new Set(allData.map(r => r.player))];
+  players.sort();
+  
+  players.forEach(p => {
+    const pData = allData.filter(r => r.player === p).sort((a,b) => b.score - a.score);
+    const achievements = getUnlockedAchievements(p);
+    
+    // Contar cuántos Grand Champions tiene
+    let gcCount = 0;
+    ALL_TABLES.forEach(t => {
+        const best = allData.filter(r => r.table === t).sort((a,b) => b.score - a.score)[0];
+        if (best && best.player === p) gcCount++;
+    });
+
+    const div = document.createElement('div');
+    div.style.marginBottom = "1.5rem";
+    div.style.padding = "1rem";
+    div.style.background = "var(--card)";
+    div.style.border = "1px solid var(--border)";
+    div.style.borderRadius = "4px";
+    
+    // Dibujar medallas flotantes
+    let medalsHtml = `<div style="display:inline-flex; gap:6px; margin-left:12px; vertical-align:middle;">`;
+    achievements.forEach(ach => {
+      medalsHtml += `<span title="${ach.title}" style="cursor:help; font-size:1.1rem; display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:rgba(255,255,255,0.03); border:1px solid ${ach.color}; box-shadow:0 0 5px ${ach.color}44;">${ach.emoji}</span>`;
+    });
+    medalsHtml += `</div>`;
+    
+    let html = `<h3 style="color:var(--accent-gold); font-family:'Orbitron'; margin-bottom:0.5rem; border-bottom:1px solid var(--border); padding-bottom:5px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                  <span><span style="color:${getPlayerColor(p)};">${p}</span> ${medalsHtml}</span>
+                  <span style="font-size:0.8rem; color:var(--muted); font-weight:normal;">Récords: ${pData.length} | GC: ${gcCount}</span>
+                </h3>`;
+    html += `<ul style="list-style:none; font-size:0.9rem;">`;
+    pData.forEach(r => {
+      html += `<li style="padding:4px 0;"><span style="color:var(--accent-cyan); display:inline-block; width:200px;">${getTableDisplayName(r.table)}</span> <span style="color:var(--accent-yellow); font-family:'Orbitron';">${r.score.toLocaleString('es-AR')}</span></li>`;
+    });
+    html += `</ul>`;
+    div.innerHTML = html;
+    list.appendChild(div);
+  });
+  
+  modal.style.display = "flex";
+}
+
+
+function showFunStatsModal() {
+  playRetroSound('click');
+  const modal = document.getElementById('fun-stats-modal');
+  const list = document.getElementById('fun-stats-modal-list');
+  if (!modal || !list) return;
+  list.innerHTML = "";
+  
+  const players = [...new Set(allData.map(r => r.player))].sort();
+  const funStats = {
+    destronador: { player: '---', count: 0 },
+    sniper: { player: '---', pct: 0 },
+    battleground: { table: '---', gapPct: 100000 },
+    unstoppable: { player: '---', table: '---', gapPct: 0 },
+    dedication: { player: '---', count: 0 },
+    hotTable: { table: '---', count: 0 }
+  };
+  
+  if (allData.length > 0) {
+    // 1. El Destronador (Jugador con más primeros puestos GC)
+    const gcCounts = {};
+    players.forEach(p => gcCounts[p] = 0);
+    ALL_TABLES.forEach(t => {
+      const sorted = allData.filter(r => r.table === t).sort((a,b) => b.score - a.score);
+      if (sorted[0]) {
+        gcCounts[sorted[0].player]++;
+      }
+    });
+    let maxGC = 0;
+    players.forEach(p => {
+      if (gcCounts[p] > maxGC) {
+        maxGC = gcCounts[p];
+        funStats.destronador = { player: p, count: maxGC };
+      }
+    });
+    
+    // 2. Vicio Constante (Jugador con más puntajes totales registrados)
+    let maxCount = 0;
+    players.forEach(p => {
+      const count = allData.filter(r => r.player === p).length;
+      if (count > maxCount) {
+        maxCount = count;
+        funStats.dedication = { player: p, count: maxCount };
+      }
+    });
+    
+    // 3. Mesa Más Popular (Mesa con más registros totales)
+    let maxTableScores = 0;
+    ALL_TABLES.forEach(t => {
+      const count = allData.filter(r => r.table === t).length;
+      if (count > maxTableScores) {
+        maxTableScores = count;
+        funStats.hotTable = { table: t, count: maxTableScores };
+      }
+    });
+    
+    // 4. Frente de Batalla y Récord Inalcanzable (Diferencias porcentuales entre 1° y 2°)
+    let tightestGap = 100000;
+    let largestGap = 0;
+    
+    ALL_TABLES.forEach(t => {
+      const sorted = allData.filter(r => r.table === t).sort((a,b) => b.score - a.score);
+      if (sorted.length >= 2) {
+        const first = sorted[0].score;
+        const second = sorted[1].score;
+        if (second > 0) {
+          const gapPct = ((first - second) / second) * 100;
+          
+          if (gapPct < tightestGap) {
+            tightestGap = gapPct;
+            funStats.battleground = { table: t, gapPct: gapPct.toFixed(1) };
+          }
+          
+          if (gapPct > largestGap) {
+            largestGap = gapPct;
+            funStats.unstoppable = { player: sorted[0].player, table: t, gapPct: gapPct.toFixed(1) };
+          }
+        }
+      }
+    });
+    
+    // 5. El Francotirador (Porcentaje de efectividad de podio)
+    let bestSniperPct = 0;
+    players.forEach(p => {
+      const pScores = allData.filter(r => r.player === p);
+      if (pScores.length > 0) {
+        let top3Count = 0;
+        pScores.forEach(ps => {
+          const tableScores = allData.filter(r => r.table === ps.table).sort((a,b) => b.score - a.score);
+          const rankIndex = tableScores.findIndex(r => r.player === p && r.score === ps.score);
+          if (rankIndex >= 0 && rankIndex < 3) {
+            top3Count++;
+          }
+        });
+        const pct = (top3Count / pScores.length) * 100;
+        if (pct > bestSniperPct) {
+          bestSniperPct = pct;
+          funStats.sniper = { player: p, pct: pct.toFixed(1) };
+        }
+      }
+    });
+  }
+  
+  let html = `<div style="display:flex; flex-direction:column; gap:1.2rem;">`;
+  
+  // Card 1: El Destronador
+  html += `
+    <div style="background:rgba(255,215,0,0.03); border:1px solid rgba(255,215,0,0.25); border-radius:6px; padding:1rem; display:flex; align-items:center; gap:15px; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+      <div style="font-size:2rem; filter: drop-shadow(0 0 5px rgba(255,215,0,0.3)); flex-shrink:0;">🔨</div>
+      <div>
+        <div style="font-size:0.6rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">EL DESTRONADOR</div>
+        <div style="font-family:'Orbitron'; font-size:1.1rem; color:var(--accent-gold); font-weight:bold; margin:2px 0;">${funStats.destronador.player}</div>
+        <div style="font-size:0.8rem; color:#e0e0e0; line-height:1.4;">Sostiene la corona de Gran Campeón en <strong style="color:#fff; font-family:'Orbitron';">${funStats.destronador.count} mesas</strong> simultáneamente.</div>
+      </div>
+    </div>
+  `;
+  
+  // Card 2: El Francotirador
+  html += `
+    <div style="background:rgba(0,229,255,0.03); border:1px solid rgba(0,229,255,0.25); border-radius:6px; padding:1rem; display:flex; align-items:center; gap:15px; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+      <div style="font-size:2rem; filter: drop-shadow(0 0 5px rgba(0,229,255,0.3)); flex-shrink:0;">🎯</div>
+      <div>
+        <div style="font-size:0.6rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">EL FRANCOTIRADOR</div>
+        <div style="font-family:'Orbitron'; font-size:1.1rem; color:var(--accent-cyan); font-weight:bold; margin:2px 0;">${funStats.sniper.player}</div>
+        <div style="font-size:0.8rem; color:#e0e0e0; line-height:1.4;">Efectividad letal: el <strong style="color:#fff; font-family:'Orbitron';">${funStats.sniper.pct}%</strong> de todas sus partidas registradas terminaron en el Podio (Top 3).</div>
+      </div>
+    </div>
+  `;
+  
+  // Card 3: Vicio Constante
+  html += `
+    <div style="background:rgba(255,255,0,0.03); border:1px solid rgba(255,255,0,0.25); border-radius:6px; padding:1rem; display:flex; align-items:center; gap:15px; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+      <div style="font-size:2rem; filter: drop-shadow(0 0 5px rgba(255,255,0,0.3)); flex-shrink:0;">🕹️</div>
+      <div>
+        <div style="font-size:0.6rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">VICIO CONSTANTE</div>
+        <div style="font-family:'Orbitron'; font-size:1.1rem; color:var(--accent-yellow); font-weight:bold; margin:2px 0;">${funStats.dedication.player}</div>
+        <div style="font-size:0.8rem; color:#e0e0e0; line-height:1.4;">El más dedicado de las máquinas con un total de <strong style="color:#fff; font-family:'Orbitron';">${funStats.dedication.count} récords</strong> subidos al sistema.</div>
+      </div>
+    </div>
+  `;
+  
+  // Card 4: Frente de Batalla
+  html += `
+    <div style="background:rgba(255,0,204,0.03); border:1px solid rgba(255,0,204,0.25); border-radius:6px; padding:1rem; display:flex; align-items:center; gap:15px; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+      <div style="font-size:2rem; filter: drop-shadow(0 0 5px rgba(255,0,204,0.3)); flex-shrink:0;">⚡</div>
+      <div>
+        <div style="font-size:0.6rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">FRENTE DE BATALLA</div>
+        <div style="font-family:'Orbitron'; font-size:1rem; color:var(--accent-pink); font-weight:bold; margin:2px 0;">${getTableDisplayName(funStats.battleground.table)}</div>
+        <div style="font-size:0.8rem; color:#e0e0e0; line-height:1.4;">La mesa más peleada: el puesto #1 y el #2 están separados por un mínimo margen del <strong style="color:#fff; font-family:'Orbitron';">${funStats.battleground.gapPct}%</strong>.</div>
+      </div>
+    </div>
+  `;
+  
+  // Card 5: Récord Inalcanzable
+  html += `
+    <div style="background:rgba(138,43,226,0.04); border:1px solid rgba(138,43,226,0.3); border-radius:6px; padding:1rem; display:flex; align-items:center; gap:15px; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+      <div style="font-size:2rem; filter: drop-shadow(0 0 5px rgba(138,43,226,0.3)); flex-shrink:0;">🌌</div>
+      <div>
+        <div style="font-size:0.6rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">RÉCORD INALCANZABLE</div>
+        <div style="font-family:'Orbitron'; font-size:1rem; color:#a855f7; font-weight:bold; margin:2px 0;">${funStats.unstoppable.player} (${getTableDisplayName(funStats.unstoppable.table)})</div>
+        <div style="font-size:0.8rem; color:#e0e0e0; line-height:1.4;">Ventaja aplastante: le sacó un <strong style="color:#fff; font-family:'Orbitron';">${funStats.unstoppable.gapPct}%</strong> de diferencia al segundo.</div>
+      </div>
+    </div>
+  `;
+  
+  // Card 6: Mesa Favorita
+  html += `
+    <div style="background:rgba(255,69,0,0.03); border:1px solid rgba(255,69,0,0.25); border-radius:6px; padding:1rem; display:flex; align-items:center; gap:15px; box-shadow:0 4px 10px rgba(0,0,0,0.2);">
+      <div style="font-size:2rem; filter: drop-shadow(0 0 5px rgba(255,69,0,0.3)); flex-shrink:0;">🔥</div>
+      <div>
+        <div style="font-size:0.6rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">MESA MÁS POPULAR</div>
+        <div style="font-family:'Orbitron'; font-size:1rem; color:#ff4500; font-weight:bold; margin:2px 0;">${getTableDisplayName(funStats.hotTable.table)}</div>
+        <div style="font-size:0.8rem; color:#e0e0e0; line-height:1.4;">La favorita indiscutida del grupo con un total de <strong style="color:#fff; font-family:'Orbitron';">${funStats.hotTable.count} registros</strong> subidos a la base.</div>
+      </div>
+    </div>
+  `;
+  
+  html += `</div>`;
+  list.innerHTML = html;
+  modal.style.display = "flex";
+}
+
+function populateFilters() {
+
+  const sel = document.getElementById('filter-table');
+  if (sel.options.length > 0) return;
+  ALL_TABLES.forEach(t => {
+    const o = document.createElement('option');
+    o.value = t; o.textContent = getTableDisplayName(t); sel.appendChild(o);
+  });
+}
+
+function setView(v) {
+  playRetroSound('click');
+  currentView = v;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-' + v).classList.add('active');
+  document.querySelectorAll('.view').forEach(s => s.classList.remove('active'));
+  document.getElementById('view-' + v).classList.add('active');
+  
+  if (v === 'actualizaciones') {
+    const latestUpdate = actualizacionesData[0];
+    if (latestUpdate) {
+      localStorage.setItem('last_seen_update', latestUpdate.id);
+    }
+    const badge = document.getElementById('badge-update');
+    if (badge) badge.style.display = 'none';
+  }
+  
+  renderAll();
+}
+
+function renderAll() {
+  if (currentView === 'fama') renderFama();
+  if (currentView === 'ranking') renderRanking();
+  if (currentView === 'desafio') renderChallenge();
+  if (currentView === 'logros') renderLogros();
+  if (currentView === 'actualizaciones') renderActualizaciones();
+}
+
+// RENDERIZAR DINÁMICAMENTE LA VISTA DE LOGROS, MEDALLAS Y DATOS CURIOSOS (ESTADÍSTICAS LOCAS)
+function renderLogros() {
+  const container = document.getElementById('view-logros');
+  if (!container) return;
+  container.innerHTML = "";
+  
+  const players = [...new Set(allData.map(r => r.player))].sort();
+  
+  // Lista de logros con sus descripciones y colores representativos (¡Legibilidad mejorada con resaltados!)
+  const achievementsList = [
+    {
+      id: 'gc_master',
+      emoji: '👑',
+      title: 'Rey de Reyes',
+      desc: 'Tener el mejor puntaje (GC) en <span style="color:var(--accent-gold); font-weight:bold; text-shadow:0 0 8px rgba(255,215,0,0.4);">3 o más mesas</span> simultáneamente.',
+      color: 'var(--accent-gold)'
+    },
+    {
+      id: 'table_collector',
+      emoji: '👾',
+      title: 'Explorador Arcade',
+      desc: 'Haber registrado puntajes en <span style="color:var(--accent-cyan); font-weight:bold; text-shadow:0 0 8px rgba(0,229,255,0.4);">5 o más mesas diferentes</span>.',
+      color: 'var(--accent-cyan)'
+    },
+    {
+      id: 'centurion',
+      emoji: '💥',
+      title: 'Centurión',
+      desc: 'Superar los <span style="color:var(--accent-pink); font-weight:bold; text-shadow:0 0 8px rgba(255,0,204,0.4);">100 Millones de puntos (100M)</span> en cualquier mesa.',
+      color: 'var(--accent-pink)'
+    },
+    {
+      id: 'billionaire',
+      emoji: '🌌',
+      title: 'Magnate del Cosmos',
+      desc: 'Superar los <span style="color:#b380ff; font-weight:bold; text-shadow:0 0 8px rgba(138,43,226,0.5);">1.000 Millones (1 Billón)</span> en cualquier mesa.',
+      color: '#8a2be2'
+    },
+    {
+      id: 'constant_player',
+      emoji: '🕹️',
+      title: 'Vicioso del Pinball',
+      desc: 'Haber registrado <span style="color:var(--accent-yellow); font-weight:bold; text-shadow:0 0 8px rgba(255,255,0,0.4);">15 o más puntuaciones totales</span> en el sistema.',
+      color: 'var(--accent-yellow)'
+    },
+    {
+      id: 'weekly_hero',
+      emoji: '🔥',
+      title: 'Héroe de la Semana',
+      desc: 'Haber ganado <span style="color:#ff6b4a; font-weight:bold; text-shadow:0 0 8px rgba(255,107,74,0.4);">al menos un Desafío Semanal</span> de los miércoles.',
+      color: '#ff4500'
+    }
+  ];
+  
+  let html = `
+    <div style="padding:0 2rem 4rem; max-width:1000px; margin:0 auto; text-align:center;">
+      <h2 style="color:var(--accent-cyan); font-family:'Orbitron'; font-size:1.8rem; text-shadow:0 0 10px rgba(0,229,255,0.3); margin-bottom:0.5rem; text-transform:uppercase;">🏆 SISTEMA DE LOGROS Y MEDALLAS</h2>
+      <p style="color:var(--muted); font-size:0.85rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:2.5rem;">Desafíos globales y medallas desbloqueadas por los jugadores</p>
+  `;
+  
+  achievementsList.forEach(ach => {
+    // Filtrar qué jugadores tienen este logro
+    const unlockedPlayers = players.filter(p => {
+      const pAchievements = getUnlockedAchievements(p);
+      return pAchievements.some(a => a.id === ach.id);
+    });
+    
+    html += `
+      <div style="background:var(--card); border:1px solid var(--border); border-radius:8px; padding:1.5rem; margin-bottom:1.5rem; display:flex; align-items:center; justify-content:space-between; gap:20px; box-shadow:0 5px 15px rgba(0,0,0,0.2); text-align:left; flex-wrap:wrap; transition:all 0.2s;" onmouseover="this.style.borderColor='${ach.color}'; this.style.boxShadow='0 0 15px ${ach.color}15';" onmouseout="this.style.borderColor='var(--border)'; this.style.boxShadow='0 5px 15px rgba(0,0,0,0.2)';">
+        <div style="display:flex; align-items:center; gap:18px; flex:1; min-width:280px;">
+          <div style="font-size:2.8rem; background:rgba(255,255,255,0.01); padding:10px; border-radius:50%; border:1px solid ${ach.color}; display:flex; align-items:center; justify-content:center; width:65px; height:65px; box-shadow:0 0 15px ${ach.color}22; filter:drop-shadow(0 0 5px ${ach.color}33); flex-shrink:0;">
+            ${ach.emoji}
+          </div>
+          <div>
+            <h3 style="font-family:'Orbitron'; font-size:1.15rem; color:#fff; margin-bottom:6px; letter-spacing:0.5px;">${ach.title}</h3>
+            <p style="font-size:0.88rem; color:#e2e8f0; line-height:1.5; letter-spacing:0.2px;">${ach.desc}</p>
+          </div>
+        </div>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px; min-width:180px;">
+          <span style="font-size:0.65rem; text-transform:uppercase; letter-spacing:1px; font-family:'Orbitron'; color:var(--accent-gold); font-weight:bold;">Conquistadores:</span>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            ${unlockedPlayers.length > 0 ? unlockedPlayers.map(up => `
+              <span style="background:rgba(255,215,0,0.05); border:1px solid var(--accent-gold); color:var(--accent-gold); padding:3px 10px; border-radius:12px; font-family:'Orbitron'; font-size:0.75rem; font-weight:bold; text-shadow:0 0 4px rgba(255,215,0,0.2);">
+                ${up}
+              </span>
+            `).join('') : `
+              <span style="background:rgba(255,255,255,0.01); border:1px solid var(--border); color:var(--muted); padding:3px 10px; border-radius:12px; font-family:'Orbitron'; font-size:0.75rem;">
+                BLOQUEADO 🔒
+              </span>
+            `}
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  
+  // --- CÁLCULO DE ESTADÍSTICAS LOCAS (DATOS CURIOSOS) ---
+  const funStats = {
+    destronador: { player: '---', count: 0 },
+    sniper: { player: '---', pct: 0 },
+    battleground: { table: '---', gapPct: 100000 },
+    unstoppable: { player: '---', table: '---', gapPct: 0 },
+    dedication: { player: '---', count: 0 },
+    hotTable: { table: '---', count: 0 }
+  };
+  
+  if (allData.length > 0) {
+    // 1. El Destronador (Jugador con más primeros puestos GC)
+    const gcCounts = {};
+    players.forEach(p => gcCounts[p] = 0);
+    ALL_TABLES.forEach(t => {
+      const sorted = allData.filter(r => r.table === t).sort((a,b) => b.score - a.score);
+      if (sorted[0]) {
+        gcCounts[sorted[0].player]++;
+      }
+    });
+    let maxGC = 0;
+    players.forEach(p => {
+      if (gcCounts[p] > maxGC) {
+        maxGC = gcCounts[p];
+        funStats.destronador = { player: p, count: maxGC };
+      }
+    });
+    
+    // 2. Vicio Constante (Jugador con más puntajes totales registrados)
+    let maxCount = 0;
+    players.forEach(p => {
+      const count = allData.filter(r => r.player === p).length;
+      if (count > maxCount) {
+        maxCount = count;
+        funStats.dedication = { player: p, count: maxCount };
+      }
+    });
+    
+    // 3. Mesa Más Popular (Mesa con más registros totales)
+    let maxTableScores = 0;
+    ALL_TABLES.forEach(t => {
+      const count = allData.filter(r => r.table === t).length;
+      if (count > maxTableScores) {
+        maxTableScores = count;
+        funStats.hotTable = { table: t, count: maxTableScores };
+      }
+    });
+    
+    // 4. Frente de Batalla y Récord Inalcanzable (Diferencias porcentuales entre 1° y 2°)
+    let tightestGap = 100000;
+    let largestGap = 0;
+    
+    ALL_TABLES.forEach(t => {
+      const sorted = allData.filter(r => r.table === t).sort((a,b) => b.score - a.score);
+      if (sorted.length >= 2) {
+        const first = sorted[0].score;
+        const second = sorted[1].score;
+        if (second > 0) {
+          const gapPct = ((first - second) / second) * 100;
+          
+          if (gapPct < tightestGap) {
+            tightestGap = gapPct;
+            funStats.battleground = { table: t, gapPct: gapPct.toFixed(1) };
+          }
+          
+          if (gapPct > largestGap) {
+            largestGap = gapPct;
+            funStats.unstoppable = { player: sorted[0].player, table: t, gapPct: gapPct.toFixed(1) };
+          }
+        }
+      }
+    });
+    
+    // 5. El Francotirador (Porcentaje de efectividad de podio)
+    let bestSniperPct = 0;
+    players.forEach(p => {
+      const pScores = allData.filter(r => r.player === p);
+      if (pScores.length > 0) {
+        let top3Count = 0;
+        pScores.forEach(ps => {
+          const tableScores = allData.filter(r => r.table === ps.table).sort((a,b) => b.score - a.score);
+          const rankIndex = tableScores.findIndex(r => r.player === p && r.score === ps.score);
+          if (rankIndex >= 0 && rankIndex < 3) {
+            top3Count++;
+          }
+        });
+        const pct = (top3Count / pScores.length) * 100;
+        if (pct > bestSniperPct) {
+          bestSniperPct = pct;
+          funStats.sniper = { player: p, pct: pct.toFixed(1) };
+        }
+      }
+    });
+  }
+  
+  html += `
+    <div style="margin-top:4.5rem; padding-top:3.5rem; border-top:1px dashed var(--border); text-align:center;">
+      <h2 style="color:var(--accent-pink); font-family:'Orbitron'; font-size:1.6rem; text-shadow:0 0 10px rgba(255,0,204,0.3); margin-bottom:0.5rem; text-transform:uppercase;">🔮 DATOS CURIOSOS DEL SALÓN</h2>
+      <p style="color:var(--muted); font-size:0.85rem; text-transform:uppercase; letter-spacing:1px; margin-bottom:3rem;">Estadísticas locas calculadas automáticamente en tiempo real</p>
+      
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1.5rem; max-width:1000px; margin:0 auto; text-align:left;">
+        
+        <!-- Tarjeta 1: El Destronador -->
+        <div style="background:var(--card); border:1px solid rgba(255,215,0,0.15); border-radius:8px; padding:1.2rem; display:flex; align-items:center; gap:12px; box-shadow:0 5px 15px rgba(0,0,0,0.25); transition:all 0.2s;" onmouseover="this.style.borderColor='var(--accent-gold)';" onmouseout="this.style.borderColor='rgba(255,215,0,0.15)';">
+          <div style="font-size:2.2rem; filter: drop-shadow(0 0 5px rgba(255,215,0,0.4)); flex-shrink:0;">🔨</div>
+          <div>
+            <div style="font-size:0.65rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">EL DESTRONADOR</div>
+            <div style="font-family:'Orbitron'; font-size:1.1rem; color:var(--accent-gold); font-weight:bold; margin:2px 0;">${funStats.destronador.player}</div>
+            <div style="font-size:0.8rem; color:#c1c1c1; line-height:1.4;">Sostiene la corona de Gran Campeón en <strong style="color:#fff; font-family:'Orbitron';">${funStats.destronador.count} mesas</strong> simultáneamente.</div>
+          </div>
+        </div>
+        
+        <!-- Tarjeta 2: El Francotirador -->
+        <div style="background:var(--card); border:1px solid rgba(0,229,255,0.15); border-radius:8px; padding:1.2rem; display:flex; align-items:center; gap:12px; box-shadow:0 5px 15px rgba(0,0,0,0.25); transition:all 0.2s;" onmouseover="this.style.borderColor='var(--accent-cyan)';" onmouseout="this.style.borderColor='rgba(0,229,255,0.15)';">
+          <div style="font-size:2.2rem; filter: drop-shadow(0 0 5px rgba(0,229,255,0.4)); flex-shrink:0;">🎯</div>
+          <div>
+            <div style="font-size:0.65rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">EL FRANCOTIRADOR</div>
+            <div style="font-family:'Orbitron'; font-size:1.1rem; color:var(--accent-cyan); font-weight:bold; margin:2px 0;">${funStats.sniper.player}</div>
+            <div style="font-size:0.8rem; color:#c1c1c1; line-height:1.4;">Efectividad letal: el <strong style="color:#fff; font-family:'Orbitron';">${funStats.sniper.pct}%</strong> de todas sus partidas registradas terminaron en el Podio (Top 3).</div>
+          </div>
+        </div>
+        
+        <!-- Tarjeta 3: Vicio Constante -->
+        <div style="background:var(--card); border:1px solid rgba(255,255,0,0.15); border-radius:8px; padding:1.2rem; display:flex; align-items:center; gap:12px; box-shadow:0 5px 15px rgba(0,0,0,0.25); transition:all 0.2s;" onmouseover="this.style.borderColor='var(--accent-yellow)';" onmouseout="this.style.borderColor='rgba(255,255,0,0.15)';">
+          <div style="font-size:2.2rem; filter: drop-shadow(0 0 5px rgba(255,255,0,0.4)); flex-shrink:0;">🕹️</div>
+          <div>
+            <div style="font-size:0.65rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">VICIO CONSTANTE</div>
+            <div style="font-family:'Orbitron'; font-size:1.1rem; color:var(--accent-yellow); font-weight:bold; margin:2px 0;">${funStats.dedication.player}</div>
+            <div style="font-size:0.8rem; color:#c1c1c1; line-height:1.4;">El más dedicado de las máquinas con un total de <strong style="color:#fff; font-family:'Orbitron';">${funStats.dedication.count} récords</strong> subidos al sistema.</div>
+          </div>
+        </div>
+        
+        <!-- Tarjeta 4: Frente de Batalla -->
+        <div style="background:var(--card); border:1px solid rgba(255,0,204,0.15); border-radius:8px; padding:1.2rem; display:flex; align-items:center; gap:12px; box-shadow:0 5px 15px rgba(0,0,0,0.25); transition:all 0.2s;" onmouseover="this.style.borderColor='var(--accent-pink)';" onmouseout="this.style.borderColor='rgba(255,0,204,0.15)';">
+          <div style="font-size:2.2rem; filter: drop-shadow(0 0 5px rgba(255,0,204,0.4)); flex-shrink:0;">⚡</div>
+          <div>
+            <div style="font-size:0.65rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">FRENTE DE BATALLA</div>
+            <div style="font-family:'Orbitron'; font-size:0.95rem; color:var(--accent-pink); font-weight:bold; margin:2px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;">${getTableDisplayName(funStats.battleground.table)}</div>
+            <div style="font-size:0.8rem; color:#c1c1c1; line-height:1.4;">La mesa más peleada: el puesto #1 y el #2 están separados por un mínimo margen del <strong style="color:#fff; font-family:'Orbitron';">${funStats.battleground.gapPct}%</strong>.</div>
+          </div>
+        </div>
+        
+        <!-- Tarjeta 5: Récord Inalcanzable -->
+        <div style="background:var(--card); border:1px solid rgba(138,43,226,0.20); border-radius:8px; padding:1.2rem; display:flex; align-items:center; gap:12px; box-shadow:0 5px 15px rgba(0,0,0,0.25); transition:all 0.2s;" onmouseover="this.style.borderColor='#8a2be2';" onmouseout="this.style.borderColor='rgba(138,43,226,0.20)';">
+          <div style="font-size:2.2rem; filter: drop-shadow(0 0 5px rgba(138,43,226,0.4)); flex-shrink:0;">🌌</div>
+          <div>
+            <div style="font-size:0.65rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">RÉCORD INALCANZABLE</div>
+            <div style="font-family:'Orbitron'; font-size:0.95rem; color:#a855f7; font-weight:bold; margin:2px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;">${funStats.unstoppable.player}</div>
+            <div style="font-size:0.8rem; color:#c1c1c1; line-height:1.4;">Ventaja aplastante en <span style="color:#fff; font-weight:bold;">${getTableDisplayName(funStats.unstoppable.table)}</span>: le sacó un <strong style="color:#fff; font-family:'Orbitron';">${funStats.unstoppable.gapPct}%</strong> de diferencia al segundo.</div>
+          </div>
+        </div>
+        
+        <!-- Tarjeta 6: Mesa Favorita -->
+        <div style="background:var(--card); border:1px solid rgba(255,69,0,0.15); border-radius:8px; padding:1.2rem; display:flex; align-items:center; gap:12px; box-shadow:0 5px 15px rgba(0,0,0,0.25); transition:all 0.2s;" onmouseover="this.style.borderColor='#ff4500';" onmouseout="this.style.borderColor='rgba(255,69,0,0.15)';">
+          <div style="font-size:2.2rem; filter: drop-shadow(0 0 5px rgba(255,69,0,0.4)); flex-shrink:0;">🔥</div>
+          <div>
+            <div style="font-size:0.65rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px; text-transform:uppercase;">MESA MÁS POPULAR</div>
+            <div style="font-family:'Orbitron'; font-size:0.95rem; color:#ff4500; font-weight:bold; margin:2px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:180px;">${getTableDisplayName(funStats.hotTable.table)}</div>
+            <div style="font-size:0.8rem; color:#c1c1c1; line-height:1.4;">La favorita indiscutida del grupo con un total de <strong style="color:#fff; font-family:'Orbitron';">${funStats.hotTable.count} registros</strong> subidos a la base.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  container.innerHTML = html;
+}
+
+function renderFama() {
+  const grid = document.getElementById('grid-fama');
+  grid.innerHTML = "";
+  
+  // --- CÁLCULO DE CONTROL DE TERRITORIO (DOMINANCIA) ---
+  const players = [...new Set(allData.map(r => r.player))].sort();
+  const gcCounts = {};
+  players.forEach(p => gcCounts[p] = 0);
+  
+  let totalGC = 0;
+  ALL_TABLES.forEach(t => {
+    const best = allData.filter(r => r.table === t).sort((a,b) => b.score - a.score)[0];
+    if (best) {
+      gcCounts[best.player]++;
+      totalGC++;
+    }
+  });
+  
+  const playerColors = {
+    'HER': 'var(--accent-gold)',   // Dorado
+    'ARI': 'var(--accent-cyan)',   // Cian
+    'LAL': 'var(--accent-pink)',   // Rosa
+    'AGU': '#00ff66',              // Verde Neón
+    'VAL': '#b380ff',              // Violeta
+    'LUIS': '#ff4500'              // Naranja
+  };
+  const fallbackColors = ['#00e5ff', '#ff00cc', '#ffd700', '#00ff66', '#b380ff', '#ff4500'];
+  
+  const sortedDominance = Object.keys(gcCounts)
+    .map((p, idx) => {
+      const count = gcCounts[p];
+      const pct = totalGC > 0 ? (count / ALL_TABLES.length) * 100 : 0;
+      const color = playerColors[p] || fallbackColors[idx % fallbackColors.length];
+      return { player: p, count, pct, color };
+    })
+    .sort((a, b) => b.count - a.count);
+    
+  let barHtml = `
+    <div style="display:flex; height:24px; border-radius:12px; overflow:hidden; background:rgba(255,255,255,0.04); border:1px solid var(--border); box-shadow:inset 0 0 10px rgba(0,0,0,0.5); margin-bottom:1rem;">
+  `;
+  
+  sortedDominance.forEach(pd => {
+    if (pd.pct > 0) {
+      barHtml += `
+        <div style="width: ${pd.pct}%; background:${pd.color}; height:100%; display:flex; align-items:center; justify-content:center; color:#000; font-family:'Orbitron'; font-size:0.75rem; font-weight:900; text-shadow:0 1px 1px rgba(255,255,255,0.3); transition:all 0.5s;" title="${pd.player}: ${pd.pct.toFixed(0)}%">
+          ${pd.pct >= 10 ? pd.player : ''}
+        </div>
+       `;
+    }
+  });
+  
+  const vacantPct = totalGC < ALL_TABLES.length ? ((ALL_TABLES.length - totalGC) / ALL_TABLES.length) * 100 : 0;
+  if (vacantPct > 0) {
+    barHtml += `
+      <div style="width: ${vacantPct}%; background:rgba(255,255,255,0.05); height:100%; display:flex; align-items:center; justify-content:center; color:var(--muted); font-family:'Orbitron'; font-size:0.7rem;" title="Mesas Vacantes">
+        VACANTE (${vacantPct.toFixed(0)}%)
+      </div>
+    `;
+  }
+  barHtml += `</div>`;
+  
+  let legendHtml = `<div style="display:flex; justify-content:center; gap:1.2rem; flex-wrap:wrap;">`;
+  sortedDominance.forEach(pd => {
+    if (pd.count > 0) {
+      legendHtml += `
+        <div style="display:flex; align-items:center; gap:8px; background:var(--card); border:1px solid ${pd.color}33; border-radius:20px; padding:4px 12px; box-shadow:0 3px 8px rgba(0,0,0,0.2); transition:all 0.2s;" onmouseover="this.style.borderColor='${pd.color}'; this.style.boxShadow='0 0 10px ${pd.color}22';" onmouseout="this.style.borderColor='${pd.color}33'; this.style.boxShadow='0 3px 8px rgba(0,0,0,0.2)';">
+          <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:${pd.color}; box-shadow:0 0 6px ${pd.color};"></span>
+          <span style="font-family:'Orbitron'; font-size:0.8rem; font-weight:bold; color:#fff;">${pd.player}</span>
+          <span style="font-size:0.75rem; color:var(--muted); margin-left:4px;">${pd.count} ${pd.count === 1 ? 'mesa' : 'mesas'} (${pd.pct.toFixed(0)}%)</span>
+        </div>
+      `;
+    }
+  });
+  legendHtml += `</div>`;
+  
+  const domContainer = document.getElementById('dominance-container');
+  if (domContainer) {
+    if (totalGC > 0) {
+      domContainer.innerHTML = `
+        <h3 style="color:var(--accent-cyan); font-family:'Orbitron'; font-size:1.1rem; text-shadow:0 0 10px rgba(0,229,255,0.2); margin-bottom:1.2rem; text-transform:uppercase; letter-spacing:1px; display:flex; align-items:center; justify-content:center; gap:8px;">
+          ⚔️ CONTROL DE TERRITORIO DEL SALÓN
+        </h3>
+        ${barHtml}
+        ${legendHtml}
+      `;
+    } else {
+      domContainer.innerHTML = "";
+    }
+  }
+  
+  // --- RENDER DE TARJETAS DE MESAS ---
+  ALL_TABLES.forEach(t => {
+    const best = allData.filter(r => r.table === t).sort((a,b) => b.score - a.score)[0];
+    const card = document.createElement('div');
+    card.className = 'fama-card';
+    if (!best) card.classList.add('empty-card');
+    card.onclick = () => { document.getElementById('filter-table').value = t; setView('ranking'); };
+    card.innerHTML = `
+      <div class="fama-title">${getTableDisplayName(t)}</div>
+      ${best ? '<span class="fama-crown">👑</span>' : '<span class="fama-waiting">⏳ VACANTE</span>'}
+      <div class="fama-player" style="color: ${best ? getPlayerColor(best.player) : 'var(--accent-gold)'};">${best ? best.player : '---'}</div>
+      <div class="fama-score">${best ? best.score.toLocaleString('es-AR') : 'SÉ EL PRIMERO'}</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function renderRanking() {
+  const table = document.getElementById('filter-table').value;
+  const data = allData.filter(r => r.table === table).sort((a,b) => b.score - a.score);
+  const body = document.getElementById('body-ranking');
+  body.innerHTML = "";
+  data.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><div class="rank-b">${i+1}</div></td><td style="color:${getPlayerColor(r.player)}; font-weight:bold; font-family:'Orbitron', sans-serif;">${r.player}</td><td class="score-val">${r.score.toLocaleString('es-AR')}</td><td>${r.date}</td>`;
+    body.appendChild(tr);
+  });
+}
+
+function updateChallenge() {
+  const baseDate = new Date('2026-05-06T00:00:00-03:00');
+  const now = new Date();
+  const diffMs = now - baseDate;
+  const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+  let weekIndex = Math.floor(diffMs / msPerWeek);
+  if (diffMs < 0) weekIndex = 0;
+  challengeTable = ALL_TABLES[weekIndex % ALL_TABLES.length];
+  document.getElementById('challenge-name').textContent = getTableDisplayName(challengeTable);
+  const nextWed = new Date(baseDate.getTime() + (weekIndex + 1) * msPerWeek);
+  const left = nextWed - now;
+  const d = Math.floor(left / (1000 * 60 * 60 * 24));
+  const h = Math.floor((left % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  document.getElementById('challenge-timer').textContent = `Faltan ${d}d ${h}h`;
+  
+  // Guardar fechas de la semana actual del desafío para el filtrado por fecha
+  const weekStart = new Date(baseDate.getTime() + weekIndex * msPerWeek);
+  challengeStartStr = getYYYYMMDD(weekStart);
+  challengeEndStr = getYYYYMMDD(nextWed);
+}
+
+function renderChallenge() {
+  const data = allData.filter(r => {
+    return r.table === challengeTable && r.date >= challengeStartStr && r.date < challengeEndStr;
+  }).sort((a,b) => b.score - a.score);
+  
+  const podiumDiv = document.getElementById('podium-desafio');
+  const body = document.getElementById('body-desafio');
+  body.innerHTML = "";
+  
+  if (data.length === 0) {
+    if (podiumDiv) {
+      podiumDiv.innerHTML = `
+        <div style="text-align:center; padding:3rem 2rem; background:var(--card); border:1px dashed var(--border); border-radius:8px; color:var(--muted); margin:0 auto 2rem; max-width:600px; box-shadow:0 0 15px rgba(255,0,204,0.05);">
+          <span style="font-size:3.5rem; display:block; margin-bottom:1rem; filter:drop-shadow(0 0 10px rgba(255,0,204,0.15));">🔥</span>
+          <h4 style="font-family:'Orbitron'; font-size:1.1rem; color:#fff; margin-bottom:5px; letter-spacing:1px;">PODIO SEMANAL VACANTE</h4>
+          <p style="font-size:0.9rem; line-height:1.45;">¡Aún nadie ha registrado récords para el desafío de esta semana! Sé el primero en jugar en tu arcade, subir tus puntajes y coronar la cima del podio.</p>
+        </div>
+      `;
+    }
+    renderChampionsHistory();
+    return;
+  }
+  
+  // Renderizar podio si hay datos
+  if (podiumDiv) {
+    podiumDiv.innerHTML = "";
+    const top3 = data.slice(0, 3);
+    let html = `<div class="podium-container">`;
+    
+    // Renderizado visual: 2do puesto, 1er puesto, 3er puesto
+    const visualOrder = [];
+    if (top3[1]) visualOrder.push({ pos: 2, item: top3[1], color: '#d1d1d1', text: '2ND PLACE', emoji: '🥈' });
+    if (top3[0]) visualOrder.push({ pos: 1, item: top3[0], color: 'var(--accent-gold)', text: 'CHAMPION', emoji: '👑' });
+    if (top3[2]) visualOrder.push({ pos: 3, item: top3[2], color: '#cd7f32', text: '3RD PLACE', emoji: '🥉' });
+    
+    visualOrder.forEach(p => {
+      html += `
+        <div class="podium-card pos-${p.pos}" style="border:1px solid ${p.color}; box-shadow: 0 0 20px ${p.color}15;">
+          <span class="emoji-span" style="filter: drop-shadow(0 0 5px ${p.color}44);">${p.emoji}</span>
+          <div class="info-wrap">
+            <span class="text-span" style="color:${p.color};">${p.text}</span>
+            <div class="player-name" style="color:${getPlayerColor(p.item.player)}; text-shadow: 0 0 8px ${getPlayerColor(p.item.player)}44;">${p.item.player}</div>
+            <div class="score-span">${p.item.score.toLocaleString('es-AR')}</div>
+            <span class="date-span">${p.item.date}</span>
+          </div>
+        </div>
+      `;
+    });
+    html += `</div>`;
+    podiumDiv.innerHTML = html;
+  }
+  
+  // Renderizar la tabla de puntuaciones debajo
+  data.forEach((r, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><div class="rank-b">${i+1}</div></td><td style="color:${getPlayerColor(r.player)}; font-weight:bold; font-family:'Orbitron', sans-serif;">${r.player}</td><td class="score-val">${r.score.toLocaleString('es-AR')}</td><td>${r.date}</td>`;
+    body.appendChild(tr);
+  });
+  
+  renderChampionsHistory();
+}
+
+function renderActualizaciones() {
+  const container = document.getElementById('lista-actualizaciones');
+  container.innerHTML = "";
+  
+  if (actualizacionesData.length === 0) {
+    container.innerHTML = `
+      <div style="grid-column: 1/-1; text-align:center; padding:4rem 2rem; background:var(--card); border:1px dashed var(--border); border-radius:8px; color:var(--muted);">
+        <span style="font-size:3.5rem; display:block; margin-bottom:1rem; filter:drop-shadow(0 0 10px rgba(0,229,255,0.2));">📦</span>
+        <h4 style="font-family:'Orbitron'; font-size:1.1rem; color:#fff; margin-bottom:5px;">NO HAY ACTUALIZACIONES EN LA NUBE</h4>
+        <p style="font-size:0.9rem;">Sé el primero en publicar un archivo o mesa presionando el botón rosa arriba a la derecha.</p>
+      </div>
+    `;
+    return;
+  }
+  
+  actualizacionesData.forEach(act => {
+    const card = document.createElement('div');
+    card.style.background = "var(--card)";
+    card.style.border = "1px solid var(--border)";
+    card.style.borderRadius = "8px";
+    card.style.padding = "1.5rem";
+    card.style.display = "flex";
+    card.style.flexDirection = "column";
+    card.style.justifyContent = "space-between";
+    card.style.transition = "all 0.2s";
+    
+    card.onmouseover = () => {
+      card.style.borderColor = "var(--accent-cyan)";
+      card.style.transform = "translateY(-2px)";
+      card.style.boxShadow = "0 5px 15px rgba(0,229,255,0.05)";
+    };
+    card.onmouseout = () => {
+      card.style.borderColor = "var(--border)";
+      card.style.transform = "none";
+      card.style.boxShadow = "none";
+    };
+    
+    let colorCat = "var(--accent-cyan)";
+    if (act.categoria === "Sistema completo") colorCat = "var(--accent-pink)";
+    if (act.categoria === "ROM / NVRAM") colorCat = "var(--accent-yellow)";
+    
+    const dateFormatted = new Date(act.fecha).toLocaleDateString('es-AR', {
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+    
+    card.innerHTML = `
+      <div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.2rem;">
+          <span style="font-size:0.65rem; text-transform:uppercase; letter-spacing:1px; padding:3px 10px; border-radius:12px; background:rgba(255,255,255,0.03); border:1px solid ${colorCat}; color:${colorCat}; font-weight:bold; font-family:'Orbitron';">
+            ${act.categoria}
+          </span>
+          <span style="font-size:0.8rem; font-family:'Orbitron'; color:var(--accent-gold); font-weight:bold;">${act.version || ''}</span>
+        </div>
+        <h3 style="font-family:'Orbitron'; font-size:1.15rem; margin-bottom:0.6rem; color:#fff; word-break:break-all;">${act.nombre_archivo}</h3>
+        <p style="font-size:0.9rem; color:var(--text); opacity:0.85; margin-bottom:1.8rem; line-height:1.45; font-family:sans-serif; min-height:40px;">${act.descripcion || 'Sin descripción disponible.'}</p>
+      </div>
+      <div style="border-top:1px solid var(--border); padding-top:1.2rem; display:flex; justify-content:space-between; align-items:center;">
+        <div style="font-size:0.8rem; color:var(--muted); line-height:1.3;">
+          Subido por <span style="color:var(--accent-gold); font-weight:bold; font-family:'Orbitron';">${act.subido_por}</span><br>
+          <span style="font-size:0.7rem; color:var(--muted); opacity:0.7;">${dateFormatted}</span>
+        </div>
+        <a href="${act.url_descarga}" target="_blank" onclick="playRetroSound('powerup')" style="text-decoration:none; background:rgba(0, 229, 255, 0.08); border:1px solid var(--accent-cyan); color:var(--accent-cyan); padding:0.6rem 1.1rem; border-radius:4px; font-family:'Orbitron'; font-size:0.75rem; font-weight:bold; letter-spacing:1px; transition:all 0.2s; cursor:pointer;" onmouseover="this.style.background='var(--accent-cyan)'; this.style.color='#000'; this.style.boxShadow='0 0 10px rgba(0,229,255,0.3)';" onmouseout="this.style.background='rgba(0, 229, 255, 0.08)'; this.style.color='var(--accent-cyan)'; this.style.boxShadow='none';">
+          DESCARGAR
+        </a>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function showAdminModal() {
+  document.getElementById('admin-modal').style.display = "flex";
+  if (isAdminLoggedIn) {
+    document.getElementById('admin-login-box').style.display = "none";
+    document.getElementById('admin-upload-box').style.display = "block";
+  } else {
+    document.getElementById('admin-login-box').style.display = "block";
+    document.getElementById('admin-upload-box').style.display = "none";
+  }
+}
+
+function closeAdminModal() {
+  document.getElementById('admin-modal').style.display = "none";
+  document.getElementById('login-error').style.display = "none";
+  document.getElementById('upload-error').style.display = "none";
+}
+
+function loginAdmin() {
+  const user = document.getElementById('admin-user').value.trim().toLowerCase();
+  const pass = document.getElementById('admin-pass').value.trim();
+  
+  if ((user === "admin" || user === "vp3" || user === "usuario vp3") && pass === "vp3") {
+    isAdminLoggedIn = true;
+    document.getElementById('admin-login-box').style.display = "none";
+    document.getElementById('admin-upload-box').style.display = "block";
+    document.getElementById('login-error').style.display = "none";
+  } else {
+    document.getElementById('login-error').style.display = "block";
+  }
+}
+
+async function submitUpdate() {
+  const name = document.getElementById('up-name').value.trim();
+  const category = document.getElementById('up-category').value;
+  const version = document.getElementById('up-version').value.trim();
+  const author = document.getElementById('up-author').value;
+  const url = document.getElementById('up-url').value.trim();
+  const desc = document.getElementById('up-desc').value.trim();
+  const errBox = document.getElementById('upload-error');
+  
+  if (!name || !url) {
+    errBox.textContent = "⚠️ El nombre de archivo y el enlace son obligatorios.";
+    errBox.style.display = "block";
+    return;
+  }
+  
+  try {
+    // Borrar cualquier versión anterior con el mismo nombre de archivo para evitar duplicados
+    await fetch(`${SUPABASE_URL}/rest/v1/actualizaciones?nombre_archivo=eq.${encodeURIComponent(name)}`, {
+      method: "DELETE",
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/actualizaciones`, {
+      method: "POST",
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify({
+        nombre_archivo: name,
+        categoria: category,
+        descripcion: desc,
+        version: version,
+        url_descarga: url,
+        subido_por: author
+      })
+    });
+    
+    if (response.ok) {
+      closeAdminModal();
+      // Resetear campos
+      document.getElementById('up-name').value = "";
+      document.getElementById('up-version').value = "";
+      document.getElementById('up-url').value = "";
+      document.getElementById('up-desc').value = "";
+      
+      // Recargar datos y renderizar
+      await fetchActualizaciones();
+      if (currentView === 'actualizaciones') {
+        renderActualizaciones();
+      }
+    } else {
+      const errText = await response.text();
+      throw new Error(errText);
+    }
+  } catch (e) {
+    console.error(e);
+    errBox.textContent = "⚠️ Error al guardar en Supabase. Verifica que se haya ejecutado la consulta SQL.";
+    errBox.style.display = "block";
+  }
+}
+
+// CONTEXTO DE AUDIO PARA EFECTOS DE SONIDO RETRO
+let audioCtx = null;
+
+// SINTETIZADOR DE EFECTOS DE SONIDO RETRO (Volumen booster premium)
+function playRetroSound(type) {
+  try {
+    const ctx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    if (!audioCtx) audioCtx = ctx;
+    
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+    
+    const now = ctx.currentTime;
+    
+    if (type === 'coin') {
+      // Clásico doble tono de moneda arcade (gong-gong) - ¡Volumen Booster!
+      const notes = [987.77, 1318.51]; // B5 y E6
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'square';
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        
+        osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+        gain.gain.setValueAtTime(0.30, now + idx * 0.08); // Volumen al 30% para que suene de maravilla
+        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.3);
+        
+        osc.start(now + idx * 0.08);
+        osc.stop(now + idx * 0.08 + 0.35);
+      });
+    } else if (type === 'click') {
+      // Un click mecánico de arcade súper satisfactorio con barrido rápido descendente (¡Punchy!)
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.frequency.setValueAtTime(1600, now);
+      osc.frequency.exponentialRampToValueAtTime(800, now + 0.06);
+      
+      gain.gain.setValueAtTime(0.40, now); // ¡Super Volumen al 40%! Muy claro, limpio y agradable
+      gain.gain.linearRampToValueAtTime(0.0001, now + 0.06);
+      
+      osc.start(0);
+      osc.stop(now + 0.07);
+    } else if (type === 'powerup') {
+      // Barrido de láser ascendente para descargas
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.frequency.setValueAtTime(200, now);
+      osc.frequency.exponentialRampToValueAtTime(1000, now + 0.35);
+      
+      gain.gain.setValueAtTime(0.22, now); // Volumen booster al 22%
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      
+      osc.start(now);
+      osc.stop(now + 0.35);
+    }
+  } catch (err) {
+    console.error("Audio error:", err);
+  }
+}
+
+// Escuchar el primer clic en el documento para dar la bienvenida con el sonido de ficha
+document.addEventListener('click', function welcomeSound() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  playRetroSound('coin');
+  document.removeEventListener('click', welcomeSound);
+}, { once: true });
+
+// RENDERIZAR DINÁMICAMENTE EL HISTORIAL DE CAMPEONES SEMANALES (SALÓN DE CAMPEONES)
+function renderChampionsHistory() {
+  const container = document.getElementById('historial-campeones');
+  if (!container) return;
+  container.innerHTML = "";
+  
+  const baseDate = new Date('2026-05-06T00:00:00-03:00');
+  const now = new Date();
+  const diffMs = now - baseDate;
+  const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+  let currentWeekIndex = Math.floor(diffMs / msPerWeek);
+  if (diffMs < 0) currentWeekIndex = 0;
+  
+  // Listar todas las semanas pasadas ya finalizadas (desde 0 hasta la anterior a la actual)
+  if (currentWeekIndex === 0) {
+    container.innerHTML = `
+      <div style="text-align:center; padding:1.5rem; background:rgba(255,255,255,0.01); border:1px dashed var(--border); border-radius:8px; color:var(--muted); font-size:0.85rem; max-width:600px; margin:0 auto;">
+        ⏳ El historial de desafíos semanales se poblará automáticamente cada miércoles al finalizar el desafío actual.
+      </div>
+    `;
+    return;
+  }
+  
+  let html = `<h3 style="font-family:'Orbitron'; font-size:1rem; color:var(--accent-pink); margin-bottom:1.5rem; text-align:center; letter-spacing:1px; text-transform:uppercase; text-shadow:0 0 10px rgba(255,0,204,0.15);">🏆 SALÓN DE CAMPEONES SEMANALES</h3>`;
+  html += `<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap:1.2rem; max-width:800px; margin:0 auto; text-align:left;">`;
+  
+  // Recorrer en reversa desde la última semana completada hacia atrás
+  for (let w = currentWeekIndex - 1; w >= 0; w--) {
+    const wStart = new Date(baseDate.getTime() + w * msPerWeek);
+    const wEnd = new Date(baseDate.getTime() + (w + 1) * msPerWeek);
+    const table = ALL_TABLES[w % ALL_TABLES.length];
+    
+    const startStr = getYYYYMMDD(wStart);
+    const endStr = getYYYYMMDD(wEnd);
+    
+    // Obtener los puntajes logrados en esa mesa durante esa semana específica
+    const weekScores = allData.filter(r => r.table === table && r.date >= startStr && r.date < endStr)
+                              .sort((a,b) => b.score - a.score);
+                              
+    const winner = weekScores[0]; // El primer puesto de esa semana es el campeón
+    
+    // Formatear rango de fechas visible de forma amigable (restando un día al final para que coincida con el martes fin)
+    const displayEndDate = getYYYYMMDD(new Date(wEnd.getTime() - 24 * 60 * 60 * 1000));
+    
+    html += `
+      <div style="background:var(--card); border:1px solid var(--border); border-radius:8px; padding:1.2rem; display:flex; align-items:center; gap:12px; box-shadow:0 5px 15px rgba(0,0,0,0.3); transition:all 0.2s;" onmouseover="this.style.borderColor='var(--accent-gold)'; this.style.boxShadow='0 0 15px rgba(255,191,0,0.15)';" onmouseout="this.style.borderColor='var(--border)'; this.style.boxShadow='0 5px 15px rgba(0,0,0,0.3)';">
+        <div style="font-size:2.2rem; filter: drop-shadow(0 0 5px rgba(255,191,0,0.4));">🏆</div>
+        <div style="flex:1; overflow:hidden;">
+          <div style="font-size:0.65rem; color:var(--muted); font-family:'Orbitron'; font-weight:bold; letter-spacing:0.5px;">SEMANA ${w + 1} (${startStr} al ${displayEndDate})</div>
+          <div style="font-family:'Orbitron'; font-size:0.85rem; color:#fff; font-weight:700; margin:2px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Mesa: ${table}</div>
+          <div style="font-size:0.8rem; color:var(--text); opacity:0.9;">
+            Campeón: <strong style="color:var(--accent-gold); font-family:'Orbitron'; font-size:0.9rem;">${winner ? winner.player : 'VACANTE'}</strong>
+            ${winner ? `<br><span style="color:var(--accent-yellow); font-family:'Orbitron'; font-size:0.75rem;">${winner.score.toLocaleString('es-AR')} pts</span>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  html += `</div>`;
+  container.innerHTML = html;
+}
+
+fetchData();
+setInterval(fetchData, 60000);
+</script>
+</body>
+</html>
