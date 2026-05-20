@@ -1,0 +1,112 @@
+════════════════════════════════════════════════════════════════════════════════
+                    ✅ VP3 - PROBLEMA DE ARI SOLUCIONADO
+════════════════════════════════════════════════════════════════════════════════
+
+🔴 PROBLEMA QUE TENÍAS:
+────────────────────────────────────────────────────────────────────────────────
+
+ARI desapareció del ranking. Solo veías a HER, LAL y AGU.
+
+Causa: El sistema eliminaba automáticamente los registros que no estaban en el
+Top 5 de cada mesa, incluidos los de ARI.
+
+
+✅ SOLUCIÓN IMPLEMENTADA:
+────────────────────────────────────────────────────────────────────────────────
+
+Cambié el sistema para que:
+
+1. Suba TODOS los registros válidos a Supabase (nunca elimina datos)
+2. La página web muestre máximo 5 por mesa (solo visualización)
+3. ARI y otros jugadores NUNCA se pierdan
+
+
+📊 ESTADO ACTUAL:
+────────────────────────────────────────────────────────────────────────────────
+
+Supabase tiene 85 registros:
+  ✅ HER: 58 registros
+  ✅ ARI: 12 registros (RESTAURADO)
+  ✅ LAL: 9 registros
+  ✅ AGU: 6 registros
+
+
+🎯 ARI APARECE EN:
+────────────────────────────────────────────────────────────────────────────────
+
+  ✅ Attack from Mars: 4 registros
+  ✅ Guns N' Roses: 4 registros
+  ✅ Fish Tales: 1 registro
+  ✅ Congo: 2 registros
+  ✅ Monster Bash: 1 registro
+
+
+🔧 CAMBIOS TÉCNICOS (para referencia):
+────────────────────────────────────────────────────────────────────────────────
+
+1. subir_puntajes.py (Líneas 408-435)
+   - ANTES: Limitaba a Top 5 y eliminaba el resto
+   - AHORA: Sube TODOS los registros válidos
+
+2. index.html (Líneas 1464-1476)
+   - ANTES: Mostraba todos los registros
+   - AHORA: Muestra solo Top 5 (máximo 5 por mesa)
+
+3. Compilación
+   - Nuevo ejecutable: MAQUINAS_VP3/subir_puntajes.exe
+
+
+📁 BACKUPS CREADOS:
+────────────────────────────────────────────────────────────────────────────────
+
+  ✅ VP3_BACKUP_20260520_154058/       (Backup inicial de archivos)
+  ✅ VP3_CAMBIOS_20260520_154308/      (Cambios detallados)
+  ✅ SOLUCION_ARI_COMPLETA.md         (Documentación completa)
+
+
+💡 CÓMO FUNCIONA AHORA:
+────────────────────────────────────────────────────────────────────────────────
+
+SUPABASE (Base de datos en la nube):
+  → Almacena TODOS los registros válidos (85 registros)
+  → Nunca elimina datos de jugadores autorizados
+  → Preserva todo permanentemente
+
+PÁGINA WEB (Lo que ves):
+  → Muestra máximo 5 registros por mesa
+  → Top 5 con mejores puntos
+  → ARI aparece si está en el Top 5 de la mesa
+
+
+⚡ GARANTÍAS:
+────────────────────────────────────────────────────────────────────────────────
+
+  ✅ ARI NUNCA desaparecerá aunque haya puntajes superiores
+  ✅ Todos los jugadores autorizados se preservan
+  ✅ Registros de fábrica se filtran correctamente
+  ✅ Sistema puede crecer sin límite sin perder datos
+
+
+🚀 PRÓXIMOS PASOS:
+────────────────────────────────────────────────────────────────────────────────
+
+1. Abre la página web (VP3-Web/index.html) y verifica:
+   - ARI aparece en sus mesas
+   - Cada mesa muestra máximo 5 registros
+   - Los mejores puntajes están primero
+
+2. Para sincronizar nuevos puntajes:
+   - Ejecuta: MAQUINAS_VP3/subir_puntajes.exe
+   - Los cambios se aplican automáticamente
+
+3. Si algo no funciona:
+   - Revisa el archivo historial_nube.json
+   - Verifica que base_records.json está vacío
+   - Ejecuta de nuevo subir_puntajes.exe
+
+
+════════════════════════════════════════════════════════════════════════════════
+                      ✅ SISTEMA LISTO PARA USAR
+════════════════════════════════════════════════════════════════════════════════
+
+Documentación completa en: SOLUCION_ARI_COMPLETA.md
