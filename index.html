@@ -1466,7 +1466,9 @@ function renderRanking() {
   const data = allData.filter(r => r.table === table).sort((a,b) => b.score - a.score);
   const body = document.getElementById('body-ranking');
   body.innerHTML = "";
-  data.forEach((r, i) => {
+  // LIMITADO AL TOP 5 POR MESA
+  const top5 = data.slice(0, 5);
+  top5.forEach((r, i) => {
     const tr = document.createElement('tr');
     tr.innerHTML = `<td><div class="rank-b">${i+1}</div></td><td style="color:${getPlayerColor(r.player)}; font-weight:bold; font-family:'Orbitron', sans-serif;">${r.player}</td><td class="score-val">${r.score.toLocaleString('es-AR')}</td><td>${r.date}</td>`;
     body.appendChild(tr);

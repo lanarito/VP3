@@ -407,10 +407,19 @@ def procesar_y_subir():
 
         filas_finales = []
         nuevos_top5 = [] # PARA NOTIFICAR
+
         for mesa_nombre, recs in mesas_agrupadas.items():
             recs.sort(key=lambda x: x["Puntaje"], reverse=True)
-            for i, r in enumerate(recs[:5]): # LIMITADO AL TOP 5 GLOBAL
-                pos = "Gran Campeon" if i == 0 else f"{i+1}ro"
+            # SUBIR TODOS LOS REGISTROS VÁLIDOS (sin límite de Top 5)
+            # El filtrado al Top 5 se hará en la web (JavaScript)
+            for i, r in enumerate(recs):
+                # Asignar posición: Top 5 obtiene posición en Supabase
+                if i < 5:
+                    pos = "Gran Campeon" if i == 0 else f"{i+1}ro"
+                else:
+                    # Registros fuera del Top 5 se guardan con su posición real pero son opcionales en la web
+                    pos = f"{i+1}to"
+
                 filas_finales.append({
                     "id_record": r["ID_Record"],
                     "mesa": r["Mesa"],
@@ -420,7 +429,7 @@ def procesar_y_subir():
                     "fecha": r["Fecha"]
                 })
                 # Notificar si este record entró al Top 5 y no estaba en la nube
-                if r["ID_Record"] not in ids_nube:
+                if i < 5 and r["ID_Record"] not in ids_nube:
                     nuevos_top5.append((r, pos))
         
         # 4. Notificar por WhatsApp de manera correcta
@@ -439,15 +448,10 @@ def procesar_y_subir():
             req_ups = urllib.request.Request(SUPABASE_URL, data=data, headers=headers_upsert, method="POST")
             urllib.request.urlopen(req_ups)
 
-            # Limpiar registros que ya no están en el Top 5 (si falla, se limpian en el próximo ciclo)
-            ids_finales = ",".join(r["id_record"] for r in filas_finales)
-            try:
-                req_del = urllib.request.Request(
-                    f"{SUPABASE_URL}?id_record=not.in.({ids_finales})",
-                    headers=headers, method="DELETE"
-                )
-                urllib.request.urlopen(req_del)
-            except: pass
+            # IMPORTANTE: Se suben TODOS los registros válidos a Supabase
+            # El filtrado al Top 5 se realiza en el lado del cliente (web)
+            # Esto asegura que no se pierdan registros de jugadores válidos
+            print(f"✅ Supabase sincronizado con {len(filas_finales)} registros totales")
             
             # Guardar el nuevo estado de la nube en el historial local
             try:

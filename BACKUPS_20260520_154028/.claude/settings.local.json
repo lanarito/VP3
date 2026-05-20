@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Copy-Item \"c:\\\\Github repos\\\\VP3 COMPLETO\\\\subir_puntajes.py\" \"c:\\\\Github repos\\\\VP3 COMPLETO\\\\MAQUINAS_VP3\\\\subir_puntajes.py\" -Force)",
+      "Bash(Copy-Item \"c:\\\\Github repos\\\\VP3 COMPLETO\\\\RESET_NUBE.py\" \"c:\\\\Github repos\\\\VP3 COMPLETO\\\\MAQUINAS_VP3\\\\RESET_NUBE.py\" -Force)",
+      "Bash(Copy-Item \"c:\\\\Github repos\\\\VP3 COMPLETO\\\\config.ini\" \"c:\\\\Github repos\\\\VP3 COMPLETO\\\\MAQUINAS_VP3\\\\config.ini\" -Force)",
+      "Bash(Write-Host \"Archivos copiados OK\")",
+      "PowerShell(Copy-Item \"c:\\\\Github repos\\\\VP3 COMPLETO\\\\subir_puntajes.py\" \"c:\\\\Github repos\\\\VP3 COMPLETO\\\\MAQUINAS_VP3\\\\subir_puntajes.py\" -Force)",
+      "PowerShell(Copy-Item \"c:\\\\Github repos\\\\VP3 COMPLETO\\\\RESET_NUBE.py\" \"c:\\\\Github repos\\\\VP3 COMPLETO\\\\MAQUINAS_VP3\\\\RESET_NUBE.py\" -Force)",
+      "PowerShell(Copy-Item \"c:\\\\Github repos\\\\VP3 COMPLETO\\\\config.ini\" \"c:\\\\Github repos\\\\VP3 COMPLETO\\\\MAQUINAS_VP3\\\\config.ini\" -Force)"
+    ]
+  }
+}
