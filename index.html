@@ -1614,18 +1614,63 @@ function renderActualizaciones() {
         <h3 style="font-family:'Orbitron'; font-size:1.15rem; margin-bottom:0.6rem; color:#fff; word-break:break-all;">${act.nombre_archivo}</h3>
         <p style="font-size:0.9rem; color:var(--text); opacity:0.85; margin-bottom:1.8rem; line-height:1.45; font-family:sans-serif; min-height:40px;">${act.descripcion || 'Sin descripción disponible.'}</p>
       </div>
-      <div style="border-top:1px solid var(--border); padding-top:1.2rem; display:flex; justify-content:space-between; align-items:center;">
+      <div style="border-top:1px solid var(--border); padding-top:1.2rem; display:flex; justify-content:space-between; align-items:center; gap:0.5rem; flex-wrap:wrap;">
         <div style="font-size:0.8rem; color:var(--muted); line-height:1.3;">
           Subido por <span style="color:var(--accent-gold); font-weight:bold; font-family:'Orbitron';">${act.subido_por}</span><br>
           <span style="font-size:0.7rem; color:var(--muted); opacity:0.7;">${dateFormatted}</span>
         </div>
-        <a href="${act.url_descarga}" target="_blank" onclick="playRetroSound('powerup')" style="text-decoration:none; background:rgba(0, 229, 255, 0.08); border:1px solid var(--accent-cyan); color:var(--accent-cyan); padding:0.6rem 1.1rem; border-radius:4px; font-family:'Orbitron'; font-size:0.75rem; font-weight:bold; letter-spacing:1px; transition:all 0.2s; cursor:pointer;" onmouseover="this.style.background='var(--accent-cyan)'; this.style.color='#000'; this.style.boxShadow='0 0 10px rgba(0,229,255,0.3)';" onmouseout="this.style.background='rgba(0, 229, 255, 0.08)'; this.style.color='var(--accent-cyan)'; this.style.boxShadow='none';">
-          DESCARGAR
-        </a>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <a href="${act.url_descarga}" target="_blank" onclick="playRetroSound('powerup')" style="text-decoration:none; background:rgba(0, 229, 255, 0.08); border:1px solid var(--accent-cyan); color:var(--accent-cyan); padding:0.6rem 1.1rem; border-radius:4px; font-family:'Orbitron'; font-size:0.75rem; font-weight:bold; letter-spacing:1px; transition:all 0.2s; cursor:pointer;" onmouseover="this.style.background='var(--accent-cyan)'; this.style.color='#000'; this.style.boxShadow='0 0 10px rgba(0,229,255,0.3)';" onmouseout="this.style.background='rgba(0, 229, 255, 0.08)'; this.style.color='var(--accent-cyan)'; this.style.boxShadow='none';">
+            DESCARGAR
+          </a>
+          ${isAdminLoggedIn ? `
+          <button onclick="borrarActualizacion('${act.nombre_archivo.replace(/'/g, "\\'")}', '${act.subido_por}')" style="background:rgba(255, 0, 80, 0.1); border:1px solid #ff0050; color:#ff0050; padding:0.6rem 1.1rem; border-radius:4px; font-family:'Orbitron'; font-size:0.75rem; font-weight:bold; letter-spacing:1px; transition:all 0.2s; cursor:pointer;" onmouseover="this.style.background='#ff0050'; this.style.color='#fff'; this.style.boxShadow='0 0 10px rgba(255,0,80,0.4)';" onmouseout="this.style.background='rgba(255, 0, 80, 0.1)'; this.style.color='#ff0050'; this.style.boxShadow='none';">
+            🗑️ BORRAR
+          </button>
+          ` : ''}
+        </div>
       </div>
     `;
     container.appendChild(card);
   });
+}
+
+async function borrarActualizacion(nombreArchivo, subidoPor) {
+  if (!isAdminLoggedIn) {
+    alert("Necesitás iniciar sesión como admin para borrar.");
+    return;
+  }
+
+  const confirmacion = confirm(`¿Seguro que querés BORRAR "${nombreArchivo}"?\n\nSubido por: ${subidoPor}\n\nEsta acción no se puede deshacer.`);
+  if (!confirmacion) return;
+
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/actualizaciones?nombre_archivo=eq.${encodeURIComponent(nombreArchivo)}`, {
+      method: "DELETE",
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`
+      }
+    });
+
+    if (response.ok) {
+      playRetroSound('coin');
+      alert(`✅ "${nombreArchivo}" borrado correctamente.`);
+      // Recargar la lista
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/actualizaciones?select=*`, {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+      });
+      if (res.ok) {
+        actualizacionesData = await res.json();
+        actualizacionesData.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+        renderActualizaciones();
+      }
+    } else {
+      alert(`❌ Error al borrar: ${response.statusText}`);
+    }
+  } catch (e) {
+    alert(`❌ Error: ${e.message}`);
+  }
 }
 
 function showAdminModal() {
