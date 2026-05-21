@@ -1623,11 +1623,9 @@ function renderActualizaciones() {
           <a href="${act.url_descarga}" target="_blank" onclick="playRetroSound('powerup')" style="text-decoration:none; background:rgba(0, 229, 255, 0.08); border:1px solid var(--accent-cyan); color:var(--accent-cyan); padding:0.6rem 1.1rem; border-radius:4px; font-family:'Orbitron'; font-size:0.75rem; font-weight:bold; letter-spacing:1px; transition:all 0.2s; cursor:pointer;" onmouseover="this.style.background='var(--accent-cyan)'; this.style.color='#000'; this.style.boxShadow='0 0 10px rgba(0,229,255,0.3)';" onmouseout="this.style.background='rgba(0, 229, 255, 0.08)'; this.style.color='var(--accent-cyan)'; this.style.boxShadow='none';">
             DESCARGAR
           </a>
-          ${isAdminLoggedIn ? `
           <button onclick="borrarActualizacion('${act.nombre_archivo.replace(/'/g, "\\'")}', '${act.subido_por}')" style="background:rgba(255, 0, 80, 0.1); border:1px solid #ff0050; color:#ff0050; padding:0.6rem 1.1rem; border-radius:4px; font-family:'Orbitron'; font-size:0.75rem; font-weight:bold; letter-spacing:1px; transition:all 0.2s; cursor:pointer;" onmouseover="this.style.background='#ff0050'; this.style.color='#fff'; this.style.boxShadow='0 0 10px rgba(255,0,80,0.4)';" onmouseout="this.style.background='rgba(255, 0, 80, 0.1)'; this.style.color='#ff0050'; this.style.boxShadow='none';">
             🗑️ BORRAR
           </button>
-          ` : ''}
         </div>
       </div>
     `;
@@ -1636,11 +1634,6 @@ function renderActualizaciones() {
 }
 
 async function borrarActualizacion(nombreArchivo, subidoPor) {
-  if (!isAdminLoggedIn) {
-    alert("Necesitás iniciar sesión como admin para borrar.");
-    return;
-  }
-
   const confirmacion = confirm(`¿Seguro que querés BORRAR "${nombreArchivo}"?\n\nSubido por: ${subidoPor}\n\nEsta acción no se puede deshacer.`);
   if (!confirmacion) return;
 
