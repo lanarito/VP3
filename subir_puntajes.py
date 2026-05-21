@@ -453,11 +453,31 @@ def procesar_y_subir():
             # Esto asegura que no se pierdan registros de jugadores válidos
             print(f"✅ Supabase sincronizado con {len(filas_finales)} registros totales")
             
-            # Guardar el nuevo estado de la nube en el historial local
+            # Guardar el HISTORIAL COMPLETO (no solo lo que se sincronizó en esta ejecución)
+            # Esto previene pérdida de datos si registros no están en máquinas locales
+            historial_anterior = []
+            try:
+                with open("historial_nube.json", "r") as f:
+                    historial_anterior = json.load(f)
+            except:
+                pass
+
+            # Combinar: mantener registros anteriores + agregar/actualizar con nuevos
+            ids_nuevos = {r["id_record"] for r in filas_finales}
+            historial_combinado = []
+
+            # Primero: mantener registros antiguos que no estén siendo actualizados
+            for r_ant in historial_anterior:
+                if r_ant["id_record"] not in ids_nuevos:
+                    historial_combinado.append(r_ant)
+
+            # Segundo: agregar todos los registros nuevos/actualizados
+            historial_combinado.extend(filas_finales)
+
             try:
                 with open("historial_nube.json", "w") as f:
-                    json.dump(filas_finales, f, indent=4)
-                print("💾 Historial local de la nube guardado (historial_nube.json).")
+                    json.dump(historial_combinado, f, indent=4)
+                print(f"💾 Historial local guardado: {len(historial_combinado)} registros totales (preservando antiguos + nuevos).")
             except Exception as e:
                 print(f"⚠️ No se pudo guardar historial_nube.json: {e}")
         else:

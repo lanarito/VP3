@@ -1,0 +1,282 @@
+[
+    {
+        "id_record": "AF-ARI-8557814470",
+        "mesa": "Attack from Mars",
+        "posicion": "Gran Campeon",
+        "jugador": "ARI",
+        "puntaje": 8557814470,
+        "fecha": "2026-05-07"
+    },
+    {
+        "id_record": "AF-ARI-5415198940",
+        "mesa": "Attack from Mars",
+        "posicion": "2ro",
+        "jugador": "ARI",
+        "puntaje": 5415198940,
+        "fecha": "2026-05-07"
+    },
+    {
+        "id_record": "AF-ARI-3969533800",
+        "mesa": "Attack from Mars",
+        "posicion": "3ro",
+        "jugador": "ARI",
+        "puntaje": 3969533800,
+        "fecha": "2026-05-07"
+    },
+    {
+        "id_record": "AF-ARI-3546618310",
+        "mesa": "Attack from Mars",
+        "posicion": "4ro",
+        "jugador": "ARI",
+        "puntaje": 3546618310,
+        "fecha": "2026-05-09"
+    },
+    {
+        "id_record": "AF-AGU-3190195380",
+        "mesa": "Attack from Mars",
+        "posicion": "5ro",
+        "jugador": "AGU",
+        "puntaje": 3190195380,
+        "fecha": "2026-05-09"
+    },
+    {
+        "id_record": "CF-HER-37372640",
+        "mesa": "Creature from the Black Lagoon",
+        "posicion": "Gran Campeon",
+        "jugador": "HER",
+        "puntaje": 37372640,
+        "fecha": "2026-05-07"
+    },
+    {
+        "id_record": "DH-HER-120917370",
+        "mesa": "Dirty Harry",
+        "posicion": "Gran Campeon",
+        "jugador": "HER",
+        "puntaje": 120917370,
+        "fecha": "2026-05-07"
+    },
+    {
+        "id_record": "G-HER-139785440",
+        "mesa": "Goldeneye",
+        "posicion": "Gran Campeon",
+        "jugador": "HER",
+        "puntaje": 139785440,
+        "fecha": "2026-05-07"
+    },
+    {
+        "id_record": "GN-ARI-684877970",
+        "mesa": "Guns N' Roses",
+        "posicion": "Gran Campeon",
+        "jugador": "ARI",
+        "puntaje": 684877970,
+        "fecha": "2026-05-09"
+    },
+    {
+        "id_record": "GN-ARI-655141550",
+        "mesa": "Guns N' Roses",
+        "posicion": "2ro",
+        "jugador": "ARI",
+        "puntaje": 655141550,
+        "fecha": "2026-05-09"
+    },
+    {
+        "id_record": "GN-HER-628622610",
+        "mesa": "Guns N' Roses",
+        "posicion": "3ro",
+        "jugador": "HER",
+        "puntaje": 628622610,
+        "fecha": "2026-05-10"
+    },
+    {
+        "id_record": "GN-ARI-556475890",
+        "mesa": "Guns N' Roses",
+        "posicion": "4ro",
+        "jugador": "ARI",
+        "puntaje": 556475890,
+        "fecha": "2026-05-09"
+    },
+    {
+        "id_record": "GN-ARI-516219860",
+        "mesa": "Guns N' Roses",
+        "posicion": "5ro",
+        "jugador": "ARI",
+        "puntaje": 516219860,
+        "fecha": "2026-05-09"
+    },
+    {
+        "id_record": "H-HER-52033250",
+        "mesa": "Hook",
+        "posicion": "Gran Campeon",
+        "jugador": "HER",
+        "puntaje": 52033250,
+        "fecha": "2026-05-07"
+    },
+    {
+        "id_record": "F-HER-1296790",
+        "mesa": "Funhouse",
+        "posicion": "Gran Campeon",
+        "jugador": "HER",
+        "puntaje": 1296790,
+        "fecha": "2026-05-07"
+    },
+    {
+        "id_record": "R9-HER-33960710",
+        "mesa": "Rescue 911",
+        "posicion": "Gran Campeon",
+        "jugador": "HER",
+        "puntaje": 33960710,
+        "fecha": "2026-05-07"
+    },
+    {
+        "id_record": "FT-ARI-78804900",
+        "mesa": "Fish Tales",
+        "posicion": "Gran Campeon",
+        "jugador": "ARI",
+        "puntaje": 78804900,
+        "fecha": "2026-05-07"
+    },
+    {
+        "id_record": "FT-HER-78503280",
+        "mesa": "Fish Tales",
+        "posicion": "2ro",
+        "jugador": "HER",
+        "puntaje": 78503280,
+        "fecha": "2026-05-10"
+    },
+    {
+        "id_record": "FT-HER-60688860",
+        "mesa": "Fish Tales",
+        "posicion": "3ro",
+        "jugador": "HER",
+        "puntaje": 60688860,
+        "fecha": "2026-05-10"
+    },
+    {
+        "id_record": "FT-HER-52299820",
+        "mesa": "Fish Tales",
+        "posicion": "4ro",
+        "jugador": "HER",
+        "puntaje": 52299820,
+        "fecha": "2026-05-10"
+    },
+    {
+        "id_record": "FT-HER-6640620",
+        "mesa": "Fish Tales",
+        "posicion": "5ro",
+        "jugador": "HER",
+        "puntaje": 6640620,
+        "fecha": "2026-05-07"
+    },
+    {
+        "id_record": "T2-HER-61239380",
+        "mesa": "Terminator 2",
+        "posicion": "Gran Campeon",
+        "jugador": "HER",
+        "puntaje": 61239380,
+        "fecha": "2026-05-07"
+    },
+    {
+        "id_record": "T2-HER-34355380",
+        "mesa": "Terminator 2",
+        "posicion": "2ro",
+        "jugador": "HER",
+        "puntaje": 34355380,
+        "fecha": "2026-05-07"
+    },
+    {
+        "id_record": "TW-HER-126771160",
+        "mesa": "The Walking Dead",
+        "posicion": "Gran Campeon",
+        "jugador": "HER",
+        "puntaje": 126771160,
+        "fecha": "2026-05-07"
+    },
+    {
+        "id_record": "TW-HER-119657580",
+        "mesa": "The Walking Dead",
+        "posicion": "2ro",
+        "jugador": "HER",
+        "puntaje": 119657580,
+        "fecha": "2026-05-07"
+    },
+    {
+        "id_record": "TW-HER-99034260",
+        "mesa": "The Walking Dead",
+        "posicion": "3ro",
+        "jugador": "HER",
+        "puntaje": 99034260,
+        "fecha": "2026-05-07"
+    },
+    {
+        "id_record": "TW-HER-94272130",
+        "mesa": "The Walking Dead",
+        "posicion": "4ro",
+        "jugador": "HER",
+        "puntaje": 94272130,
+        "fecha": "2026-05-07"
+    },
+    {
+        "id_record": "TW-AGU-85820170",
+        "mesa": "The Walking Dead",
+        "posicion": "5ro",
+        "jugador": "AGU",
+        "puntaje": 85820170,
+        "fecha": "2026-05-07"
+    },
+    {
+        "id_record": "WC-HER-4111036990",
+        "mesa": "World Cup Soccer",
+        "posicion": "Gran Campeon",
+        "jugador": "HER",
+        "puntaje": 4111036990,
+        "fecha": "2026-05-07"
+    },
+    {
+        "id_record": "C-HER-653440070",
+        "mesa": "Congo",
+        "posicion": "Gran Campeon",
+        "jugador": "HER",
+        "puntaje": 653440070,
+        "fecha": "2026-05-10"
+    },
+    {
+        "id_record": "C-ARI-538022360",
+        "mesa": "Congo",
+        "posicion": "2ro",
+        "jugador": "ARI",
+        "puntaje": 538022360,
+        "fecha": "2026-05-09"
+    },
+    {
+        "id_record": "C-ARI-443808280",
+        "mesa": "Congo",
+        "posicion": "3ro",
+        "jugador": "ARI",
+        "puntaje": 443808280,
+        "fecha": "2026-05-09"
+    },
+    {
+        "id_record": "C-HER-291943350",
+        "mesa": "Congo",
+        "posicion": "4ro",
+        "jugador": "HER",
+        "puntaje": 291943350,
+        "fecha": "2026-05-10"
+    },
+    {
+        "id_record": "MB-ARI-5029260",
+        "mesa": "Monster Bash",
+        "posicion": "Gran Campeon",
+        "jugador": "ARI",
+        "puntaje": 5029260,
+        "fecha": "2026-05-09"
+    },
+    {
+        "id_record": "NF-HER-24",
+        "mesa": "NBA Fastbreak",
+        "posicion": "Gran Campeon",
+        "jugador": "HER",
+        "puntaje": 24,
+        "fecha": "2026-05-10"
+    }
+]

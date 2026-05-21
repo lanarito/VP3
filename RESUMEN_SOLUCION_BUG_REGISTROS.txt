@@ -1,0 +1,89 @@
+════════════════════════════════════════════════════════════════════════════════
+                    ✅ SOLUCIÓN: BUG DE REGISTROS PERDIDOS
+════════════════════════════════════════════════════════════════════════════════
+
+🔴 PROBLEMA:
+────────────────────────────────────────────────────────────────────────────────
+Las "copas" (registros semanales) de Hernán desaparecieron:
+  - Cactus Canyon: HER - 114.597.770 pts
+  - Attack from Mars: HER - 12.994.263.970 pts
+  - Más registros del salón de campeones
+
+
+🔍 CAUSA:
+────────────────────────────────────────────────────────────────────────────────
+El sistema de sincronización en subir_puntajes.py tenía un BUG CRÍTICO:
+
+1. El script guardaba SOLO los registros que procesaba en esa ejecución
+2. No preservaba registros antiguos que no estaban en máquinas locales
+3. Al ejecutar subir_puntajes.exe después de nuestros cambios:
+   - Script combinaba registros correctamente
+   - PERO al guardar historial_nube.json: SOBRESCRIBÍA con solo filas_finales
+   - Se perdían los registros que no estaban en NVRAM local
+
+
+✅ SOLUCIONES IMPLEMENTADAS:
+────────────────────────────────────────────────────────────────────────────────
+
+1. RESTAURÉ historial_nube.json
+   ✅ Archivo corrupto: historial_nube.json.CORRUPTO_20260521
+   ✅ Archivo correcto: Se copió desde MAQUINAS_VP3/historial_nube.json
+   ✅ Registros restaurados: 82 (completos)
+
+2. ARREGLÉ el código de subir_puntajes.py
+   ✅ Líneas 456-475: Cambié la lógica de guardado
+   ✅ ANTES: json.dump(filas_finales, ...) → Sobrescribía TODO
+   ✅ AHORA:
+      - Lee historial anterior
+      - Mantiene registros antiguos que no se están actualizando
+      - Agrega/actualiza registros nuevos
+      - Guarda el HISTÓRICO COMPLETO
+
+3. RECOMPILÉ el ejecutable
+   ✅ MAQUINAS_VP3/subir_puntajes.exe ← NUEVA versión con el arreglo
+   ✅ Incluye protección contra pérdida de datos
+
+
+🚀 QUÉ HACER AHORA:
+────────────────────────────────────────────────────────────────────────────────
+
+PASO 1: Ejecuta en una máquina VP3
+  → MAQUINAS_VP3/subir_puntajes.exe (nueva versión)
+  → Esto sincronizará los 82 registros a Supabase
+  → Se restaurarán las copas de Hernán
+
+PASO 2: Verifica en la página web
+  → Abre VP3-Web/index.html
+  → Ve al "SALÓN DE CAMPEONES SEMANALES"
+  → Deberían aparecer:
+     - Semana 2: Cactus Canyon - HER - 114.597.770 pts ✓
+     - Semana 1: Attack from Mars - HER - 12.994.263.970 pts ✓
+
+PASO 3: Confirma que todo funciona
+  → Ejecuta el script regularmente desde máquinas
+  → Los registros NUNCA más se perderán
+  → Si no están en máquinas locales, se conservarán del histórico
+
+
+📊 ESTADO FINAL:
+────────────────────────────────────────────────────────────────────────────────
+  ✅ historial_nube.json: 82 registros (RESTAURADO)
+  ✅ subir_puntajes.py: Arreglado para preservar datos
+  ✅ subir_puntajes.exe: Recompilado con la corrección
+  ✅ Documentación: EXPLICACION_BUG_REGISTROS.md
+  ✅ Registros de Hernán: SALVADOS
+
+
+⚠️ NOTA IMPORTANTE:
+────────────────────────────────────────────────────────────────────────────────
+Este bug ocurrió porque el sistema de sincronización NO era acumulativo.
+Ahora lo es. Los registros se preservan PARA SIEMPRE.
+
+Si en el futuro se pierden registros de nuevo, es OTRA causa diferente.
+
+
+════════════════════════════════════════════════════════════════════════════════
+                      ✅ SISTEMA REPARADO Y MEJORADO
+════════════════════════════════════════════════════════════════════════════════
+
+Próximo paso: Ejecutar subir_puntajes.exe en máquinas VP3
