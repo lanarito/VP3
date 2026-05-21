@@ -196,8 +196,54 @@ MESAS_CONFIG = [
 # ============================================================
 # LOGICA DE SINCRONIZACION PRINCIPAL
 # ============================================================
+def verificar_y_restaurar_automaticamente():
+    """Verifica si faltan registros en Supabase y los restaura automáticamente"""
+    try:
+        if not os.path.exists("historial_nube.json"):
+            return
+
+        with open("historial_nube.json", "r") as f:
+            historial_local = json.load(f)
+
+        if not historial_local:
+            return
+
+        # Obtener registros de Supabase
+        headers = {
+            "apikey": SUPABASE_KEY,
+            "Authorization": f"Bearer {SUPABASE_KEY}",
+            "Content-Type": "application/json"
+        }
+
+        req_get = urllib.request.Request(f"{SUPABASE_URL}?select=*", headers=headers)
+        with urllib.request.urlopen(req_get) as response:
+            registros_supabase = json.loads(response.read().decode()) or []
+
+        ids_supabase = {r.get("id_record") for r in registros_supabase}
+        ids_locales = {r.get("id_record") for r in historial_local}
+
+        # Si faltan registros, restaurarlos automáticamente
+        if ids_locales - ids_supabase:
+            print("\n🔄 RESTAURACION AUTOMATICA")
+            print("════════════════════════════════════════")
+            print(f"Detectados {len(ids_locales - ids_supabase)} registros faltantes en Supabase")
+            print("Restaurando automáticamente desde historial local...")
+
+            headers["Prefer"] = "resolution=merge-duplicates"
+            data = json.dumps(historial_local).encode("utf-8")
+            req_ups = urllib.request.Request(SUPABASE_URL, data=data, headers=headers, method="POST")
+            urllib.request.urlopen(req_ups)
+
+            print(f"✅ {len(historial_local)} registros sincronizados automáticamente")
+    except Exception as e:
+        pass  # Silencioso - no interrumpe el flujo normal
+
 def procesar_y_subir():
     print("\n--- INICIANDO ESCANEO DE MEMORIA CON PINEMHI ---")
+
+    # Restauración automática de registros faltantes
+    verificar_y_restaurar_automaticamente()
+
     nuevos_puntajes = []
     
     # Cargar récords base para ignorar (Formato nuevo/viejo auto-detectable)
