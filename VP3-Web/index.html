@@ -229,6 +229,7 @@ footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border);
   <button class="tab-btn active" id="btn-fama" onclick="setView('fama')">👑 Salón de la Fama</button>
   <button class="tab-btn" id="btn-desafio" onclick="setView('desafio')">🔥 Desafío Semanal</button>
   <button class="tab-btn" id="btn-ranking" onclick="setView('ranking')">📊 Ranking por Mesa</button>
+  <button class="tab-btn" id="btn-descargas" onclick="setView('descargas')">📥 Descargas</button>
 </div>
 
 <!-- VISTA FAMA -->
@@ -254,6 +255,31 @@ footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border);
   </div>
   <div class="table-section">
     <table><tbody id="body-ranking"></tbody></table>
+  </div>
+</div>
+
+<!-- VISTA DESCARGAS -->
+<div id="view-descargas" class="view">
+  <div style="padding:2rem; max-width:800px; margin:0 auto;">
+    <h2 style="font-family:'Orbitron'; color:var(--accent-pink); text-align:center; margin-bottom:2rem;">📥 ZONA DE DESCARGAS</h2>
+
+    <!-- SUBIR ARCHIVO -->
+    <div style="background:var(--card); border:1px solid var(--border); padding:1.5rem; border-radius:8px; margin-bottom:2rem;">
+      <h3 style="color:var(--accent-cyan); margin-bottom:1rem;">Subir Archivo</h3>
+      <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+        <input type="file" id="file-input" style="flex:1; min-width:200px; padding:0.5rem; background:var(--surface); border:1px solid var(--border); color:#fff; border-radius:4px;">
+        <button onclick="subirArchivo()" style="padding:0.5rem 1.5rem; background:var(--accent-cyan); color:var(--bg); border:none; border-radius:4px; cursor:pointer; font-weight:bold;">📤 Subir</button>
+      </div>
+      <div id="upload-status" style="margin-top:1rem; color:var(--muted); font-size:0.9rem;"></div>
+    </div>
+
+    <!-- LISTA DE ARCHIVOS -->
+    <div style="background:var(--card); border:1px solid var(--border); padding:1.5rem; border-radius:8px;">
+      <h3 style="color:var(--accent-cyan); margin-bottom:1rem;">Archivos Disponibles</h3>
+      <div id="archivos-lista" style="max-height:400px; overflow-y:auto;">
+        <p style="color:var(--muted);">Cargando archivos...</p>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -505,6 +531,106 @@ function renderChallenge() {
     body.appendChild(tr);
   });
 }
+
+// ==================== ZONA DE DESCARGAS ====================
+
+const ADMIN_USERS = ['Hernán', 'hernan', 'HER', 'Luis', 'luis', 'LAL'];  // Usuarios que pueden borrar
+const ARCHIVOS_STORAGE = 'vp3_archivos';  // Key para localStorage
+
+function cargarArchivos() {
+  const lista = document.getElementById('archivos-lista');
+  const archivos = JSON.parse(localStorage.getItem(ARCHIVOS_STORAGE) || '[]');
+
+  if (archivos.length === 0) {
+    lista.innerHTML = '<p style="color:var(--muted); text-align:center; padding:2rem;">📭 No hay archivos aún</p>';
+    return;
+  }
+
+  lista.innerHTML = archivos.map((archivo, idx) => `
+    <div style="background:var(--surface); border:1px solid var(--border); padding:1rem; margin-bottom:0.5rem; border-radius:4px; display:flex; align-items:center; justify-content:space-between; gap:1rem;">
+      <div style="flex:1; overflow:hidden;">
+        <div style="font-family:'Orbitron'; color:#fff; margin-bottom:0.25rem;">${archivo.nombre}</div>
+        <div style="color:var(--muted); font-size:0.8rem;">${(archivo.tamaño / 1024).toFixed(2)} KB • ${archivo.fecha}</div>
+      </div>
+      <div style="display:flex; gap:0.5rem;">
+        <button onclick="descargarArchivo(${idx})" style="padding:0.4rem 0.8rem; background:var(--accent-cyan); color:var(--bg); border:none; border-radius:4px; cursor:pointer; font-size:0.8rem; font-weight:bold;">📥 Descargar</button>
+        <button onclick="borrarArchivo(${idx})" style="padding:0.4rem 0.8rem; background:#ff4444; color:#fff; border:none; border-radius:4px; cursor:pointer; font-size:0.8rem; font-weight:bold;">🗑️ Borrar</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function subirArchivo() {
+  const input = document.getElementById('file-input');
+  const archivo = input.files[0];
+  const status = document.getElementById('upload-status');
+
+  if (!archivo) {
+    status.textContent = '❌ Selecciona un archivo';
+    status.style.color = '#ff4444';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const archivos = JSON.parse(localStorage.getItem(ARCHIVOS_STORAGE) || '[]');
+    const fecha = new Date().toLocaleString('es-AR');
+
+    archivos.push({
+      nombre: archivo.name,
+      tamaño: archivo.size,
+      fecha: fecha,
+      datos: e.target.result  // Base64 del archivo
+    });
+
+    localStorage.setItem(ARCHIVOS_STORAGE, JSON.stringify(archivos));
+    input.value = '';
+    status.textContent = '✅ Archivo subido correctamente';
+    status.style.color = '#00ff66';
+    setTimeout(() => { status.textContent = ''; }, 3000);
+    cargarArchivos();
+  };
+
+  reader.readAsDataURL(archivo);
+}
+
+function descargarArchivo(idx) {
+  const archivos = JSON.parse(localStorage.getItem(ARCHIVOS_STORAGE) || '[]');
+  const archivo = archivos[idx];
+
+  if (!archivo) return;
+
+  const link = document.createElement('a');
+  link.href = archivo.datos;
+  link.download = archivo.nombre;
+  link.click();
+}
+
+function borrarArchivo(idx) {
+  if (!confirm('¿Seguro que querés borrar este archivo?')) return;
+
+  const archivos = JSON.parse(localStorage.getItem(ARCHIVOS_STORAGE) || '[]');
+  archivos.splice(idx, 1);
+  localStorage.setItem(ARCHIVOS_STORAGE, JSON.stringify(archivos));
+  cargarArchivos();
+}
+
+// Cargar archivos cuando se abre la vista
+const observerDescargas = new MutationObserver(() => {
+  if (document.getElementById('view-descargas')?.style.display !== 'none') {
+    cargarArchivos();
+  }
+});
+
+setTimeout(() => {
+  const viewDescargas = document.getElementById('view-descargas');
+  if (viewDescargas) {
+    observerDescargas.observe(viewDescargas, { attributes: true });
+    cargarArchivos();  // Carga inicial
+  }
+}, 500);
+
+// ==================== FIN ZONA DESCARGAS ====================
 
 fetchData();
 setInterval(fetchData, 60000);

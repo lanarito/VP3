@@ -507,7 +507,51 @@ def copiar_vp_alias_automatico():
     except Exception as e:
         print(f"⚠️ Error al copiar VPMAlias.txt automaticamente: {e}")
 
+def resincronizar_forzado():
+    """Modo especial: sube TODOS los registros desde historial_nube.json sin procesar NVRAM"""
+    print("\n🔄 MODO RESINCRONIZACIÓN FORZADA")
+    print("════════════════════════════════════════════")
+
+    if not os.path.exists("historial_nube.json"):
+        print("❌ Error: No se encontró historial_nube.json")
+        return
+
+    try:
+        with open("historial_nube.json", "r") as f:
+            filas_finales = json.load(f)
+    except Exception as e:
+        print(f"❌ Error leyendo historial_nube.json: {e}")
+        return
+
+    if not filas_finales:
+        print("❌ El archivo está vacío")
+        return
+
+    print(f"📤 Sincronizando {len(filas_finales)} registros a Supabase...")
+
+    try:
+        headers = {
+            "apikey": SUPABASE_KEY,
+            "Authorization": f"Bearer {SUPABASE_KEY}",
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates"
+        }
+        data = json.dumps(filas_finales).encode("utf-8")
+        req_ups = urllib.request.Request(SUPABASE_URL, data=data, headers=headers, method="POST")
+        urllib.request.urlopen(req_ups)
+        print(f"✅ {len(filas_finales)} registros sincronizados correctamente")
+        print("\n✅ RESINCRONIZACIÓN COMPLETADA")
+        print("═══════════════════════════════════════════════════")
+        print("Los datos deberían aparecer en la página web ahora.")
+    except Exception as e:
+        print(f"❌ Error sincronizando: {e}")
+
 if __name__ == "__main__":
+    # Chequear si se pasó --force-sync como argumento
+    if len(sys.argv) > 1 and sys.argv[1].lower() == "--force-sync":
+        resincronizar_forzado()
+        sys.exit(0)
+
     print("--- VP3 SYSTEM ONLINE (SUPABASE EDITION) ---")
     copiar_vp_alias_automatico()
     tiempos_mod = {}
