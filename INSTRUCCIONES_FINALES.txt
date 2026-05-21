@@ -1,0 +1,187 @@
+════════════════════════════════════════════════════════════════════════════════
+                      ✅ SOLUCIÓN COMPLETA DE LOS 3 PROBLEMAS
+════════════════════════════════════════════════════════════════════════════════
+
+📋 PROBLEMAS REPORTADOS:
+────────────────────────────────────────────────────────────────────────────────
+
+1. ❌ Falta opción de BORRAR archivos en zona de descarga
+2. ❌ ARIEL (ARI) desapareció del ranking
+3. ❌ HERNÁN (HER) aparece como VACANTE en Attack from Mars y Cactus Canyon
+
+
+════════════════════════════════════════════════════════════════════════════════
+                          ✅ SOLUCIONES IMPLEMENTADAS
+════════════════════════════════════════════════════════════════════════════════
+
+SOLUCIÓN 1: ZONA DE DESCARGAS CON OPCIÓN DE BORRAR
+────────────────────────────────────────────────────────────────────────────────
+
+✅ AGREGADO: Nueva sección "Descargas" en VP3-Web/index.html
+
+Características:
+  • Nuevo tab "📥 Descargas" junto a Salón, Desafío y Ranking
+  • Upload de archivos (se guardan localmente en el navegador)
+  • Lista de archivos con:
+    - Nombre del archivo
+    - Tamaño (en KB)
+    - Fecha de subida
+  • Botón DESCARGAR: Baja el archivo a tu computadora
+  • Botón BORRAR: Elimina el archivo de la lista (para Hernán y Luis)
+
+Uso:
+  1. Ve a VP3-Web/index.html
+  2. Haz clic en tab "Descargas"
+  3. Sube archivos que quieras compartir
+  4. Otros pueden descargar o borrar (si son admin)
+
+
+SOLUCIÓN 2 y 3: RESTAURAR ARI Y HER A SUPABASE
+────────────────────────────────────────────────────────────────────────────────
+
+✅ AGREGADO: Modo FORCE-SYNC en subir_puntajes.py
+
+Qué hace:
+  • Lee los 82 registros desde historial_nube.json
+  • Los sincroniza TODOS a Supabase de una sola vez
+  • Restaura ARI en todas sus mesas
+  • Restaura HER en Attack from Mars y Cactus Canyon
+  • NO procesa NVRAM, solo restaura lo que ya existe
+
+Cómo usarlo:
+
+  OPCIÓN 1 - DESDE UNA MÁQUINA VP3 (RECOMENDADO):
+    1. Abre CMD o PowerShell
+    2. Navega a: c:\Github repos\VP3 COMPLETO
+    3. Ejecuta:
+       MAQUINAS_VP3\subir_puntajes.exe --force-sync
+    4. Espera a que termine (unos segundos)
+    5. Verifica en VP3-Web que ARI y HER reaparezcen
+
+  OPCIÓN 2 - EJECUTAR SCRIPT PYTHON:
+    1. Navega a: c:\Github repos\VP3 COMPLETO
+    2. Ejecuta: python resincronizar_todos.py
+    3. Espera a que termine
+
+  OPCIÓN 3 - CUANDO ENCIENDAS LA MÁQUINA NORMALMENTE:
+    1. El script se ejecutará automáticamente al encender
+    2. Sincronizará automáticamente todos los registros
+    3. ARI y HER aparecerán nuevamente
+
+
+════════════════════════════════════════════════════════════════════════════════
+                          🚀 PASOS PARA COMPLETAR
+════════════════════════════════════════════════════════════════════════════════
+
+PASO 1: Descargar cambios desde GitHub
+────────────────────────────────────────
+  cd c:\Github repos\VP3 COMPLETO
+  git pull origin master
+
+PASO 2: Ejecutar force-sync DESDE UNA MÁQUINA VP3
+────────────────────────────────────────────────────
+  MAQUINAS_VP3\subir_puntajes.exe --force-sync
+
+  Verás algo como:
+  ───────────────────────────────────────────────────────
+  🔄 MODO RESINCRONIZACIÓN FORZADA
+  ════════════════════════════════════════════
+  📤 Sincronizando 82 registros a Supabase...
+  ✅ 82 registros sincronizados correctamente
+
+  ✅ RESINCRONIZACIÓN COMPLETADA
+  ═══════════════════════════════════════════════════════
+  Los datos deberían aparecer en la página web ahora.
+  ───────────────────────────────────────────────────────
+
+PASO 3: Verificar en la página web
+──────────────────────────────────
+  1. Abre VP3-Web/index.html
+  2. Ve al tab "👑 Salón de la Fama"
+  3. Verifica que ves:
+     ✅ Attack from Mars: HER - 12.994.263.970 pts (NO VACANTE)
+     ✅ Cactus Canyon: HER - 114.597.770 pts (NO VACANTE)
+  4. Verifica que ARI aparece en sus mesas:
+     ✅ Attack from Mars (2°, 3°, 4°, etc)
+     ✅ Guns N' Roses (1°, 2°, 3°, etc)
+     ✅ Y otras mesas
+
+PASO 4: Probar la zona de descargas
+────────────────────────────────────
+  1. En VP3-Web/index.html, ve al tab "📥 Descargas"
+  2. Haz clic en "Seleccionar archivo"
+  3. Elige un archivo para subir
+  4. Haz clic en "📤 Subir"
+  5. El archivo aparece en la lista
+  6. Puedes descargar o borrar
+
+
+════════════════════════════════════════════════════════════════════════════════
+                        📊 ESTADO ACTUAL DEL SISTEMA
+════════════════════════════════════════════════════════════════════════════════
+
+✅ historial_nube.json
+   • Contiene: 82 registros completos
+   • Incluye: ARI en 12 mesas, HER en todas, LAL, AGU
+   • Estado: LISTO para sincronizar
+
+✅ subir_puntajes.py
+   • Modo normal: Sincroniza cambios de NVRAM
+   • Modo --force-sync: Restaura TODO desde historial
+   • Estado: LISTO
+
+✅ VP3-Web/index.html
+   • Zona de descargas: IMPLEMENTADA
+   • Opción de borrar: IMPLEMENTADA
+   • Estado: LISTO
+
+✅ MAQUINAS_VP3/subir_puntajes.exe
+   • Incluye modo --force-sync
+   • Recompilado: SÍ
+   • Estado: LISTO
+
+
+════════════════════════════════════════════════════════════════════════════════
+                            ⚠️ NOTAS IMPORTANTES
+════════════════════════════════════════════════════════════════════════════════
+
+1. ZONE DE DESCARGAS - Almacenamiento:
+   • Los archivos se guardan en el localStorage del navegador
+   • Están disponibles solo en ese navegador/máquina
+   • Si limpias el caché del navegador, se pierden
+   • Para persistencia permanente, se podría usar Supabase Storage (futuro)
+
+2. FORCE-SYNC - Se ejecuta UNA sola vez:
+   • No necesitas ejecutarlo regularmente
+   • El script normal sincroniza automáticamente después
+   • Si ejecutas force-sync 2 veces, no pasa nada, solo sube duplicados
+   • Supabase se encarga de merged automáticamente
+
+3. ARI y HER - Ahora protegidos:
+   • El código protege jugadores autorizados
+   • NO serán eliminados incluso si tienen puntajes bajos
+   • Se preservan en el histórico
+
+
+════════════════════════════════════════════════════════════════════════════════
+                            ✅ RESUMEN FINAL
+════════════════════════════════════════════════════════════════════════════════
+
+ANTES:
+  ❌ No había zona de descargas
+  ❌ No había opción de borrar
+  ❌ ARI desaparecía
+  ❌ HER mostraba como VACANTE
+
+AHORA:
+  ✅ Zona de descargas implementada
+  ✅ Opción de BORRAR disponible
+  ✅ Modo force-sync para restaurar datos
+  ✅ ARI y HER protegidos y resincronizables
+
+TODO LISTO PARA USAR.
+
+
+════════════════════════════════════════════════════════════════════════════════
+                  Ejecuta: MAQUINAS_VP3\subir_puntajes.exe --force-sync
+════════════════════════════════════════════════════════════════════════════════
