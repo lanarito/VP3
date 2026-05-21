@@ -1634,6 +1634,23 @@ function renderActualizaciones() {
 }
 
 async function borrarActualizacion(nombreArchivo, subidoPor) {
+  // Verificar si está logueado como admin
+  if (!isAdminLoggedIn) {
+    const user = prompt("🔒 Usuario admin para borrar:");
+    if (!user) return;
+    const pass = prompt("🔒 Contraseña:");
+    if (!pass) return;
+
+    const userLower = user.trim().toLowerCase();
+    if ((userLower === "admin" || userLower === "vp3" || userLower === "usuario vp3") && pass.trim() === "vp3") {
+      isAdminLoggedIn = true;
+      playRetroSound('coin');
+    } else {
+      alert("❌ Usuario o contraseña incorrectos");
+      return;
+    }
+  }
+
   const confirmacion = confirm(`¿Seguro que querés BORRAR "${nombreArchivo}"?\n\nSubido por: ${subidoPor}\n\nEsta acción no se puede deshacer.`);
   if (!confirmacion) return;
 
