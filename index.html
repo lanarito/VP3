@@ -476,52 +476,10 @@ footer { text-align: center; padding: 2rem; border-top: 1px solid var(--border);
     <h2 style="color:var(--accent-pink); font-family:'Orbitron'; font-size:0.8rem; margin-bottom:1rem;">DESAFÍO DE LA SEMANA</h2>
     <h3 id="challenge-name" style="font-size:2.5rem; font-family:'Orbitron'; margin-bottom:1rem;">---</h3>
     <p id="challenge-timer" style="color:var(--accent-cyan);">Calculando...</p>
-    <button onclick="showRecordModal()" style="margin-top:1.5rem; padding:0.8rem 1.5rem; background:var(--accent-cyan); color:var(--bg); border:none; border-radius:6px; font-family:'Orbitron'; font-weight:bold; font-size:0.85rem; letter-spacing:1px; cursor:pointer; box-shadow:0 0 15px rgba(0,229,255,0.3); transition:all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 0 25px rgba(0,229,255,0.5)';" onmouseout="this.style.transform='none'; this.style.boxShadow='0 0 15px rgba(0,229,255,0.3)';">📝 SUBIR MI RECORD</button>
   </div>
   <div id="podium-desafio" style="margin-top:2rem;"></div>
   <div class="table-section"><table id="table-desafio"><tbody id="body-desafio"></tbody></table></div>
   <div id="historial-campeones" style="margin-top:3.5rem; padding: 0 2rem 3rem;"></div>
-</div>
-
-<!-- MODAL SUBIR RECORD MANUAL -->
-<div id="record-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:200; align-items:center; justify-content:center; backdrop-filter:blur(5px); overflow-y:auto; padding:1.5rem 0;">
-  <div style="background:var(--surface); border:1px solid var(--accent-cyan); border-radius:8px; padding:2rem; max-width:500px; width:90%; max-height:90vh; overflow-y:auto;">
-    <h2 style="font-family:'Orbitron'; color:var(--accent-cyan); text-align:center; margin-bottom:1.5rem;">📝 SUBIR RECORD</h2>
-    <p style="color:var(--muted); font-size:0.85rem; text-align:center; margin-bottom:1.5rem;">Cargá tu record manualmente si no apareció automáticamente desde la máquina.</p>
-
-    <div style="margin-bottom:1rem;">
-      <label style="display:block; color:var(--accent-cyan); font-family:'Orbitron'; font-size:0.75rem; margin-bottom:0.4rem;">JUGADOR</label>
-      <select id="record-jugador" style="width:100%; padding:0.7rem; background:var(--card); border:1px solid var(--border); color:#fff; border-radius:4px; font-family:sans-serif;">
-        <option value="HER">HER (Hernán)</option>
-        <option value="LAL">LAL (Luis)</option>
-        <option value="ARI">ARI (Ariel)</option>
-        <option value="AGU">AGU (Agus)</option>
-      </select>
-    </div>
-
-    <div style="margin-bottom:1rem;">
-      <label style="display:block; color:var(--accent-cyan); font-family:'Orbitron'; font-size:0.75rem; margin-bottom:0.4rem;">MESA</label>
-      <select id="record-mesa" style="width:100%; padding:0.7rem; background:var(--card); border:1px solid var(--border); color:#fff; border-radius:4px; font-family:sans-serif;"></select>
-    </div>
-
-    <div style="margin-bottom:1rem;">
-      <label style="display:block; color:var(--accent-cyan); font-family:'Orbitron'; font-size:0.75rem; margin-bottom:0.4rem;">PUNTAJE</label>
-      <input type="number" id="record-puntaje" placeholder="Ej: 1234567" style="width:100%; padding:0.7rem; background:var(--card); border:1px solid var(--border); color:#fff; border-radius:4px; font-family:sans-serif;">
-    </div>
-
-    <div style="margin-bottom:1.5rem;">
-      <label style="display:block; color:var(--accent-cyan); font-family:'Orbitron'; font-size:0.75rem; margin-bottom:0.4rem;">FECHA (opcional, default hoy)</label>
-      <input type="date" id="record-fecha" style="width:100%; padding:0.7rem; background:var(--card); border:1px solid var(--border); color:#fff; border-radius:4px; font-family:sans-serif;">
-    </div>
-
-    <div id="record-error" style="display:none; color:#ff0050; font-size:0.85rem; margin-bottom:1rem; text-align:center;"></div>
-    <div id="record-success" style="display:none; color:#00ff66; font-size:0.85rem; margin-bottom:1rem; text-align:center;"></div>
-
-    <div style="display:flex; gap:0.5rem;">
-      <button onclick="closeRecordModal()" style="flex:1; padding:0.8rem; background:transparent; border:1px solid var(--border); color:var(--text); border-radius:4px; font-family:'Orbitron'; cursor:pointer; font-weight:bold; letter-spacing:1px; font-size:0.8rem;">CANCELAR</button>
-      <button onclick="submitRecord()" style="flex:1; padding:0.8rem; background:var(--accent-cyan); color:var(--bg); border:none; border-radius:4px; font-family:'Orbitron'; cursor:pointer; font-weight:bold; letter-spacing:1px; font-size:0.8rem;">SUBIR</button>
-    </div>
-  </div>
 </div>
 
 <!-- VISTA RANKING -->
@@ -1964,115 +1922,6 @@ function renderChampionsHistory() {
   html += `</div>`;
   container.innerHTML = html;
 }
-
-// ==================== SUBIR RECORD MANUAL ====================
-function showRecordModal() {
-  // Llenar dropdown de mesas con ALL_TABLES
-  const mesaSelect = document.getElementById('record-mesa');
-  mesaSelect.innerHTML = '';
-  ALL_TABLES.forEach(t => {
-    const opt = document.createElement('option');
-    opt.value = t;
-    opt.textContent = t;
-    // Si es la mesa del desafío semanal actual, seleccionarla por default
-    if (t === challengeTable) opt.selected = true;
-    mesaSelect.appendChild(opt);
-  });
-
-  // Default fecha = hoy
-  const hoy = new Date().toISOString().split('T')[0];
-  document.getElementById('record-fecha').value = hoy;
-
-  // Limpiar campos
-  document.getElementById('record-puntaje').value = '';
-  document.getElementById('record-error').style.display = 'none';
-  document.getElementById('record-success').style.display = 'none';
-
-  document.getElementById('record-modal').style.display = 'flex';
-}
-
-function closeRecordModal() {
-  document.getElementById('record-modal').style.display = 'none';
-}
-
-async function submitRecord() {
-  const jugador = document.getElementById('record-jugador').value;
-  const mesa = document.getElementById('record-mesa').value;
-  const puntaje = parseInt(document.getElementById('record-puntaje').value);
-  const fecha = document.getElementById('record-fecha').value || new Date().toISOString().split('T')[0];
-
-  const errBox = document.getElementById('record-error');
-  const okBox = document.getElementById('record-success');
-  errBox.style.display = 'none';
-  okBox.style.display = 'none';
-
-  // Validaciones
-  if (!jugador || !mesa) {
-    errBox.textContent = "⚠️ Seleccioná jugador y mesa";
-    errBox.style.display = 'block';
-    return;
-  }
-  if (!puntaje || puntaje <= 0 || isNaN(puntaje)) {
-    errBox.textContent = "⚠️ Ingresá un puntaje válido (mayor a 0)";
-    errBox.style.display = 'block';
-    return;
-  }
-
-  // Generar ID único basado en mesa + jugador + puntaje
-  const siglas = mesa.split(' ').map(p => p[0]).join('').substring(0, 2).toUpperCase();
-  const id_record = `${siglas}-${jugador}-${puntaje}`;
-
-  try {
-    // Verificar si ya existe ese record
-    const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/puntajes?id_record=eq.${id_record}`, {
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
-    });
-    const existentes = await checkRes.json();
-    if (existentes && existentes.length > 0) {
-      errBox.textContent = "⚠️ Ya existe un record con ese puntaje exacto para este jugador y mesa";
-      errBox.style.display = 'block';
-      return;
-    }
-
-    // Subir el record a Supabase
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/puntajes`, {
-      method: "POST",
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': `Bearer ${SUPABASE_KEY}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'return=representation'
-      },
-      body: JSON.stringify({
-        id_record: id_record,
-        mesa: mesa,
-        jugador: jugador,
-        puntaje: puntaje,
-        posicion: "Manual",
-        fecha: fecha
-      })
-    });
-
-    if (response.ok) {
-      playRetroSound('powerup');
-      okBox.textContent = `✅ Record subido: ${jugador} - ${puntaje.toLocaleString('es-AR')} pts en ${mesa}`;
-      okBox.style.display = 'block';
-      // Recargar datos
-      setTimeout(() => {
-        closeRecordModal();
-        fetchData();
-      }, 2000);
-    } else {
-      const err = await response.text();
-      errBox.textContent = `❌ Error al subir: ${err}`;
-      errBox.style.display = 'block';
-    }
-  } catch (e) {
-    errBox.textContent = `❌ Error: ${e.message}`;
-    errBox.style.display = 'block';
-  }
-}
-// ==================== FIN SUBIR RECORD ====================
 
 fetchData();
 setInterval(fetchData, 60000);
