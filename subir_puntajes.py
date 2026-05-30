@@ -428,9 +428,9 @@ def procesar_y_subir():
                     "puntaje": r["Puntaje"],
                     "fecha": r["Fecha"]
                 })
-                # Notificar TODOS los records nuevos de jugadores autorizados
-                # (sin importar posicion - aunque sea 6to, 11to, etc)
-                if r["Jugador"] in JUGADORES_AUTORIZADOS and r["ID_Record"] not in ids_nube:
+                # Notificar TODOS los records nuevos (autorizados + invitados)
+                # sin importar posicion ni quien sea el jugador
+                if r["ID_Record"] not in ids_nube:
                     nuevos_top5.append((r, pos))
         
         # 4. Notificar por WhatsApp de manera correcta
