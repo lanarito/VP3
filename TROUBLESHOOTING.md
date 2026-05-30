@@ -42,7 +42,9 @@ Abrir: `MAQUINAS_VP3/watchdog_log.txt`
 **Si está configurado desde PinUP Popper (RECOMENDADO):**
 1. Abrir PinUP Popper Setup
 2. Ir a Other Settings → Startup Configurator
-3. Verificar que está agregado el "VP3 Watchdog" apuntando a `WATCHDOG_invisible.vbs`
+3. Verificar:
+   - ✅ Debe haber UN solo programa: "VP3 Watchdog" apuntando a `WATCHDOG_invisible.vbs`
+   - ❌ NO debe haber `subir_puntajes.exe` también (si está, BORRARLO - el watchdog ya lo ejecuta)
 
 **Si está configurado desde Windows shell:startup:**
 1. `Windows + R` → escribir `shell:startup` → Enter
@@ -108,6 +110,24 @@ Si falta la configuración:
 1. `config.ini` tiene `[telegram]` token y chat_id correctos
 2. El bot de Telegram no fue bloqueado
 3. Internet funciona en la máquina
+
+### ❌ "Records duplicados o conflictos de sincronización"
+
+**Causa probable:** Tienen `subir_puntajes.exe` Y `WATCHDOG_invisible.vbs` configurados al mismo tiempo en el Startup.
+
+**Por qué pasa:**
+- El watchdog ya ejecuta `subir_puntajes.exe` por dentro
+- Si además ponés `subir_puntajes.exe` directo en Startup
+- Se ejecutan 2 instancias del mismo programa
+- Pelean por el mismo archivo (NVRAM, historial_nube.json)
+- Pueden subir records duplicados o pisarse
+
+**Solución:**
+1. Abrir PinUP Popper Setup → Startup Configurator
+2. Borrar el `subir_puntajes.exe` (si está)
+3. Dejar SOLO `WATCHDOG_invisible.vbs`
+4. Verificar también `shell:startup` de Windows (no debe estar ahí tampoco)
+5. Reiniciar máquina
 
 ---
 

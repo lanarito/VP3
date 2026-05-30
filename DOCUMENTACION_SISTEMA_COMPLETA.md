@@ -341,13 +341,17 @@ except Exception as e:
 2. Extraer en su carpeta habitual (ej: `C:\VP3\MAQUINAS_VP3\`)
 3. Abrir PinUP Popper Setup
 4. Ir a `Other Settings` → `Startup Configurator` (o similar)
-5. Agregar nuevo Startup App:
+5. **🚨 IMPORTANTE: Si existe `subir_puntajes.exe` como Startup App → BORRARLO**
+   (Si quedan los dos, se ejecutan en paralelo y rompen la sincronización)
+6. Agregar nuevo Startup App:
    - Nombre: VP3 Watchdog
    - Archivo: ruta completa a `WATCHDOG_invisible.vbs`
    - Modo: Hidden / Silent
    - Wait: NO
-6. Guardar
-7. Reiniciar PinUP Popper
+7. Guardar
+8. Reiniciar PinUP Popper
+
+**REGLA DE ORO:** Solo debe quedar `WATCHDOG_invisible.vbs` en el Startup. **NUNCA dejar también `subir_puntajes.exe`** (el watchdog ya lo ejecuta).
 
 #### MÉTODO 2: Editando PinUPSystem (manual):
 

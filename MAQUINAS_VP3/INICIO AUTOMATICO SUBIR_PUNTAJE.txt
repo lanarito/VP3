@@ -19,16 +19,24 @@ CONFIGURACION (solo se hace una vez por maquina):
 
 3. Buscar la seccion "Startup Apps" o "Pre-Frontend Startup"
 
-4. Agregar nuevo programa:
+4. *** IMPORTANTE: BORRAR EL ENTRADA VIEJA ***
+   Si ya tenian configurado "subir_puntajes.exe" como Startup App,
+   BORRARLO antes de agregar el nuevo. Solo debe quedar el watchdog.
+
+5. Agregar nuevo programa:
    - Nombre: VP3 Watchdog
    - Archivo: [ruta_completa_a]\WATCHDOG_invisible.vbs
      (Ejemplo: C:\VP3\MAQUINAS_VP3\WATCHDOG_invisible.vbs)
    - Modo: Hidden / Silent
    - Wait: NO (no esperar a que termine)
 
-5. Guardar y salir
+6. Guardar y salir
 
-6. Reiniciar PinUP Popper para probar
+7. Reiniciar PinUP Popper para probar
+
+REGLA DE ORO:
+En el Startup de PinUP debe quedar SOLO el WATCHDOG_invisible.vbs
+NO subir_puntajes.exe (si lo dejan, se duplica y rompe la sincronizacion)
 
 
 ==== METODO ALTERNATIVO - DESDE PinUPmenuSetup.ini ====
