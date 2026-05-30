@@ -105,3 +105,32 @@ Despues de configurar:
 RESUMEN: Configurar UNA vez en PinUP Popper, y todo funciona solo.
 Si algo se rompe, se arregla solo (el watchdog lo reinicia).
 ============================================================
+
+
+===========================================
+COMO ACTUALIZAR EL .EXE EN EL FUTURO
+===========================================
+
+Cuando bajes una version nueva de subir_puntajes.exe:
+
+1. CERRAR el .exe viejo:
+   - Abrir Administrador de tareas (Ctrl + Shift + Esc)
+   - Buscar "subir_puntajes.exe" en procesos
+   - Click derecho -> Finalizar tarea
+
+2. REEMPLAZAR el archivo:
+   - Pegar el nuevo subir_puntajes.exe en la carpeta VP3
+   - Sobrescribir el viejo
+
+3. ESPERAR 5 segundos:
+   - El watchdog detecta que se cerro
+   - Lo reinicia automaticamente con el .exe nuevo
+   - Verificar vp3_heartbeat.txt - debe tener fecha/hora reciente
+
+4. LISTO - No tocar nada mas
+
+IMPORTANTE:
+- NO ejecutar subir_puntajes.exe a mano (doble-click)
+- NO dejar dos instancias corriendo en paralelo
+- El watchdog SIEMPRE lo arranca solo
+

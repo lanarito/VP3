@@ -155,6 +155,52 @@ curl "https://.../puntajes?mesa=eq.Cactus%20Canyon&order=puntaje.desc" -H "apike
 
 ---
 
+## 🔄 CÓMO ACTUALIZAR EL .EXE (CUANDO YA TENÉS WATCHDOG)
+
+### Opción A: Reemplazar solo el .exe (recomendado)
+
+1. **Cerrar el .exe viejo:**
+   - Abrir Administrador de tareas (`Ctrl + Shift + Esc`)
+   - Pestaña "Procesos"
+   - Buscar `subir_puntajes.exe`
+   - Click derecho → **Finalizar tarea**
+
+2. **Reemplazar el archivo:**
+   - Pegar el nuevo `subir_puntajes.exe` en la carpeta VP3
+   - Sobrescribir el viejo
+
+3. **Esperar 5 segundos:**
+   - El watchdog detecta que se cerró el viejo
+   - Lo reinicia automáticamente con el nuevo
+   - Verificar `vp3_heartbeat.txt` - debe tener fecha/hora reciente
+
+4. **Listo** - No hay que hacer nada más
+
+### Opción B: Bajar el ZIP completo y reemplazar todo
+
+1. Cerrar el .exe viejo (Administrador de tareas)
+2. Extraer el ZIP nuevo
+3. Pegar TODOS los archivos en la carpeta VP3 (sobrescribir)
+4. El watchdog reinicia el .exe nuevo automáticamente
+
+### ⚠️ Lo que NO hay que hacer:
+
+- ❌ **NO** ejecutar `subir_puntajes.exe` a mano (doble-click)
+- ❌ **NO** dejar el watchdog viejo Y el .exe nuevo corriendo en paralelo
+- ❌ **NO** ejecutar dos instancias del .exe al mismo tiempo
+
+### ¿Cómo sé si el watchdog está corriendo?
+
+Abrir Administrador de tareas → buscar:
+- ✅ `cmd.exe` (es el watchdog)
+- ✅ `subir_puntajes.exe`
+
+Si están los dos juntos → todo bien funcionando.
+
+Si solo está `subir_puntajes.exe` pero NO `cmd.exe` → el watchdog no se está ejecutando, hay que reconfigurarlo.
+
+---
+
 ## 🛠️ ACCIONES DE EMERGENCIA
 
 ### Reiniciar el script sin reiniciar Windows

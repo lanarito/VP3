@@ -600,6 +600,28 @@ Cada cambio en el sistema se propaga automáticamente a:
 - Cada 10 min hace sync forzada como seguridad
 - Solo encender + jugar
 
+### Cómo actualizar el .exe en máquinas con watchdog ya configurado:
+
+**Cuando hay una nueva versión de `subir_puntajes.exe`:**
+
+1. Cerrar el .exe viejo:
+   - Administrador de tareas → buscar `subir_puntajes.exe`
+   - Click derecho → Finalizar tarea
+
+2. Reemplazar el archivo:
+   - Pegar el nuevo `subir_puntajes.exe` en la carpeta VP3
+   - Sobrescribir el viejo
+
+3. Esperar 5 segundos:
+   - El watchdog (que sigue corriendo) detecta que se cerró
+   - Arranca el nuevo .exe automáticamente
+   - Verificar `vp3_heartbeat.txt` con fecha reciente
+
+**NUNCA:**
+- ❌ Ejecutar `subir_puntajes.exe` a mano (doble-click)
+- ❌ Dejar dos instancias corriendo en paralelo
+- ❌ Bypasear el watchdog
+
 ---
 
 <a name="problemas"></a>
