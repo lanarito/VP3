@@ -378,7 +378,53 @@ DELETE https://.../puntajes?id_record=eq.{id}
 
 ---
 
-**Última verificación del sistema:** 2026-05-29
+**Última verificación del sistema:** 2026-05-30
 **Estado:** ✅ Operativo
-**Total records en Supabase:** 86
+**Total records en Supabase:** 145
 **Total actualizaciones:** 3
+
+---
+
+## 🚨 LECCIONES APRENDIDAS - ERRORES A NO REPETIR
+
+### ❌ ERROR DEL 29-30 MAYO 2026: Asumir limitaciones técnicas sin verificar
+
+**Qué pasó:**
+Durante la conversación insistí repetidamente que "VP3 solo guarda Top 5 por mesa" y que "los puntajes que no son Top 5 se descartan". El usuario me decía una y otra vez que el sistema funcionaba diferente, que sus records de 57M, 102M (no Top 5 visual) sí aparecían. Yo seguía teorizando sobre NVRAM, pinemhi, etc.
+
+**Resultado:** Le hice perder al usuario MUCHO tiempo. Propuse soluciones complejas innecesarias (Reset NVRAM con riesgo de romper el sistema).
+
+**La verdad:**
+- Cada mesa tiene MÚLTIPLES campos de hi-score (Grand Champion, High Scores, Buy-in, Loop Champions, Trip Champions, etc.)
+- pinemhi.exe captura TODOS esos campos
+- Black Lagoon tenía 14 records en Supabase (verificado)
+- El "57 millones" de ARI sí existía (CF-ARI-57695590, posición 14to)
+- El sistema funcionaba bien todo el tiempo
+
+### 📋 PROTOCOLO PARA EL FUTURO:
+
+**Cuando hay conflicto entre teoría técnica y observación del usuario:**
+
+1. **DETENERSE inmediatamente** de explicar la teoría
+2. **VERIFICAR con datos reales:**
+   ```bash
+   # Para ver TODOS los records de una mesa:
+   curl "https://ckcjujadpmhdgcvyyahd.supabase.co/rest/v1/puntajes?mesa=eq.NOMBRE&order=puntaje.desc" -H "apikey: $KEY"
+
+   # Para verificar un puntaje específico:
+   curl "https://.../puntajes?jugador=eq.ARI&puntaje=gte.50000000&puntaje=lte.60000000" -H "apikey: $KEY"
+   ```
+3. **Aceptar la posibilidad de estar equivocado**
+4. **El usuario conoce su sistema mejor que yo**
+
+**Reglas de oro:**
+- ❌ "El sistema solo puede X" → MAL, verificá primero
+- ❌ "Eso no es técnicamente posible" → MAL, verificá primero
+- ✅ "Déjame verificar con datos reales" → SIEMPRE
+- ✅ Si el usuario insiste 2+ veces → cambiar de estrategia
+
+**Casos específicos de VP3:**
+- NO asumir limitaciones de NVRAM sin verificar Supabase
+- Records pueden tener posiciones hasta "20to" o más
+- Cada mesa puede capturar 10-15 records distintos por sus múltiples categorías de hi-score
+- El sistema FUNCIONA bien por defecto, no requiere modificaciones complejas
