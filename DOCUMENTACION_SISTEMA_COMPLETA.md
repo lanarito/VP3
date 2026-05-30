@@ -556,6 +556,21 @@ JUGADORES_AUTORIZADOS = {"HER", "ARI", "LAL", "AGU"}
 - **Black Lagoon:** HER 202,538,520 (Gran Campeón actual)
 - **Congo:** HER 2,081,717,530 (Gran Campeón)
 
+### Cambio en notificaciones Telegram (30 mayo 2026 - tarde):
+**ANTES:** Solo notificaba records que entraban al Top 5 visual.
+
+**AHORA:** Notifica TODOS los records nuevos de jugadores autorizados (HER, ARI, LAL, AGU), sin importar la posición.
+
+**Razón:** HER hizo un record de 100,087,130 pts en Black Lagoon (posición 11to) y no se mandó mensaje. El usuario quiere notificación de TODOS los records nuevos de los jugadores reales, no solo Top 5.
+
+**Lógica nueva (subir_puntajes.py línea 432):**
+```python
+if r["Jugador"] in JUGADORES_AUTORIZADOS and r["ID_Record"] not in ids_nube:
+    nuevos_top5.append((r, pos))
+```
+
+**Beneficio:** Si HER, ARI, LAL o AGU hacen un record en cualquier campo de hi-score de la mesa (Top 5 visual, buy-in champion, loop champion, etc.), llega notificación a Telegram.
+
 ---
 
 <a name="proceso-trabajo"></a>
