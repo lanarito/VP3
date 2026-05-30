@@ -1,5 +1,5 @@
 ============================================================
-   VP3 - INICIO AUTOMATICO CON WATCHDOG
+   VP3 - INICIO AUTOMATICO CON WATCHDOG (DESDE PINUP POPPER)
 ============================================================
 
 NUEVO SISTEMA A PRUEBA DE FALLOS:
@@ -9,27 +9,63 @@ lo reinicia automaticamente. Asi NUNCA quedan records sin sincronizar.
 
 CONFIGURACION (solo se hace una vez por maquina):
 
+==== METODO 1 - DESDE PINUP POPPER (RECOMENDADO) ====
+
+1. Abri PinUP Popper Setup (PinUP Menu)
+
+2. Andate a:
+   "Other Settings" -> "Startup Configurator"
+   (o "Pinup Popper Setup" -> "Startup Programs")
+
+3. Buscar la seccion "Startup Apps" o "Pre-Frontend Startup"
+
+4. Agregar nuevo programa:
+   - Nombre: VP3 Watchdog
+   - Archivo: [ruta_completa_a]\WATCHDOG_invisible.vbs
+     (Ejemplo: C:\VP3\MAQUINAS_VP3\WATCHDOG_invisible.vbs)
+   - Modo: Hidden / Silent
+   - Wait: NO (no esperar a que termine)
+
+5. Guardar y salir
+
+6. Reiniciar PinUP Popper para probar
+
+
+==== METODO ALTERNATIVO - DESDE PinUPmenuSetup.ini ====
+
+Si no encontras el menu, editar directamente:
+C:\PinUPSystem\PinUPMenu\GlobalSettings.txt
+
+Buscar la seccion [StartupApps] y agregar:
+StartApp0=C:\VP3\MAQUINAS_VP3\WATCHDOG_invisible.vbs
+
+
+==== METODO 3 - DESDE WINDOWS shell:startup (BACKUP) ====
+
+Si por algun motivo no podes usar PinUP Popper:
+
 1. Presiona Windows + R
 2. Escribe: shell:startup
-3. Presiona Enter (se abre la carpeta de inicio de Windows)
-4. Crea un acceso directo a:
-   WATCHDOG_invisible.vbs
+3. Presiona Enter
+4. Crea un acceso directo a WATCHDOG_invisible.vbs
+5. Pega el acceso directo en esa carpeta
 
-   (este archivo esta en la carpeta MAQUINAS_VP3)
-
-5. Pega el acceso directo en la carpeta de inicio
-
-IMPORTANTE: Si tenian un acceso directo viejo de subir_puntajes.exe
-en la carpeta de inicio, BORRARLO y reemplazarlo por el de WATCHDOG_invisible.vbs
+IMPORTANTE: Si tenias un acceso directo viejo de subir_puntajes.exe
+BORRARLO antes de poner el nuevo.
 
 
+===========================================
 QUE HACE EL WATCHDOG:
+===========================================
 - Inicia subir_puntajes.exe en silencio (segundo plano)
 - Si el .exe se cierra por crash, error o lo que sea, lo reinicia
 - Espera 5 segundos y lo arranca de nuevo
 - Mantiene el sistema SIEMPRE sincronizando
 
+
+===========================================
 ARCHIVOS DE LOG (para verificar que funciona):
+===========================================
 - vp3_heartbeat.txt        ← Ultima vez que el script estuvo vivo
 - vp3_script_log.txt       ← Eventos del script (inicios, sincronizaciones, errores)
 - watchdog_log.txt         ← Reinicios del watchdog
@@ -38,13 +74,26 @@ Si el script esta sano, vp3_heartbeat.txt se actualiza cada 5 minutos.
 Si pasaron mas de 10 minutos sin actualizar, algo paso.
 
 
+===========================================
 SISTEMA DE SEGURIDAD INTEGRADO:
+===========================================
 Ademas del watchdog, el script tambien hace una sincronizacion forzada
 cada 10 minutos como red de seguridad, por si NVRAM cambia sin actualizar
 su fecha de modificacion.
 
 
+===========================================
+VERIFICACION RAPIDA:
+===========================================
+Despues de configurar:
+1. Reiniciar la maquina
+2. Esperar 30 segundos a que arranque PinUP Popper
+3. Verificar que existe el archivo vp3_heartbeat.txt
+4. Abrirlo - debe tener fecha/hora reciente
+5. Listo - todo automatico
+
+
 ============================================================
-RESUMEN: Solo prendes la maquina, y todo funciona solo.
-Si algo se rompe, se arregla solo.
+RESUMEN: Configurar UNA vez en PinUP Popper, y todo funciona solo.
+Si algo se rompe, se arregla solo (el watchdog lo reinicia).
 ============================================================

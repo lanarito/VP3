@@ -335,12 +335,36 @@ except Exception as e:
 
 ### Configuración requerida (UNA VEZ por máquina):
 
+#### MÉTODO 1: Desde PinUP Popper (RECOMENDADO):
+
 1. Descargar `MAQUINAS_VP3.zip` actualizado de GitHub
-2. Reemplazar archivos viejos
-3. Presionar `Windows + R` → escribir `shell:startup` → Enter
-4. **Borrar** el acceso directo viejo de `subir_puntajes.exe` (si existe)
-5. **Crear** acceso directo a `WATCHDOG_invisible.vbs`
-6. Pegar en la carpeta de inicio
+2. Extraer en su carpeta habitual (ej: `C:\VP3\MAQUINAS_VP3\`)
+3. Abrir PinUP Popper Setup
+4. Ir a `Other Settings` → `Startup Configurator` (o similar)
+5. Agregar nuevo Startup App:
+   - Nombre: VP3 Watchdog
+   - Archivo: ruta completa a `WATCHDOG_invisible.vbs`
+   - Modo: Hidden / Silent
+   - Wait: NO
+6. Guardar
+7. Reiniciar PinUP Popper
+
+#### MÉTODO 2: Editando PinUPSystem (manual):
+
+Editar: `C:\PinUPSystem\PinUPMenu\GlobalSettings.txt`
+
+Agregar en la sección `[StartupApps]`:
+```
+StartApp0=C:\VP3\MAQUINAS_VP3\WATCHDOG_invisible.vbs
+```
+
+#### MÉTODO 3: shell:startup de Windows (BACKUP):
+
+Solo si los otros métodos no funcionan:
+1. Presionar `Windows + R` → escribir `shell:startup` → Enter
+2. Borrar el acceso directo viejo de `subir_puntajes.exe` (si existe)
+3. Crear acceso directo a `WATCHDOG_invisible.vbs`
+4. Pegar en la carpeta de inicio
 
 ---
 

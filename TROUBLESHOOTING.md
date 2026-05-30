@@ -39,14 +39,20 @@ Abrir: `MAQUINAS_VP3/watchdog_log.txt`
 
 ### Paso 4: Verificar configuración inicial
 
+**Si está configurado desde PinUP Popper (RECOMENDADO):**
+1. Abrir PinUP Popper Setup
+2. Ir a Other Settings → Startup Configurator
+3. Verificar que está agregado el "VP3 Watchdog" apuntando a `WATCHDOG_invisible.vbs`
+
+**Si está configurado desde Windows shell:startup:**
 1. `Windows + R` → escribir `shell:startup` → Enter
 2. Debe haber un acceso directo a `WATCHDOG_invisible.vbs`
 3. **NO debe haber** acceso directo a `subir_puntajes.exe`
 
-Si falta el acceso directo:
-- Crear acceso directo a `WATCHDOG_invisible.vbs`
-- Pegarlo en la carpeta de inicio
-- Reiniciar Windows
+Si falta la configuración:
+- Ver `MAQUINAS_VP3/INICIO AUTOMATICO SUBIR_PUNTAJE.txt` con los 3 métodos
+- Configurar el preferido (PinUP Popper)
+- Reiniciar la máquina
 
 ---
 
