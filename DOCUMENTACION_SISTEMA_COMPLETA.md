@@ -188,25 +188,40 @@ const winner = weekScores[0];  // El de mayor puntaje
 
 ---
 
-## ⚠️ LIMITACIÓN TÉCNICA FUNDAMENTAL
+## ✅ COMPORTAMIENTO REAL DEL SISTEMA (CORRECCIÓN IMPORTANTE)
 
-### El problema:
-**VP3 solo guarda en NVRAM el Top 5 histórico de cada mesa.** Si un puntaje no entra al Top 5, VP3 lo descarta inmediatamente y nunca queda registrado en ningún archivo.
+### Lo que SÍ hace el sistema:
 
-### Consecuencia para el desafío semanal:
-- Si un jugador hace un puntaje que NO supera el Top 5 histórico → ese puntaje NO sube a Supabase → NO aparece en el desafío
-- Solo aparecen en el desafío los records que entraron al Top 5 histórico Y fueron hechos durante la semana del desafío
+**El script captura MUCHO MÁS que el Top 5 visual de la mesa.**
 
-### Lo que NO existe (y nunca existió):
-- ❌ Tabla separada para el desafío semanal
-- ❌ Lógica de captura de puntajes fuera del Top 5
-- ❌ Sistema independiente entre ranking de mesa y desafío
+Cada mesa de pinball tiene múltiples campos de hi-scores en NVRAM:
+- Grand Champion (1)
+- High Scores (típicamente 5)
+- Buy-in Scores
+- Loop Champions
+- Trip Champions / Track Champions
+- Combo Champions
+- Y muchos más según la mesa
 
-### Confirmado por investigación exhaustiva:
-- Revisé TODOS los commits del git log
-- Revisé el backup más antiguo (8 mayo 2026)
-- Revisé las 2 únicas tablas de Supabase
-- En NINGUNA versión hubo lógica separada
+**pinemhi.exe lee TODOS estos campos** y el script `subir_puntajes.py` sube TODOS los puntajes que detecta a Supabase, no solo el Top 5 visual.
+
+### Evidencia (verificado 30 mayo 2026):
+**Black Lagoon tiene 14 records en Supabase**, llegando hasta posición "14to":
+- Records con puntajes desde 57M hasta 202M
+- Múltiples jugadores en distintas posiciones
+- Todos capturados automáticamente por el script al ejecutarse
+
+### Lo que pasa cuando jugás:
+1. Hacés un puntaje (cualquiera, no necesariamente Top 5)
+2. La mesa puede guardarlo en algún campo de high score (Top 5 general, buy-in, loop champion, etc.)
+3. Al ejecutarse `subir_puntajes.exe`, pinemhi lee TODOS los campos
+4. El script sube todos esos puntajes a Supabase
+5. La página web muestra Top 5 visualmente pero TODOS los records existen
+
+### Sistema del desafío semanal:
+- Filtra de `allData` por mesa + fecha de la semana
+- Como el sistema captura múltiples records por mesa, el desafío semanal funciona bien
+- Si alguien hace un puntaje que cae en algún campo de high score, aparece
 
 ---
 
