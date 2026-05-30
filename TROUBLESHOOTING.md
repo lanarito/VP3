@@ -1,0 +1,164 @@
+# 🔧 TROUBLESHOOTING VP3 - GUÍA RÁPIDA
+
+**Cuando algo no funciona, mirá acá primero antes de pedir ayuda.**
+
+---
+
+## ⚡ DIAGNÓSTICO RÁPIDO (30 segundos)
+
+### Paso 1: Verificar que el script está vivo
+
+Abrir: `MAQUINAS_VP3/vp3_heartbeat.txt`
+
+| Última actualización | Diagnóstico |
+|----------------------|-------------|
+| Hace <5 min | ✅ Script vivo |
+| Hace 5-10 min | ⚠️ Esperar próximo ciclo |
+| Hace +10 min | ❌ Algo pasó - ver Paso 2 |
+| Archivo no existe | ❌ Watchdog no está configurado - ver Paso 4 |
+
+### Paso 2: Revisar errores
+
+Abrir: `MAQUINAS_VP3/vp3_script_log.txt`
+
+Buscar líneas con `ERROR` o `FATAL`. Si hay muchas:
+- Verificar conexión a internet
+- Verificar que Supabase está online
+- Verificar que `config.ini` tiene URL/KEY correctos
+
+### Paso 3: Verificar reinicios del watchdog
+
+Abrir: `MAQUINAS_VP3/watchdog_log.txt`
+
+| Patrón | Diagnóstico |
+|--------|-------------|
+| 1-2 inicios al día | ✅ Normal |
+| Reinicios cada pocos minutos | ❌ El script está crasheando |
+| Sin reinicios después del inicio | ✅ Script estable |
+| Archivo no existe | ❌ Watchdog no se está ejecutando |
+
+### Paso 4: Verificar configuración inicial
+
+1. `Windows + R` → escribir `shell:startup` → Enter
+2. Debe haber un acceso directo a `WATCHDOG_invisible.vbs`
+3. **NO debe haber** acceso directo a `subir_puntajes.exe`
+
+Si falta el acceso directo:
+- Crear acceso directo a `WATCHDOG_invisible.vbs`
+- Pegarlo en la carpeta de inicio
+- Reiniciar Windows
+
+---
+
+## 🚨 PROBLEMAS COMUNES Y SOLUCIONES
+
+### ❌ "Los records no se actualizan automáticamente"
+
+**Causa más probable:** El script no está corriendo.
+
+**Solución:**
+1. Verificar heartbeat (Paso 1)
+2. Si está muerto:
+   - Hacer doble-click en `WATCHDOG_invisible.vbs` manualmente
+   - Esperar 30 segundos
+   - Verificar que se generó nuevo heartbeat
+3. Si el problema persiste:
+   - Verificar configuración shell:startup (Paso 4)
+   - Reiniciar la máquina
+
+### ❌ "Tengo que ejecutar subir_puntajes.exe a mano"
+
+**Causa:** Probablemente no tenés el watchdog configurado.
+
+**Solución:** Configurar watchdog (Paso 4 arriba).
+
+### ❌ "La página web está desactualizada"
+
+**Causa:** Caché del navegador.
+
+**Solución:**
+1. `Ctrl + Shift + R` (recarga forzada)
+2. Si persiste, abrir en modo incógnito
+3. Verificar que `vp3_heartbeat.txt` está actualizado (datos sí llegan a Supabase)
+
+### ❌ "Un record que hice no aparece"
+
+**Verificaciones:**
+1. ¿VP3 te pidió ingresar tus iniciales? Si NO → el puntaje no entró a ningún campo de hi-score, no se puede capturar.
+2. ¿El script está corriendo? Ver Paso 1.
+3. ¿Pasaron más de 10 minutos desde que jugaste? (espera la sync forzada)
+4. Si pasaron horas y nada → ejecutar `WATCHDOG_invisible.vbs` manualmente
+
+### ❌ "El desafío semanal no muestra a alguien"
+
+**Verificaciones:**
+1. ¿La fecha del record cae dentro de la semana actual?
+2. ¿El record está en la mesa del desafío de esta semana?
+3. Verificar en Supabase si el record existe
+
+### ❌ "Mensajes de Telegram no llegan"
+
+**Verificaciones:**
+1. `config.ini` tiene `[telegram]` token y chat_id correctos
+2. El bot de Telegram no fue bloqueado
+3. Internet funciona en la máquina
+
+---
+
+## 📊 COMANDOS DE DIAGNÓSTICO
+
+### Verificar conexión a Supabase
+```bash
+curl -I "https://ckcjujadpmhdgcvyyahd.supabase.co/rest/v1/puntajes?select=count" -H "apikey: YOUR_KEY"
+```
+
+### Ver últimos records subidos
+```bash
+curl "https://.../puntajes?select=*&order=fecha.desc&limit=10" -H "apikey: YOUR_KEY"
+```
+
+### Ver records de un jugador específico
+```bash
+curl "https://.../puntajes?jugador=eq.HER&order=fecha.desc" -H "apikey: YOUR_KEY"
+```
+
+### Ver records de una mesa
+```bash
+curl "https://.../puntajes?mesa=eq.Cactus%20Canyon&order=puntaje.desc" -H "apikey: YOUR_KEY"
+```
+
+---
+
+## 🛠️ ACCIONES DE EMERGENCIA
+
+### Reiniciar el script sin reiniciar Windows
+1. Abrir Administrador de Tareas
+2. Buscar `subir_puntajes.exe` → Finalizar tarea
+3. El watchdog lo reiniciará en 5 segundos
+4. Verificar heartbeat
+
+### Forzar sincronización ahora
+1. Hacer doble-click en `subir_puntajes.exe` (no el watchdog)
+2. Hará una sincronización completa al inicio
+3. Cerrar la ventana cuando termine
+
+### Resetear el sistema (CUIDADO)
+- `MAQUINAS_VP3/RESET_NUBE.exe` borra TODO de Supabase
+- Solo usar en casos extremos
+- Los records se perderán
+
+---
+
+## 📞 DÓNDE PEDIR AYUDA
+
+Si nada de esto funciona:
+1. Capturar pantalla del problema
+2. Copiar contenido de:
+   - `vp3_heartbeat.txt`
+   - `vp3_script_log.txt` (últimas 50 líneas)
+   - `watchdog_log.txt` (últimas 20 líneas)
+3. Reportar el problema con esa info
+
+---
+
+**Última actualización:** 2026-05-30
