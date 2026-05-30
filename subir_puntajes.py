@@ -487,37 +487,97 @@ def copiar_vp_alias_automatico():
     except Exception as e:
         print(f"⚠️ Error al copiar VPMAlias.txt automaticamente: {e}")
 
+def escribir_heartbeat(estado="ALIVE"):
+    """Escribe archivo de heartbeat para saber que el script esta vivo"""
+    try:
+        with open("vp3_heartbeat.txt", "w") as f:
+            f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | {estado}\n")
+    except Exception:
+        pass
+
+def log_evento(mensaje):
+    """Loguea eventos importantes con timestamp en archivo persistente"""
+    try:
+        with open("vp3_script_log.txt", "a", encoding="utf-8") as f:
+            f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {mensaje}\n")
+    except Exception:
+        pass
+
 if __name__ == "__main__":
     print("--- VP3 SYSTEM ONLINE (SUPABASE EDITION) ---")
-    copiar_vp_alias_automatico()
-    tiempos_mod = {}
-    procesar_y_subir()
-    
-    for m in MESAS_CONFIG:
-        archivos = glob.glob(os.path.join(NVRAM_PATH, m["prefijo"] + "*.nv"))
-        if archivos: 
-            fp = max(archivos, key=os.path.getmtime)
-            tiempos_mod[m["nombre"]] = os.path.getmtime(fp)
-    
-    print("👀 Monitoreando cambios en NVRAM... (Ctrl+C para salir)")
-    while True:
-        try:
-            hubo_cambio = False
-            for m in MESAS_CONFIG:
-                archivos = glob.glob(os.path.join(NVRAM_PATH, m["prefijo"] + "*.nv"))
-                if archivos:
-                    fp = max(archivos, key=os.path.getmtime)
-                    t = os.path.getmtime(fp)
-                    if tiempos_mod.get(m["nombre"]) != t:
-                        hubo_cambio = True
-                        tiempos_mod[m["nombre"]] = t
-            if hubo_cambio:
-                print("Cambio detectado en NVRAM. Sincronizando...")
-                time.sleep(2)
-                procesar_y_subir()
-            time.sleep(10)
-        except KeyboardInterrupt:
-            print("\n🛑 VP3 System detenido por el usuario.")
-            break
-        except Exception:
-            time.sleep(10)
+    log_evento("Script iniciado")
+    escribir_heartbeat("STARTING")
+
+    try:
+        copiar_vp_alias_automatico()
+        tiempos_mod = {}
+
+        # Sincronizacion inicial (procesar TODO al arrancar)
+        log_evento("Sincronizacion inicial")
+        procesar_y_subir()
+        escribir_heartbeat("INITIAL_SYNC_OK")
+
+        for m in MESAS_CONFIG:
+            archivos = glob.glob(os.path.join(NVRAM_PATH, m["prefijo"] + "*.nv"))
+            if archivos:
+                fp = max(archivos, key=os.path.getmtime)
+                tiempos_mod[m["nombre"]] = os.path.getmtime(fp)
+
+        print("👀 Monitoreando cambios en NVRAM... (Ctrl+C para salir)")
+        log_evento("Entrando en modo monitoreo")
+
+        # Heartbeat cada 5 minutos para verificar que esta vivo
+        contador_heartbeat = 0
+        # Sincronizacion forzada cada 10 minutos como red de seguridad
+        contador_sync_periodico = 0
+
+        while True:
+            try:
+                hubo_cambio = False
+                for m in MESAS_CONFIG:
+                    archivos = glob.glob(os.path.join(NVRAM_PATH, m["prefijo"] + "*.nv"))
+                    if archivos:
+                        fp = max(archivos, key=os.path.getmtime)
+                        t = os.path.getmtime(fp)
+                        if tiempos_mod.get(m["nombre"]) != t:
+                            hubo_cambio = True
+                            tiempos_mod[m["nombre"]] = t
+
+                if hubo_cambio:
+                    print("Cambio detectado en NVRAM. Sincronizando...")
+                    log_evento("Cambio detectado en NVRAM - sincronizando")
+                    time.sleep(2)
+                    procesar_y_subir()
+                    escribir_heartbeat("SYNCED")
+
+                # Heartbeat cada 30 ciclos (5 minutos aprox)
+                contador_heartbeat += 1
+                if contador_heartbeat >= 30:
+                    escribir_heartbeat("ALIVE")
+                    contador_heartbeat = 0
+
+                # Sincronizacion forzada cada 60 ciclos (10 minutos aprox)
+                # Red de seguridad por si NVRAM cambia sin actualizar mtime
+                contador_sync_periodico += 1
+                if contador_sync_periodico >= 60:
+                    log_evento("Sincronizacion periodica de seguridad (cada 10 min)")
+                    procesar_y_subir()
+                    escribir_heartbeat("PERIODIC_SYNC_OK")
+                    contador_sync_periodico = 0
+
+                time.sleep(10)
+            except KeyboardInterrupt:
+                print("\n🛑 VP3 System detenido por el usuario.")
+                log_evento("Detenido por usuario")
+                escribir_heartbeat("STOPPED_BY_USER")
+                break
+            except Exception as e:
+                log_evento(f"Error en bucle de monitoreo: {e}")
+                escribir_heartbeat(f"ERROR: {e}")
+                time.sleep(10)
+    except Exception as e:
+        print(f"❌ Error fatal: {e}")
+        log_evento(f"ERROR FATAL: {e}")
+        escribir_heartbeat(f"FATAL_ERROR: {e}")
+        # No salir - dormir e intentar reiniciar
+        time.sleep(30)
