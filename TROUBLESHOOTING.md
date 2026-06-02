@@ -111,6 +111,21 @@ Si falta la configuración:
 2. El bot de Telegram no fue bloqueado
 3. Internet funciona en la máquina
 
+### ❌ "Aparece error 0xc0000142 al apagar la máquina"
+
+**Causa:** Cuando Windows se apaga, el `subir_puntajes.exe` se cierra. El watchdog detecta que se cerró e intenta reiniciarlo. Pero como Windows ya está apagándose, las DLLs no se pueden cargar → error 0xc0000142.
+
+**Si tenés el watchdog v2 (actualizado):**
+- El watchdog detecta el código de error 0xc0000142
+- Sale limpiamente sin reintentar
+- No aparece más el popup
+
+**Si seguís viendo el popup:**
+- Actualizar `WATCHDOG_subir_puntajes.bat` a la versión nueva
+- Está incluida en el ZIP de GitHub
+
+**Es solo cosmético:** El error no afecta nada del sistema. Los records se siguen sincronizando bien cuando prendés la máquina.
+
 ### ❌ "Records duplicados o conflictos de sincronización"
 
 **Causa probable:** Tienen `subir_puntajes.exe` Y `WATCHDOG_invisible.vbs` configurados al mismo tiempo en el Startup.

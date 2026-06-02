@@ -272,24 +272,50 @@ El script entraba en bucle de monitoreo después de iniciar. Si por cualquier mo
 
 ### Solución implementada:
 
-#### 1. WATCHDOG_subir_puntajes.bat
+#### 1. WATCHDOG_subir_puntajes.bat (versión 2 - detecta shutdown)
 ```batch
 @echo off
 cd /d "%~dp0"
+set fallos_rapidos=0
 
 :LOOP
 echo [%date% %time%] Iniciando subir_puntajes.exe >> watchdog_log.txt
 start /wait /min "" subir_puntajes.exe
-echo [%date% %time%] subir_puntajes.exe se cerro - reiniciando >> watchdog_log.txt
+set exitcode=%errorlevel%
+
+REM Detectar shutdown de Windows
+if %exitcode% EQU 3221225794 (
+    echo [%date% %time%] Windows apagandose - watchdog termina >> watchdog_log.txt
+    exit /b 0
+)
+if %exitcode% EQU -1073741819 (
+    echo [%date% %time%] Acceso violado durante shutdown - termina >> watchdog_log.txt
+    exit /b 0
+)
+
+REM Detectar 3 fallos rapidos consecutivos = probable shutdown
+set /a fallos_rapidos+=1
+if %fallos_rapidos% GEQ 3 (
+    echo [%date% %time%] 3 fallos consecutivos - probable shutdown - termina >> watchdog_log.txt
+    exit /b 0
+)
+
+echo [%date% %time%] Se cerro (codigo %exitcode%) - reiniciando >> watchdog_log.txt
 timeout /t 5 /nobreak >nul
+set fallos_rapidos=0
 goto LOOP
 ```
 
 **Comportamiento:**
 - Lanza `subir_puntajes.exe` en modo minimizado
 - Espera (`/wait`) hasta que el proceso termine
-- Si termina → espera 5 segundos → vuelve al inicio del loop
-- **Garantiza que el script SIEMPRE esté corriendo**
+- Captura el código de salida (`%errorlevel%`)
+- **Detecta shutdown de Windows** (códigos `0xC0000142` y `0xC0000005`)
+- **Detecta 3 fallos rápidos consecutivos** = probable shutdown
+- Si detecta shutdown → sale limpiamente sin reintentar (evita popup de error)
+- Si no es shutdown → espera 5 segundos → reinicia
+- **Garantiza que el script SIEMPRE esté corriendo durante uso normal**
+- **NO molesta al apagar la máquina**
 
 #### 2. WATCHDOG_invisible.vbs
 ```vbscript
