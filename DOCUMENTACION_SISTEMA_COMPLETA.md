@@ -628,7 +628,30 @@ Cada cambio en el sistema se propaga automáticamente a:
 
 ### Cómo actualizar el .exe en máquinas con watchdog ya configurado:
 
-**Cuando hay una nueva versión de `subir_puntajes.exe`:**
+#### 🥇 OPCIÓN AUTOMÁTICA (recomendada): ACTUALIZAR_VP3.bat
+
+**Para usuarios que no saben de tecnología (Hernán, Ariel, etc.):**
+
+1. Tener `ACTUALIZAR_VP3.bat` en el escritorio (descargado una vez de GitHub)
+2. **DOBLE CLICK** al archivo
+3. Esperar a que diga "LISTO!" (1-2 minutos)
+4. La ventana se cierra sola
+
+**Lo que hace automáticamente:**
+- Cierra `subir_puntajes.exe` viejo
+- Descarga ZIP de GitHub
+- Extrae y reemplaza archivos
+- Arranca el watchdog nuevo
+
+**Distribución por WhatsApp:**
+Como WhatsApp bloquea archivos .bat, se manda el LINK de descarga:
+```
+https://github.com/lanarito/VP3/raw/main/MAQUINAS_VP3/ACTUALIZAR_VP3.bat
+```
+
+**Rutina recomendada:** doble click 1 vez por semana. Es idempotente (seguro hacerlo aunque no haya cambios).
+
+#### 🥈 OPCIÓN MANUAL (para usuarios técnicos):
 
 1. Cerrar el .exe viejo:
    - Administrador de tareas → buscar `subir_puntajes.exe`
