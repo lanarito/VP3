@@ -461,7 +461,7 @@ const challengeTable = ALL_TABLES[currentWeekIndex % ALL_TABLES.length];
 | 1 | 06-12 mayo | Attack from Mars | 1996 - histórico |
 | 2 | 13-19 mayo | Cactus Canyon | 1998 - histórico |
 | 3 | 20-26 mayo | Congo | 1995 - histórico |
-| 4 | 27 may - 02 jun | Creature from the Black Lagoon | 1992 - ACTUAL |
+| 4 | 27 may - 02 jun | **Monster Bash** | 1998 - ACTUAL (cambiada de Black Lagoon por problema ROM) |
 | **5** | **03-09 jun** | **Funhouse** | **1990 (90s)** ← arranca rotación nueva |
 | 6 | 10-16 jun | The Walking Dead | 2014 (2010s) |
 | 7 | 17-23 jun | Twilight Zone | 1993 (90s) |
