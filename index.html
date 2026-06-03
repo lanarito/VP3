@@ -621,6 +621,45 @@ const ALL_TABLES = [
   "The Getaway: High Speed II", "Cyclone"
 ];
 
+// Mesas del DESAFIO SEMANAL con rotacion variada por epoca (80s, 90s, 2010s)
+// Patron: cada 4 semanas hay 1 de 80s, 2 de 90s, 1 de 2010s aprox
+// Semanas 1-4 son las historicas (no cambiar para no romper Salon de Campeones)
+const CHALLENGE_TABLES = [
+  "Attack from Mars",                  // Semana 1 (1996, 90s) - HISTORICO
+  "Cactus Canyon",                     // Semana 2 (1998, 90s) - HISTORICO
+  "Congo",                             // Semana 3 (1995, 90s) - HISTORICO
+  "Creature from the Black Lagoon",    // Semana 4 (1992, 90s) - ACTUAL
+  // === Desde Semana 5 (3 jun 2026): ROTACION VARIADA POR EPOCA ===
+  "Mousin'",                           // Semana 5  (1989, 80s)
+  "Funhouse",                          // Semana 6  (1990, 90s)
+  "The Walking Dead",                  // Semana 7  (2014, 2010s)
+  "Twilight Zone",                     // Semana 8  (1993, 90s)
+  "Cyclone",                           // Semana 9  (1988, 80s)
+  "Goldeneye",                         // Semana 10 (1996, 90s)
+  "X-Men",                             // Semana 11 (2012, 2010s)
+  "Junk Yard",                         // Semana 12 (1996, 90s)
+  "Police Force",                      // Semana 13 (1989, 80s)
+  "Lethal Weapon 3",                   // Semana 14 (1992, 90s)
+  "The Walking Dead",                  // Semana 15 (2014, 2010s)
+  "Indiana Jones",                     // Semana 16 (1993, 90s)
+  "Mousin'",                           // Semana 17 (1989, 80s)
+  "Monster Bash",                      // Semana 18 (1998, 90s)
+  "X-Men",                             // Semana 19 (2012, 2010s)
+  "Scared Stiff",                      // Semana 20 (1996, 90s)
+  "Cyclone",                           // Semana 21 (1988, 80s)
+  "Hook",                              // Semana 22 (1992, 90s)
+  "The Walking Dead",                  // Semana 23 (2014, 2010s)
+  "Fish Tales",                        // Semana 24 (1992, 90s)
+  "Police Force",                      // Semana 25 (1989, 80s)
+  "Terminator 2",                      // Semana 26 (1991, 90s)
+  "X-Men",                             // Semana 27 (2012, 2010s)
+  "The Addams Family",                 // Semana 28 (1992, 90s)
+  "Mousin'",                           // Semana 29 (1989, 80s)
+  "Guns N' Roses",                     // Semana 30 (1994, 90s)
+  "The Walking Dead",                  // Semana 31 (2014, 2010s)
+  "The Flintstones",                   // Semana 32 (1994, 90s)
+];
+
 const TABLE_YEARS = {
   "Attack from Mars": "1996",
   "Cactus Canyon": "1998",
@@ -807,7 +846,7 @@ function getUnlockedAchievements(p) {
   for (let w = 0; w < currentWeekIndex; w++) {
     const wStart = getYYYYMMDD(new Date(baseDate.getTime() + w * msPerWeek));
     const wEnd = getYYYYMMDD(new Date(baseDate.getTime() + (w + 1) * msPerWeek));
-    const table = ALL_TABLES[w % ALL_TABLES.length];
+    const table = CHALLENGE_TABLES[w % CHALLENGE_TABLES.length];
     const weekScores = allData.filter(r => r.table === table && r.date >= wStart && r.date < wEnd)
                               .sort((a,b) => b.score - a.score);
     if (weekScores[0] && weekScores[0].player === p) {
@@ -1482,7 +1521,7 @@ function updateChallenge() {
   const msPerWeek = 7 * 24 * 60 * 60 * 1000;
   let weekIndex = Math.floor(diffMs / msPerWeek);
   if (diffMs < 0) weekIndex = 0;
-  challengeTable = ALL_TABLES[weekIndex % ALL_TABLES.length];
+  challengeTable = CHALLENGE_TABLES[weekIndex % CHALLENGE_TABLES.length];
   document.getElementById('challenge-name').textContent = getTableDisplayName(challengeTable);
   const nextWed = new Date(baseDate.getTime() + (weekIndex + 1) * msPerWeek);
   const left = nextWed - now;
@@ -1890,8 +1929,8 @@ function renderChampionsHistory() {
   for (let w = currentWeekIndex - 1; w >= 0; w--) {
     const wStart = new Date(baseDate.getTime() + w * msPerWeek);
     const wEnd = new Date(baseDate.getTime() + (w + 1) * msPerWeek);
-    const table = ALL_TABLES[w % ALL_TABLES.length];
-    
+    const table = CHALLENGE_TABLES[w % CHALLENGE_TABLES.length];
+
     const startStr = getYYYYMMDD(wStart);
     const endStr = getYYYYMMDD(wEnd);
     

@@ -115,16 +115,18 @@ Si falta la configuración:
 
 **Causa:** Cuando Windows se apaga, el `subir_puntajes.exe` se cierra. El watchdog detecta que se cerró e intenta reiniciarlo. Pero como Windows ya está apagándose, las DLLs no se pueden cargar → error 0xc0000142.
 
-**Si tenés el watchdog v2 (actualizado):**
-- El watchdog detecta el código de error 0xc0000142
-- Sale limpiamente sin reintentar
-- No aparece más el popup
+**Versión del watchdog:**
+
+- **v1 (vieja):** Solo intentaba reiniciar - aparecía popup
+- **v2:** Detectaba el código de error después del crash - aún podía aparecer popup brevemente
+- **v3 (actual):** **Verifica si Windows está apagándose ANTES de iniciar el .exe** - no debería aparecer popup
 
 **Si seguís viendo el popup:**
-- Actualizar `WATCHDOG_subir_puntajes.bat` a la versión nueva
-- Está incluida en el ZIP de GitHub
+1. Probablemente tenés el watchdog v1 o v2 todavía
+2. Ejecutar `ACTUALIZAR_VP3.bat` para tener la versión nueva
+3. Reiniciar Windows para que use el nuevo watchdog
 
-**Es solo cosmético:** El error no afecta nada del sistema. Los records se siguen sincronizando bien cuando prendés la máquina.
+**Es solo cosmético:** Aunque aparezca el popup, no afecta nada del sistema. Los records se siguen sincronizando bien cuando prendés la máquina.
 
 ### ❌ "Records duplicados o conflictos de sincronización"
 

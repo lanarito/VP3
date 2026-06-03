@@ -454,14 +454,32 @@ const challengeTable = ALL_TABLES[currentWeekIndex % ALL_TABLES.length];
 
 ### Calendario de mesas por semana:
 
-| Semana | Fechas | Mesa |
-|--------|--------|------|
-| 1 | 06-12 mayo | Attack from Mars |
-| 2 | 13-19 mayo | Cactus Canyon |
-| 3 | 20-26 mayo | Congo |
-| 4 | 27 may - 02 jun | Creature from the Black Lagoon |
-| 5 | 03-09 jun | Dirty Harry |
-| ... | ... | (sigue recorriendo ALL_TABLES) |
+**Lógica:** Usa array `CHALLENGE_TABLES` con rotación variada por época (80s, 90s, 2010s).
+
+| Semana | Fechas | Mesa | Año (Época) |
+|--------|--------|------|-------------|
+| 1 | 06-12 mayo | Attack from Mars | 1996 (90s) - histórico |
+| 2 | 13-19 mayo | Cactus Canyon | 1998 (90s) - histórico |
+| 3 | 20-26 mayo | Congo | 1995 (90s) - histórico |
+| 4 | 27 may - 02 jun | Creature from the Black Lagoon | 1992 (90s) - ACTUAL |
+| **5** | **03-09 jun** | **Mousin'** | **1989 (80s)** ← arranca rotación variada |
+| 6 | 10-16 jun | Funhouse | 1990 (90s) |
+| 7 | 17-23 jun | The Walking Dead | 2014 (2010s) |
+| 8 | 24-30 jun | Twilight Zone | 1993 (90s) |
+| 9 | 01-07 jul | Cyclone | 1988 (80s) |
+| 10 | 08-14 jul | Goldeneye | 1996 (90s) |
+| 11 | 15-21 jul | X-Men | 2012 (2010s) |
+| 12 | 22-28 jul | Junk Yard | 1996 (90s) |
+| 13 | 29 jul - 04 ago | Police Force | 1989 (80s) |
+| ... | ... | (rota por épocas hasta semana 32) | |
+
+**Patrón:** Cada 4 semanas hay 1 mesa de 80s, 2 de 90s, 1 de 2010s (aprox). Después de semana 32 vuelve a ciclar.
+
+**Mesas disponibles por época:**
+- **80s** (3 mesas): Cyclone (1988), Mousin' (1989), Police Force (1989)
+- **90s** (32 mesas): casi todas
+- **2010s** (2 mesas): X-Men (2012), The Walking Dead (2014)
+- **2000s y 2020s:** No hay mesas instaladas actualmente
 
 ### Filtro del desafío:
 ```javascript
