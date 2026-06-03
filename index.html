@@ -621,43 +621,55 @@ const ALL_TABLES = [
   "The Getaway: High Speed II", "Cyclone"
 ];
 
-// Mesas del DESAFIO SEMANAL con rotacion variada por epoca (80s, 90s, 2010s)
-// Patron: cada 4 semanas hay 1 de 80s, 2 de 90s, 1 de 2010s aprox
+// Mesas del DESAFIO SEMANAL - solo 90s y 2010s
+// Patron: cada 3 semanas hay 2 mesas de 90s + 1 de 2010s
 // Semanas 1-4 son las historicas (no cambiar para no romper Salon de Campeones)
 const CHALLENGE_TABLES = [
   "Attack from Mars",                  // Semana 1 (1996, 90s) - HISTORICO
   "Cactus Canyon",                     // Semana 2 (1998, 90s) - HISTORICO
   "Congo",                             // Semana 3 (1995, 90s) - HISTORICO
   "Creature from the Black Lagoon",    // Semana 4 (1992, 90s) - ACTUAL
-  // === Desde Semana 5 (3 jun 2026): ROTACION VARIADA POR EPOCA ===
-  "Mousin'",                           // Semana 5  (1989, 80s)
-  "Funhouse",                          // Semana 6  (1990, 90s)
-  "The Walking Dead",                  // Semana 7  (2014, 2010s)
-  "Twilight Zone",                     // Semana 8  (1993, 90s)
-  "Cyclone",                           // Semana 9  (1988, 80s)
-  "Goldeneye",                         // Semana 10 (1996, 90s)
-  "X-Men",                             // Semana 11 (2012, 2010s)
-  "Junk Yard",                         // Semana 12 (1996, 90s)
-  "Police Force",                      // Semana 13 (1989, 80s)
-  "Lethal Weapon 3",                   // Semana 14 (1992, 90s)
-  "The Walking Dead",                  // Semana 15 (2014, 2010s)
-  "Indiana Jones",                     // Semana 16 (1993, 90s)
-  "Mousin'",                           // Semana 17 (1989, 80s)
-  "Monster Bash",                      // Semana 18 (1998, 90s)
-  "X-Men",                             // Semana 19 (2012, 2010s)
-  "Scared Stiff",                      // Semana 20 (1996, 90s)
-  "Cyclone",                           // Semana 21 (1988, 80s)
-  "Hook",                              // Semana 22 (1992, 90s)
-  "The Walking Dead",                  // Semana 23 (2014, 2010s)
-  "Fish Tales",                        // Semana 24 (1992, 90s)
-  "Police Force",                      // Semana 25 (1989, 80s)
-  "Terminator 2",                      // Semana 26 (1991, 90s)
+  // === Desde Semana 5 (3 jun 2026): SOLO 90s y 2010s ===
+  "Funhouse",                          // Semana 5  (1990, 90s)
+  "The Walking Dead",                  // Semana 6  (2014, 2010s)
+  "Twilight Zone",                     // Semana 7  (1993, 90s)
+  "Goldeneye",                         // Semana 8  (1996, 90s)
+  "X-Men",                             // Semana 9  (2012, 2010s)
+  "Junk Yard",                         // Semana 10 (1996, 90s)
+  "Indiana Jones",                     // Semana 11 (1993, 90s)
+  "The Walking Dead",                  // Semana 12 (2014, 2010s)
+  "Lethal Weapon 3",                   // Semana 13 (1992, 90s)
+  "Monster Bash",                      // Semana 14 (1998, 90s)
+  "X-Men",                             // Semana 15 (2012, 2010s)
+  "Scared Stiff",                      // Semana 16 (1996, 90s)
+  "Hook",                              // Semana 17 (1992, 90s)
+  "The Walking Dead",                  // Semana 18 (2014, 2010s)
+  "Fish Tales",                        // Semana 19 (1992, 90s)
+  "Terminator 2",                      // Semana 20 (1991, 90s)
+  "X-Men",                             // Semana 21 (2012, 2010s)
+  "The Addams Family",                 // Semana 22 (1992, 90s)
+  "Guns N' Roses",                     // Semana 23 (1994, 90s)
+  "The Walking Dead",                  // Semana 24 (2014, 2010s)
+  "The Flintstones",                   // Semana 25 (1994, 90s)
+  "Mary Shelley's Frankenstein",       // Semana 26 (1995, 90s)
   "X-Men",                             // Semana 27 (2012, 2010s)
-  "The Addams Family",                 // Semana 28 (1992, 90s)
-  "Mousin'",                           // Semana 29 (1989, 80s)
-  "Guns N' Roses",                     // Semana 30 (1994, 90s)
-  "The Walking Dead",                  // Semana 31 (2014, 2010s)
-  "The Flintstones",                   // Semana 32 (1994, 90s)
+  "Dirty Harry",                       // Semana 28 (1995, 90s)
+  "Tom & Jerry",                       // Semana 29 (1992, 90s)
+  "The Walking Dead",                  // Semana 30 (2014, 2010s)
+  "World Cup Soccer",                  // Semana 31 (1994, 90s)
+  "Red & Ted's Road Show",             // Semana 32 (1994, 90s)
+  "X-Men",                             // Semana 33 (2012, 2010s)
+  "Phantom of the Opera",              // Semana 34 (1990, 90s)
+  "Last Action Hero",                  // Semana 35 (1993, 90s)
+  "The Walking Dead",                  // Semana 36 (2014, 2010s)
+  "Rescue 911",                        // Semana 37 (1994, 90s)
+  "NBA Fastbreak",                     // Semana 38 (1997, 90s)
+  "X-Men",                             // Semana 39 (2012, 2010s)
+  "Johnny Mnemonic",                   // Semana 40 (1995, 90s)
+  "Indianapolis 500",                  // Semana 41 (1995, 90s)
+  "The Walking Dead",                  // Semana 42 (2014, 2010s)
+  "The Getaway: High Speed II",        // Semana 43 (1992, 90s)
+  "Back to the Future",                // Semana 44 (1990, 90s)
 ];
 
 const TABLE_YEARS = {
