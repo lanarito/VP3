@@ -119,14 +119,39 @@ Si falta la configuración:
 
 - **v1 (vieja):** Solo intentaba reiniciar - aparecía popup
 - **v2:** Detectaba el código de error después del crash - aún podía aparecer popup brevemente
-- **v3 (actual):** **Verifica si Windows está apagándose ANTES de iniciar el .exe** - no debería aparecer popup
+- **v3:** Verifica shutdown ANTES de iniciar - reduce popup pero a veces sigue saliendo
+- **v4 (actual):** Usa PowerShell con SetErrorMode integrado + verificación de shutdown
 
-**Si seguís viendo el popup:**
-1. Probablemente tenés el watchdog v1 o v2 todavía
-2. Ejecutar `ACTUALIZAR_VP3.bat` para tener la versión nueva
-3. Reiniciar Windows para que use el nuevo watchdog
+**SOLUCIÓN DEFINITIVA (3 junio 2026):**
 
-**Es solo cosmético:** Aunque aparezca el popup, no afecta nada del sistema. Los records se siguen sincronizando bien cuando prendés la máquina.
+El popup viene de Windows, no del watchdog. La solución completa es:
+
+1. **Ejecutar `FIX_ERROR_SHUTDOWN.bat` UNA SOLA VEZ** (con permisos admin)
+   - Está en la carpeta MAQUINAS_VP3 dentro del ZIP
+   - Doble click → se relanza solo como admin → modifica registro
+   - Suprime el popup a nivel del sistema operativo
+   - Solo hace falta hacerlo una vez por máquina
+
+2. **El watchdog v4** que ya viene en el ZIP también ayuda
+   - Detecta shutdown ANTES de iniciar el .exe
+   - Usa PowerShell con Start-Process en modo Hidden
+
+**Pasos para los chicos:**
+```
+1. Doble click en ACTUALIZAR_VP3.bat (actualiza el watchdog v4)
+2. Doble click en FIX_ERROR_SHUTDOWN.bat (suprime popup)
+3. Acepta el UAC cuando pregunta por permisos admin
+4. Espera el "LISTO!"
+5. Reinicia la máquina
+6. Ya no aparece más el popup
+```
+
+**Si seguís viendo el popup después de hacer todo:**
+- Verificar que ejecutaste FIX_ERROR_SHUTDOWN con permisos admin
+- En el registro debe estar `HKLM\SYSTEM\CurrentControlSet\Control\Windows\ErrorMode = 2`
+- Reiniciar la máquina si no lo hiciste
+
+**Es solo cosmético:** Aunque aparezca el popup, no afecta nada del sistema. Los records se siguen sincronizando bien.
 
 ### ❌ "Records duplicados o conflictos de sincronización"
 
