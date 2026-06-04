@@ -629,7 +629,10 @@ if r["ID_Record"] not in ids_nube:
 <a name="proceso-trabajo"></a>
 ## 🤖 PROCESO DE TRABAJO AUTOMATIZADO
 
-Cada cambio en el sistema se propaga automáticamente a:
+### 🎯 FILOSOFÍA DEL SISTEMA:
+**Toda solución técnica DEBE integrarse en `ACTUALIZAR_VP3.bat`** - un solo doble click hace TODO. Si requiere admin, se auto-eleva (un solo UAC popup). No se hacen archivos .bat separados ni pasos manuales.
+
+### Cada cambio en el sistema se propaga automáticamente a:
 
 1. **Código fuente** (`*.py`, `*.html`, `*.json`, `*.bat`, `*.vbs`)
 2. **MAQUINAS_VP3/** (ejecutables compilados con PyInstaller)
@@ -645,6 +648,30 @@ Cada cambio en el sistema se propaga automáticamente a:
 - Si el script crashea → watchdog lo reinicia
 - Cada 10 min hace sync forzada como seguridad
 - Solo encender + jugar
+
+### ACTUALIZAR_VP3.bat - El "todo en uno":
+
+Hace 8 pasos automáticos cuando los chicos hacen doble click:
+
+```
+[Auto-eleva a admin con UAC]
+[1/8] Cierra procesos viejos
+[2/8] Descarga ZIP de GitHub
+[3/8] Extrae archivos
+[4/8] Copia archivos nuevos
+[5/8] Limpia temporales
+[6/8] Aplica fix de registro Windows (HKLM y HKCU)
+[7/8] Configura Windows Error Reporting
+[8/8] Arranca watchdog v4
+"LISTO!"
+```
+
+### Reglas para futuras features:
+- Cualquier problema técnico nuevo → integrarlo en ACTUALIZAR_VP3.bat
+- Si requiere admin → la auto-elevación ya está implementada
+- Numerar los pasos para mostrar progreso
+- Borrar archivos viejos que ya no hacen falta
+- Documentar en TROUBLESHOOTING.md
 
 ### Cómo actualizar el .exe en máquinas con watchdog ya configurado:
 

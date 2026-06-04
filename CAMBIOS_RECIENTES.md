@@ -1,61 +1,77 @@
 # 📋 CAMBIOS RECIENTES - VP3
 
-**Sesión: 3 de junio 2026**
+**Última sesión: 4 de junio 2026**
 
 ---
 
-## 🛡️ 1. Watchdog v3 - Solución definitiva al error 0xc0000142
+## 🎯 FILOSOFÍA DEL SISTEMA (NUEVA)
 
-### Problema:
-Al apagar la máquina aparecía un popup de error:
+**Toda solución técnica DEBE integrarse en `ACTUALIZAR_VP3.bat`**
+
+Un solo doble click hace TODO. Si requiere admin, se auto-eleva (un solo UAC). No hay archivos separados para descargar ni pasos manuales adicionales.
+
+### Lo que significa esto:
+
+**Para los chicos siempre va a ser:**
 ```
-subir_puntajes.exe - Error de la aplicación
-La aplicación no se pudo iniciar correctamente (0xc0000142)
-```
-
-### Versiones del watchdog:
-- **v1:** Bucle simple sin detección → siempre aparecía popup
-- **v2:** Detectaba error después del crash → popup aparecía brevemente
-- **v3:** ✅ Verifica si Windows se está apagando ANTES de iniciar el .exe → no aparece popup
-
-### Cómo funciona el v3:
-```batch
-:LOOP
-REM PRE-CHECK: verificar si Windows ya se está apagando
-powershell -Command "if ([System.Environment]::HasShutdownStarted) { exit 1 }"
-if errorlevel 1 (
-    REM Windows se está apagando → no intentamos iniciar el .exe
-    exit /b 0
-)
-
-REM Iniciar el .exe (solo si Windows NO se está apagando)
-start /wait /min "" cmd /c "subir_puntajes.exe 2>nul"
-...
+1. Doble click "Actualizar VP3"
+2. Click "SÍ" en UAC
+3. Esperar "LISTO!"
+4. Listo - nada más que hacer
 ```
 
-### Para que tome efecto en las máquinas:
-**Doble click en `ACTUALIZAR_VP3.bat`** → todo se actualiza solo.
+**No se hacen más:**
+- ❌ Archivos .bat separados (FIX_X.bat, ACTUALIZAR_Y.bat)
+- ❌ Pedir descargar varios archivos
+- ❌ Instrucciones "primero esto, después esto"
+- ❌ Múltiples UAC popups
 
 ---
 
-## 🏆 2. Desafío Semanal - Rotación variada (solo 90s y 2010s)
+## 🛡️ 1. Watchdog v4 + Fix Error 0xc0000142 INTEGRADO
 
 ### Problema:
-El desafío semanal recorría las mesas en orden alfabético (de `ALL_TABLES`). El usuario quería variedad de épocas pero sin 80s.
+Al apagar la máquina aparecía popup de error 0xc0000142.
 
-### Solución:
-Nuevo array `CHALLENGE_TABLES` en `index.html` con 44 entradas:
-- **Semanas 1-4:** Históricas (Attack from Mars, Cactus Canyon, Congo, Black Lagoon) - no se tocan
-- **Semanas 5+:** Rotación variada solo entre **90s y 2010s**
+### Solución FINAL (todo en `ACTUALIZAR_VP3.bat`):
 
-### Patrón:
-**Cada 3 semanas:** 2 mesas de los 90s + 1 mesa de los 2010s
+El `ACTUALIZAR_VP3.bat` ahora hace **8 pasos automáticos**:
 
-### Calendario nuevo (desde 3 junio):
+```
+[Auto-eleva a admin con UAC]
+[1/8] Cierra procesos viejos
+[2/8] Descarga ZIP de GitHub
+[3/8] Extrae archivos
+[4/8] Copia archivos nuevos
+[5/8] Limpia temporales
+[6/8] Aplica fix de registro Windows (HKLM y HKCU)
+[7/8] Configura Windows Error Reporting
+[8/8] Arranca watchdog v4
+"LISTO!"
+```
+
+### Watchdog v4 (cambios):
+- Usa PowerShell `Start-Process -WindowStyle Hidden` en lugar de `start /min`
+- Mejor manejo de procesos sin shell visible
+- Pre-check y post-check de shutdown con HasShutdownStarted
+- Detecta códigos 0xC0000142 y 0xC0000005
+
+### Registro modificado:
+- `HKLM\SYSTEM\CurrentControlSet\Control\Windows\ErrorMode = 2`
+- `HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows\ErrorMode = 2`
+- `HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting\Disabled = 1`
+- `HKCU\Software\Microsoft\Windows\Windows Error Reporting\DontShowUI = 1`
+
+---
+
+## 🏆 2. Desafío Semanal - Calendario corregido
+
+### Calendario actualizado (semana actual y siguientes):
 
 | Semana | Fecha | Mesa | Año |
 |--------|-------|------|-----|
-| 5 | 03-09 jun | Funhouse | 1990 |
+| 4 (ya pasó) | 27 may - 02 jun | Creature from the Black Lagoon | 1992 |
+| **5 (ACTUAL)** | **03-09 jun** | **The Addams Family** ⭐ | 1992 |
 | 6 | 10-16 jun | The Walking Dead | 2014 |
 | 7 | 17-23 jun | Twilight Zone | 1993 |
 | 8 | 24-30 jun | Goldeneye | 1996 |
@@ -63,50 +79,57 @@ Nuevo array `CHALLENGE_TABLES` en `index.html` con 44 entradas:
 | 10 | 08-14 jul | Junk Yard | 1996 |
 | 11 | 15-21 jul | Indiana Jones | 1993 |
 | 12 | 22-28 jul | The Walking Dead | 2014 |
-| 13 | 29 jul - 04 ago | Lethal Weapon 3 | 1992 |
-| 14 | 05-11 ago | Monster Bash | 1998 |
-| 15 | 12-18 ago | X-Men | 2012 |
-| 16 | 19-25 ago | Scared Stiff | 1996 |
-| ... | ... | (44 semanas en total, después cicla) | |
+| ... | ... | (rotación 90s + 2010s) | |
+| 22 | 14-20 oct | Funhouse | 1990 |
+| 27 | 18-24 nov | Creature from the Black Lagoon | 1992 (vuelve si arreglado) |
 
-### Mesas que NO entran (80s):
-- Cyclone (1988)
-- Mousin' (1989)
-- Police Force (1989)
+### Patrón:
+**Cada 3 semanas: 2 mesas de 90s + 1 de 2010s**
 
-(Siguen siendo válidas para records normales, solo no salen en el desafío semanal)
+### Mesas usadas:
+- **90s** (28 mesas variadas)
+- **2010s** (2 mesas que rotan): X-Men (2012), The Walking Dead (2014)
 
-### Para que tome efecto:
-**Recargar VP3-Web con Ctrl+Shift+R** - el cambio está en la página, no en las máquinas. No hace falta actualizar nada en las máquinas.
+### Mesas NO usadas:
+- **80s** (no se usan): Cyclone, Mousin', Police Force
 
 ---
 
-## 🔔 3. Notificaciones Telegram - Todos los records nuevos
+## 🔔 3. Notificaciones Telegram - Todos los records
 
-### Cambio anterior (sesión previa):
-Antes solo notificaba records Top 5. Cambiado para notificar **TODOS los records nuevos** sin importar:
-- Quién sea el jugador (HER, ARI, LAL, AGU + invitados)
+Notifica TODOS los records nuevos sin importar:
+- Quién es el jugador (HER, ARI, LAL, AGU + invitados como TOM, MIG, etc.)
 - Qué posición sea (Top 5, 6to, 11to, buy-in, loop champion, etc.)
 
 ---
 
-## 📦 Actualizadores automáticos
+## 📦 Distribución para los chicos
 
-### Para máquinas YA instaladas:
-**Link para WhatsApp:**
+### Link único para WhatsApp:
 ```
 https://github.com/lanarito/VP3/raw/main/MAQUINAS_VP3/ACTUALIZAR_VP3.bat
 ```
 
-El chico hace click → se descarga → doble click → todo se actualiza solo en 1-2 minutos.
+### Mensaje listo para mandar:
+```
+Te paso el actualizador (todo integrado, con fix de error al apagar).
 
-### Para máquinas NUEVAS (primera instalación):
-**Link para WhatsApp:**
+Link:
+https://github.com/lanarito/VP3/raw/main/MAQUINAS_VP3/ACTUALIZAR_VP3.bat
+
+1. Click al link, se descarga
+2. Lo movés al escritorio
+3. Doble click cuando quieras actualizar
+4. Click "SÍ" en los permisos
+5. Esperás "LISTO!"
+
+Una vez por semana lo hacés y queda siempre al día 🎮
+```
+
+### Para máquina nueva:
 ```
 https://github.com/lanarito/VP3/raw/main/INSTALAR_VP3_PRIMERA_VEZ.bat
 ```
-
-Hace doble click → crea carpeta `C:\VP3` → instala todo → configura inicio automático.
 
 ---
 
@@ -118,20 +141,27 @@ Hace doble click → crea carpeta `C:\VP3` → instala todo → configura inicio
 | `TROUBLESHOOTING.md` | Cuándo algo falle |
 | `COMO_ACTUALIZAR_FACIL.md` | Guía simple para los chicos |
 | `MENSAJE_WHATSAPP_PARA_CHICOS.md` | Mensajes listos para copiar y pegar |
-| `MAQUINAS_VP3/INICIO AUTOMATICO SUBIR_PUNTAJE.txt` | Instrucciones de instalación |
-| `CAMBIOS_RECIENTES.md` | Este archivo - resumen de cambios |
+| `CAMBIOS_RECIENTES.md` | Este archivo |
 
 ---
 
 ## ✅ Estado actual del sistema
 
-- ✅ Watchdog v3 funcionando (no aparece más error al apagar)
-- ✅ Desafío semanal con rotación variada (90s + 2010s, sin 80s)
-- ✅ Notificaciones Telegram de TODOS los records
-- ✅ Actualizador automático para máquinas existentes
+- ✅ Watchdog v4 funcionando
+- ✅ Fix de registro INTEGRADO en ACTUALIZAR_VP3.bat
+- ✅ Desafío semanal con rotación 90s + 2010s (Addams Family actual)
+- ✅ Notificaciones Telegram universales
+- ✅ Actualizador automático con auto-elevación admin
 - ✅ Instalador automático para máquinas nuevas
-- ✅ Watchdog v3 detecta shutdown y sale limpiamente
-- ✅ 145+ records en Supabase
 - ✅ Sistema 100% automático sin intervención manual
 
-**Última actualización:** 3 junio 2026
+---
+
+## 🚫 Archivos eliminados (ya no existen)
+
+- `FIX_ERROR_SHUTDOWN.bat` → integrado en ACTUALIZAR_VP3.bat
+
+---
+
+**Última actualización:** 4 junio 2026
+**Filosofía:** Un solo doble click + un solo UAC = TODO resuelto
