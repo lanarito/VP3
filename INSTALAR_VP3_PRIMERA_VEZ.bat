@@ -4,14 +4,24 @@ REM INSTALADOR VP3 - PRIMERA VEZ
 REM
 REM Para maquinas que NO tienen VP3 instalado aun
 REM Hace TODO automaticamente:
+REM - Pide permisos admin (UAC)
 REM - Crea carpeta C:\VP3
 REM - Descarga la ultima version
 REM - Extrae los archivos
 REM - Configura inicio automatico
+REM - Aplica fix de error al apagar
 REM - Arranca el watchdog
 REM
 REM Solo doble-click y listo
 REM ============================================================
+
+REM Verificar si esta corriendo como admin
+net session >nul 2>&1
+if errorlevel 1 (
+    REM No es admin - relanzarse con permisos elevados
+    powershell -Command "Start-Process '%~f0' -Verb RunAs"
+    exit /b 0
+)
 
 title VP3 - Instalador Primera Vez
 color 0A
@@ -34,13 +44,13 @@ timeout /t 5 /nobreak >nul
 set INSTALL_DIR=C:\VP3\MAQUINAS_VP3
 
 echo.
-echo [1/5] Creando carpeta de instalacion...
+echo [1/7] Creando carpeta de instalacion...
 if not exist "C:\VP3" mkdir "C:\VP3"
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 echo       OK
 echo.
 
-echo [2/5] Descargando ultima version desde GitHub...
+echo [2/7] Descargando ultima version desde GitHub...
 powershell -Command "& {try {Invoke-WebRequest -Uri 'https://lanarito.github.io/VP3/MAQUINAS_VP3.zip' -OutFile '%TEMP%\MAQUINAS_VP3.zip' -UseBasicParsing; exit 0} catch {exit 1}}"
 if errorlevel 1 (
     echo       ERROR: No se pudo descargar
@@ -51,7 +61,7 @@ if errorlevel 1 (
 echo       OK
 echo.
 
-echo [3/5] Extrayendo en %INSTALL_DIR%...
+echo [3/7] Extrayendo en %INSTALL_DIR%...
 powershell -Command "& {try {Expand-Archive -Path '%TEMP%\MAQUINAS_VP3.zip' -DestinationPath '%INSTALL_DIR%' -Force; exit 0} catch {exit 1}}"
 if errorlevel 1 (
     echo       ERROR: No se pudo extraer
@@ -62,7 +72,7 @@ del "%TEMP%\MAQUINAS_VP3.zip" >nul 2>&1
 echo       OK
 echo.
 
-echo [4/5] Configurando inicio automatico (shell:startup)...
+echo [4/7] Configurando inicio automatico (shell:startup)...
 set STARTUP_FOLDER=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup
 
 REM Borrar acceso directo viejo si existe
@@ -74,7 +84,20 @@ powershell -Command "& {$ws = New-Object -ComObject WScript.Shell; $sc = $ws.Cre
 echo       OK
 echo.
 
-echo [5/5] Iniciando watchdog ahora...
+echo [5/7] Aplicando fix de error al apagar (registro Windows)...
+reg add "HKLM\SYSTEM\CurrentControlSet\Control\Windows" /v "ErrorMode" /t REG_DWORD /d 2 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows" /v "ErrorMode" /t REG_DWORD /d 2 /f >nul 2>&1
+reg add "HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting" /v "Disabled" /t REG_DWORD /d 1 /f >nul 2>&1
+reg add "HKCU\Software\Microsoft\Windows\Windows Error Reporting" /v "DontShowUI" /t REG_DWORD /d 1 /f >nul 2>&1
+echo       OK
+echo.
+
+echo [6/7] Creando acceso directo en escritorio...
+powershell -Command "& {$ws = New-Object -ComObject WScript.Shell; $sc = $ws.CreateShortcut([Environment]::GetFolderPath('Desktop') + '\Actualizar VP3.lnk'); $sc.TargetPath = '%INSTALL_DIR%\ACTUALIZAR_VP3.bat'; $sc.WorkingDirectory = '%INSTALL_DIR%'; $sc.IconLocation = 'C:\Windows\System32\shell32.dll,238'; $sc.Save()}"
+echo       OK
+echo.
+
+echo [7/7] Iniciando watchdog ahora...
 start "" wscript.exe "%INSTALL_DIR%\WATCHDOG_invisible.vbs"
 timeout /t 3 /nobreak >nul
 echo       OK
@@ -85,8 +108,10 @@ echo    LISTO! VP3 INSTALADO Y CORRIENDO
 echo ===================================================
 echo.
 echo Ubicacion: %INSTALL_DIR%
-echo Inicio automatico: configurado (shell:startup)
+echo Inicio automatico: configurado
 echo Watchdog: corriendo
+echo Fix de error al apagar: aplicado
+echo Acceso directo en escritorio: "Actualizar VP3"
 echo.
 echo Cosas que tenes que hacer despues:
 echo  1. Editar %INSTALL_DIR%\config.ini
