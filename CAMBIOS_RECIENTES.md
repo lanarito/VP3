@@ -201,6 +201,33 @@ NMI, GLV, MDX, EFG, JKL, MNO, PQR (detectadas como fábrica)
 
 ---
 
+## 🥚 Easter Egg en ACTUALIZAR_VP3.bat (19 junio 2026)
+
+### Qué hace:
+La PRIMERA vez que cada usuario ejecuta `ACTUALIZAR_VP3.bat`, aparece un cartel grande en rojo con un mensaje sorpresa, después siguen con la actualización normal.
+
+### Mensaje actual (v1):
+**"PELADOS HIJOS DE LA CHINGADERA!!!"** en ASCII art grande
+
+### Cómo funciona:
+1. Verifica si existe archivo marker oculto `.welcome_shown_v1`
+2. Si NO existe → muestra cartel + crea marker
+3. Si SÍ existe → salta el cartel y continúa normal
+
+### Sistema versionado:
+Para poner mensajes nuevos en el futuro:
+1. Cambiar versión del marker (`v1` → `v2`)
+2. Cambiar texto del cartel
+3. Los chicos verán el nuevo mensaje próxima vez que ejecuten
+
+### Documentación dedicada:
+`COMO_CAMBIAR_MENSAJE_SORPRESA.md` con instrucciones paso a paso
+
+### Filosofía:
+Es una broma interna divertida sin afectar la funcionalidad. Después del cartel sigue todo el flujo normal de actualización.
+
+---
+
 ## 🚫 Archivos eliminados (ya no existen)
 
 - `FIX_ERROR_SHUTDOWN.bat` → integrado en ACTUALIZAR_VP3.bat
