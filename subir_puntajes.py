@@ -48,6 +48,8 @@ DEFAULT_INITIALS = {
     "BTA", "MDT", "MPE", "GTC", "WGP", "BEV", "BFW", "RAY", "GIL", "TWS",
     "ASR", "CJL", "LED", "DOA", "FEJ", "NTS", "TON", "VLD", "WAG", "XAQ", "TEX",
     "SAC", "GSC", "JWC", "BSO", "KGG", "DAY", "LFS", "KRT",
+    # Agregados 2026-06: detectados como fabrica en Back to the Future / Walking Dead / Indianapolis 500
+    "NMI", "GLV", "MDX", "EFG", "JKL", "MNO", "PQR",
     # Genéricas o dummy
     "AAA", "BBB", "CCC", "DDD", "EEE", "FFF", "GGG", "HHH", "III", "JJJ",
     "KKK", "LLL", "MMM", "NNN", "OOO", "PPP", "QQQ", "RRR", "SSS", "TTT",
@@ -281,15 +283,20 @@ def procesar_y_subir():
             
             for s in scores:
 
-                # Comprobar si es un récord de la línea base local (puntaje de fábrica registrado al instalar)
+                # FILTRO 1: Ignorar iniciales de fabrica (DEFAULT_INITIALS)
+                # Lista global hardcodeada con iniciales conocidas de pinball (BLS, NBW, AAA, RAY, etc.)
+                if s['jugador'] in DEFAULT_INITIALS:
+                    continue # Es de fabrica, lo ignoramos
+
+                # FILTRO 2: Comprobar si es un récord de la línea base local
                 firma = f"{mesa['nombre']}-{s['jugador']}-{s['puntaje']}"
                 if firma in base_records.get("signatures", []):
                     continue # Lo ignoramos
-                
+
                 siglas = "".join([p[0].upper() for p in mesa["nombre"].split()][:2])
                 id_unico = f"{siglas}-{s['jugador']}-{s['puntaje']}"
                 nuevos_puntajes.append({
-                    "ID_Record": id_unico, "Mesa": mesa["nombre"], 
+                    "ID_Record": id_unico, "Mesa": mesa["nombre"],
                     "Jugador": s["jugador"], "Puntaje": s["puntaje"], "Fecha": datetime.now().strftime("%Y-%m-%d")
                 })
 
