@@ -21,6 +21,68 @@ if errorlevel 1 (
 
 REM Ya somos admin desde este punto
 title VP3 - Actualizador Automatico
+cd /d "%~dp0"
+
+REM ============================================================
+REM SORPRESA - Solo aparece la PRIMERA vez que se ejecuta
+REM ============================================================
+if not exist "%~dp0.welcome_shown" (
+    color 0C
+    cls
+    echo.
+    echo.
+    echo  ###############################################################
+    echo  #                                                             #
+    echo  #                                                             #
+    echo  #     PPPPP   EEEEE  L      AAAAA  DDDD    OOO   SSSSS        #
+    echo  #     P    P  E      L      A   A  D   D  O   O  S            #
+    echo  #     PPPPP   EEEE   L      AAAAA  D   D  O   O  SSSSS        #
+    echo  #     P       E      L      A   A  D   D  O   O      S        #
+    echo  #     P       EEEEE  LLLLL  A   A  DDDD    OOO   SSSSS        #
+    echo  #                                                             #
+    echo  #                                                             #
+    echo  #     H   H  IIII   JJJJJ  OOO   SSSSS                        #
+    echo  #     H   H   II      J   O   O  S                            #
+    echo  #     HHHHH   II      J   O   O  SSSSS                        #
+    echo  #     H   H   II   J  J   O   O      S                        #
+    echo  #     H   H  IIII   JJ    OOO   SSSSS                         #
+    echo  #                                                             #
+    echo  #     DDDD   EEEEE  L       AAAAA                             #
+    echo  #     D   D  E      L       A   A                             #
+    echo  #     D   D  EEEE   L       AAAAA                             #
+    echo  #     D   D  E      L       A   A                             #
+    echo  #     DDDD   EEEEE  LLLLL   A   A                             #
+    echo  #                                                             #
+    echo  #     CCCCC  H   H  IIII  N   N   GGGG   AAAAA                #
+    echo  #     C      H   H   II   NN  N  G       A   A                #
+    echo  #     C      HHHHH   II   N N N  G  GG   AAAAA                #
+    echo  #     C      H   H   II   N  NN  G   G   A   A                #
+    echo  #     CCCCC  H   H  IIII  N   N   GGGG   A   A                #
+    echo  #                                                             #
+    echo  #     DDDD   EEEEE  RRRR    AAAAA   !!!  !!!  !!!             #
+    echo  #     D   D  E      R   R   A   A   !!!  !!!  !!!             #
+    echo  #     D   D  EEEE   RRRR    AAAAA   !!!  !!!  !!!             #
+    echo  #     D   D  E      R  R    A   A                             #
+    echo  #     DDDD   EEEEE  R   R   A   A   !!!  !!!  !!!             #
+    echo  #                                                             #
+    echo  #                                                             #
+    echo  ###############################################################
+    echo.
+    echo.
+    echo                    Bienvenidos al sistema VP3 ;^)
+    echo.
+    echo                  Esto solo aparece UNA VEZ jajajaja
+    echo.
+    echo.
+
+    REM Crear marker para no mostrar mas
+    echo Welcome shown on %date% %time% > "%~dp0.welcome_shown"
+    attrib +h "%~dp0.welcome_shown" >nul 2>&1
+
+    echo Presiona cualquier tecla para continuar con la actualizacion...
+    pause >nul
+)
+
 color 0B
 cls
 
@@ -34,8 +96,6 @@ echo NO toques nada hasta que diga "LISTO!"
 echo.
 echo Empezando en 3 segundos...
 timeout /t 3 /nobreak >nul
-
-cd /d "%~dp0"
 
 echo.
 echo [1/8] Cerrando procesos viejos...
