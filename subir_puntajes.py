@@ -283,15 +283,32 @@ def procesar_y_subir():
             
             for s in scores:
 
-                # FILTRO 1: Ignorar iniciales de fabrica (DEFAULT_INITIALS)
-                # Lista global hardcodeada con iniciales conocidas de pinball (BLS, NBW, AAA, RAY, etc.)
-                if s['jugador'] in DEFAULT_INITIALS:
-                    continue # Es de fabrica, lo ignoramos
-
-                # FILTRO 2: Comprobar si es un récord de la línea base local
+                # FILTRO 1: Lista negra dinamica (records de fabrica ya identificados)
                 firma = f"{mesa['nombre']}-{s['jugador']}-{s['puntaje']}"
                 if firma in base_records.get("signatures", []):
-                    continue # Lo ignoramos
+                    continue # Es de fabrica conocido, lo ignoramos
+
+                # FILTRO 2: Iniciales de fabrica con puntajes sospechosos
+                # Solo bloquea si las iniciales son de fabrica Y el puntaje parece de fabrica
+                # (numeros redondos como 1.000.000, 5.000.000, etc.)
+                # Asi un invitado real con iniciales RAY/BLS/etc puede subir su record
+                # con puntaje especifico (ej: 3.458.950) sin problema
+                if s['jugador'] in DEFAULT_INITIALS:
+                    # Detectar puntajes "redondos" tipicos de fabrica
+                    es_puntaje_redondo = (
+                        s['puntaje'] % 1000000 == 0 or  # Multiplo de 1M
+                        s['puntaje'] % 500000 == 0 or   # Multiplo de 500K
+                        s['puntaje'] % 100000 == 0      # Multiplo de 100K
+                    )
+                    if es_puntaje_redondo:
+                        # Auto-agregar a signatures para futuro
+                        if firma not in base_records.get("signatures", []):
+                            if "signatures" not in base_records:
+                                base_records["signatures"] = []
+                            base_records["signatures"].append(firma)
+                            modificado_base_records = True
+                        continue # Es probablemente de fabrica
+                    # Si NO es puntaje redondo, dejarlo pasar (probablemente jugador real)
 
                 siglas = "".join([p[0].upper() for p in mesa["nombre"].split()][:2])
                 id_unico = f"{siglas}-{s['jugador']}-{s['puntaje']}"

@@ -153,7 +153,51 @@ https://github.com/lanarito/VP3/raw/main/INSTALAR_VP3_PRIMERA_VEZ.bat
 - ✅ Notificaciones Telegram universales
 - ✅ Actualizador automático con auto-elevación admin
 - ✅ Instalador automático para máquinas nuevas
+- ✅ Filtro inteligente de iniciales de fábrica (permite invitados reales)
 - ✅ Sistema 100% automático sin intervención manual
+
+---
+
+## 🧹 Limpieza de jugadores fantasma (19 junio 2026)
+
+### Problema:
+Aparecieron jugadores fantasma en la página: AAA, BLS, GLV, NBW, NMI, RAY.
+
+### Causa raíz:
+`DEFAULT_INITIALS` estaba **definido pero NUNCA se usaba** en el filtro. Solo se chequeaba `base_records.signatures`.
+
+### Solución FINAL (filtro inteligente):
+
+El filtro ahora tiene 2 capas:
+
+**Capa 1: Lista negra dinámica (signatures)**
+- Si la combinación exacta `mesa-iniciales-puntaje` ya está en signatures → se ignora
+- Esto captura los records de fábrica registrados al baselinear
+
+**Capa 2: Iniciales de fábrica + puntaje sospechoso**
+- Si las iniciales están en `DEFAULT_INITIALS` (BLS, NBW, RAY, AAA, etc.)
+- Y el puntaje es "redondo" (múltiplo de 100K, 500K o 1M)
+- → Se ignora y se agrega a signatures automáticamente
+- Si el puntaje NO es redondo (ej: 3,458,950) → **se permite** (es probablemente un usuario real)
+
+### Ejemplo práctico:
+
+| Usuario | Mesa | Puntaje | ¿Se graba? | ¿Por qué? |
+|---------|------|---------|------------|-----------|
+| BLS (fábrica) | BTTF | 1,000,000 | ❌ No | Inicial fábrica + puntaje redondo |
+| RAY (fábrica) | BTTF | 1,700,000 | ❌ No | Inicial fábrica + puntaje redondo |
+| **RAY (real)** | BTTF | 3,458,950 | ✅ **Sí** | Inicial fábrica pero puntaje específico |
+| MIK (invitado) | BTTF | 2,105,290 | ✅ Sí | No está en DEFAULT_INITIALS |
+| HER | BTTF | 1,500,000 | ✅ Sí | Jugador autorizado |
+
+### Jugadores eliminados:
+AAA, BLS, GLV, NBW, NMI, RAY (todos con puntajes "redondos" típicos de fábrica)
+
+### Mantenido:
+MIK (invitado real con records específicos)
+
+### Iniciales nuevas agregadas a DEFAULT_INITIALS:
+NMI, GLV, MDX, EFG, JKL, MNO, PQR (detectadas como fábrica)
 
 ---
 

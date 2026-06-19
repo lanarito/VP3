@@ -527,8 +527,27 @@ Cada mesa de pinball tiene múltiples campos de hi-scores en NVRAM:
 2. VP3 lo compara con todos los campos de hi-score de la mesa
 3. Si mejora algún campo → VP3 lo guarda en NVRAM
 4. Al ejecutarse `subir_puntajes.exe`, pinemhi lee TODOS los campos
-5. El script sube todos esos puntajes a Supabase
-6. La página web muestra Top 5 visualmente, pero TODOS los records existen
+5. El script aplica filtros antifábrica (ver abajo)
+6. El script sube todos los records válidos a Supabase
+7. La página web muestra Top 5 visualmente, pero TODOS los records existen
+
+### 🛡️ Filtro inteligente antifábrica (junio 2026):
+
+El script tiene 2 capas de filtros para evitar que se graben records de fábrica:
+
+**Capa 1: Lista negra dinámica (`base_records.signatures`)**
+- Cuando se baselinea una mesa por primera vez, se guarda la firma exacta
+  `mesa-iniciales-puntaje` de los records existentes
+- Si aparece esa misma firma exacta otra vez, se ignora
+
+**Capa 2: Detección por patrón**
+- Si las iniciales están en `DEFAULT_INITIALS` (BLS, NBW, RAY, etc.)
+- Y el puntaje es "redondo" (múltiplo de 100K, 500K o 1M) → es de fábrica, se ignora
+- Si el puntaje NO es redondo (ej: 3,458,950) → puede ser usuario real, **se permite**
+
+**Ejemplo:**
+- `RAY` jugó BTTF e hizo 3,458,950 pts → **Se graba** (es un usuario real con casualidad de iniciales)
+- Record de fábrica `RAY` en BTTF de 1,000,000 pts → No se graba (puntaje redondo)
 
 ### Por qué algunos records "no aparecen":
 Si un puntaje no mejora **NINGÚN** campo de hi-score de la mesa (ni Grand Champion, ni Top 5, ni Buy-in, ni Loops, ni nada), VP3 lo descarta. Pero esto es raro porque las mesas modernas tienen muchos campos.
