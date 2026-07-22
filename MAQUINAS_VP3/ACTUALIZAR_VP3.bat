@@ -31,7 +31,7 @@ REM 1. Cambiar el texto del mensaje abajo
 REM 2. Cambiar el numero de version del marker (.welcome_shown_v1 → v2)
 REM 3. Los chicos van a ver el nuevo mensaje la proxima vez
 REM ============================================================
-if not exist "%~dp0.welcome_shown_v1" (
+if not exist "%~dp0.welcome_shown_v2" (
     color 0C
     cls
     echo.
@@ -74,15 +74,20 @@ if not exist "%~dp0.welcome_shown_v1" (
     echo  ###############################################################
     echo.
     echo.
-    echo                    Bienvenidos al sistema VP3 ;^)
+    echo             SI SI, USTEDES DOS! Nacho y Ariel!
     echo.
-    echo                  Esto solo aparece UNA VEZ jajajaja
+    echo         Sabemos que apretaron el boton pensando que era
+    echo              una actualizacion normal jajajaja
+    echo.
+    echo               Bienvenidos al sistema VP3 ;^)
+    echo.
+    echo                Esto solo aparece UNA VEZ mas
     echo.
     echo.
 
     REM Crear marker versionado para no mostrar mas
-    echo Welcome v1 shown on %date% %time% > "%~dp0.welcome_shown_v1"
-    attrib +h "%~dp0.welcome_shown_v1" >nul 2>&1
+    echo Welcome v2 shown on %date% %time% > "%~dp0.welcome_shown_v2"
+    attrib +h "%~dp0.welcome_shown_v2" >nul 2>&1
 
     echo Presiona cualquier tecla para continuar con la actualizacion...
     pause >nul
