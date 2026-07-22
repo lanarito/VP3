@@ -621,55 +621,50 @@ const ALL_TABLES = [
   "The Getaway: High Speed II", "Cyclone"
 ];
 
-// Mesas del DESAFIO SEMANAL - solo 90s y 2010s
-// Patron: cada 3 semanas hay 2 mesas de 90s + 1 de 2010s
-// Semanas 1-4 son las historicas (no cambiar para no romper Salon de Campeones)
+// Mesas del DESAFIO SEMANAL - sin repeticiones para maximo variedad
+// Se usan las 32 mesas disponibles (30 de 90s + X-Men y Walking Dead de 2010s)
+// Semanas 1-4 son historicas (no cambiar para no romper Salon de Campeones)
+// A partir de Semana 5 rota sin repetir - cada mesa aparece una sola vez por ciclo
 const CHALLENGE_TABLES = [
-  "Attack from Mars",                  // Semana 1 (1996, 90s) - HISTORICO
-  "Cactus Canyon",                     // Semana 2 (1998, 90s) - HISTORICO
-  "Congo",                             // Semana 3 (1995, 90s) - HISTORICO
-  "Creature from the Black Lagoon",    // Semana 4 (1992, 90s) - YA PASO (27 may - 2 jun) - vuelve a su valor original
-  // === Desde Semana 5 (3 jun 2026): SOLO 90s y 2010s ===
-  "The Addams Family",                 // Semana 5 (1992, 90s) - ACTUAL (cambiada desde Funhouse por elegir mesa nueva)
-  "The Walking Dead",                  // Semana 6  (2014, 2010s)
-  "Twilight Zone",                     // Semana 7  (1993, 90s)
-  "Goldeneye",                         // Semana 8  (1996, 90s)
-  "X-Men",                             // Semana 9  (2012, 2010s)
-  "Junk Yard",                         // Semana 10 (1996, 90s)
-  "Indiana Jones",                     // Semana 11 (1993, 90s)
-  "The Walking Dead",                  // Semana 12 (2014, 2010s)
-  "Lethal Weapon 3",                   // Semana 13 (1992, 90s)
-  "Monster Bash",                      // Semana 14 (1998, 90s)
-  "X-Men",                             // Semana 15 (2012, 2010s)
-  "Scared Stiff",                      // Semana 16 (1996, 90s)
-  "Hook",                              // Semana 17 (1992, 90s)
-  "The Walking Dead",                  // Semana 18 (2014, 2010s)
-  "Fish Tales",                        // Semana 19 (1992, 90s)
-  "Terminator 2",                      // Semana 20 (1991, 90s)
-  "X-Men",                             // Semana 21 (2012, 2010s)
-  "Funhouse",                          // Semana 22 (1990, 90s) - movida desde semana 5
-  "Guns N' Roses",                     // Semana 23 (1994, 90s)
-  "The Walking Dead",                  // Semana 24 (2014, 2010s)
-  "The Flintstones",                   // Semana 25 (1994, 90s)
-  "Mary Shelley's Frankenstein",       // Semana 26 (1995, 90s)
-  "Creature from the Black Lagoon",    // Semana 27 (1992, 90s) - vuelve aca despues de reparar ROM
-  "Dirty Harry",                       // Semana 28 (1995, 90s)
-  "Tom & Jerry",                       // Semana 29 (1992, 90s)
-  "The Walking Dead",                  // Semana 30 (2014, 2010s)
-  "World Cup Soccer",                  // Semana 31 (1994, 90s)
-  "Red & Ted's Road Show",             // Semana 32 (1994, 90s)
-  "X-Men",                             // Semana 33 (2012, 2010s)
-  "Phantom of the Opera",              // Semana 34 (1990, 90s)
-  "Last Action Hero",                  // Semana 35 (1993, 90s)
-  "The Walking Dead",                  // Semana 36 (2014, 2010s)
-  "Rescue 911",                        // Semana 37 (1994, 90s)
-  "NBA Fastbreak",                     // Semana 38 (1997, 90s)
-  "X-Men",                             // Semana 39 (2012, 2010s)
-  "Johnny Mnemonic",                   // Semana 40 (1995, 90s)
-  "Indianapolis 500",                  // Semana 41 (1995, 90s)
-  "The Walking Dead",                  // Semana 42 (2014, 2010s)
-  "The Getaway: High Speed II",        // Semana 43 (1992, 90s)
-  "Back to the Future",                // Semana 44 (1990, 90s)
+  "Attack from Mars",                  // Semana 1 (1996) - HISTORICO
+  "Cactus Canyon",                     // Semana 2 (1998) - HISTORICO
+  "Congo",                             // Semana 3 (1995) - HISTORICO
+  "Creature from the Black Lagoon",    // Semana 4 (1992) - HISTORICO
+  // === Desde Semana 5: rotacion SIN REPETIR ===
+  "The Addams Family",                 // Semana 5 (1992) - ya paso
+  "The Walking Dead",                  // Semana 6 (2014) - ya paso
+  "Twilight Zone",                     // Semana 7 (1993) - ya paso
+  "Goldeneye",                         // Semana 8 (1996) - ya paso
+  "X-Men",                             // Semana 9 (2012) - ya paso
+  "Monster Bash",                      // Semana 10 (1998) - ACTUAL (8-14 jul, cambiada desde Junk Yard)
+  "Indiana Jones",                     // Semana 11 (1993) - proxima (15-21 jul)
+  "Scared Stiff",                      // Semana 12 (1996)
+  "Lethal Weapon 3",                   // Semana 13 (1992)
+  "Hook",                              // Semana 14 (1992)
+  "Fish Tales",                        // Semana 15 (1992)
+  "Terminator 2",                      // Semana 16 (1991)
+  "Junk Yard",                         // Semana 17 (1996)
+  "Funhouse",                          // Semana 18 (1990)
+  "Guns N' Roses",                     // Semana 19 (1994)
+  "The Flintstones",                   // Semana 20 (1994)
+  "Mary Shelley's Frankenstein",       // Semana 21 (1995)
+  "Dirty Harry",                       // Semana 22 (1995)
+  "Tom & Jerry",                       // Semana 23 (1992)
+  "World Cup Soccer",                  // Semana 24 (1994)
+  "Red & Ted's Road Show",             // Semana 25 (1994)
+  "Phantom of the Opera",              // Semana 26 (1990)
+  "Last Action Hero",                  // Semana 27 (1993)
+  "Rescue 911",                        // Semana 28 (1994)
+  "NBA Fastbreak",                     // Semana 29 (1997)
+  "Johnny Mnemonic",                   // Semana 30 (1995)
+  "Indianapolis 500",                  // Semana 31 (1995)
+  "The Getaway: High Speed II",        // Semana 32 (1992)
+  "Back to the Future",                // Semana 33 (1990)
+  "Teenage Mutant Ninja Turtles",      // Semana 34 (1991)
+  "Creature from the Black Lagoon",    // Semana 35 (1992) - vuelve despues de reparar ROM
+  // Despues del ciclo completo (semana 35) vuelve a X-Men y Walking Dead
+  "X-Men",                             // Semana 36 (2012)
+  "The Walking Dead",                  // Semana 37 (2014)
 ];
 
 const TABLE_YEARS = {
