@@ -23,75 +23,9 @@ REM Ya somos admin desde este punto
 title VP3 - Actualizador Automatico
 cd /d "%~dp0"
 
-REM ============================================================
-REM SORPRESA - Solo aparece la PRIMERA vez que se ejecuta
-REM
-REM Como cambiar el mensaje para que vuelva a aparecer:
-REM 1. Cambiar el texto del mensaje abajo
-REM 2. Cambiar el numero de version del marker (.welcome_shown_v1 → v2)
-REM 3. Los chicos van a ver el nuevo mensaje la proxima vez
-REM ============================================================
-if not exist "%~dp0.welcome_shown_v2" (
-    color 0C
-    cls
-    echo.
-    echo.
-    echo  ###############################################################
-    echo  #                                                             #
-    echo  #                                                             #
-    echo  #     PPPPP   EEEEE  L      AAAAA  DDDD    OOO   SSSSS        #
-    echo  #     P    P  E      L      A   A  D   D  O   O  S            #
-    echo  #     PPPPP   EEEE   L      AAAAA  D   D  O   O  SSSSS        #
-    echo  #     P       E      L      A   A  D   D  O   O      S        #
-    echo  #     P       EEEEE  LLLLL  A   A  DDDD    OOO   SSSSS        #
-    echo  #                                                             #
-    echo  #                                                             #
-    echo  #     H   H  IIII   JJJJJ  OOO   SSSSS                        #
-    echo  #     H   H   II      J   O   O  S                            #
-    echo  #     HHHHH   II      J   O   O  SSSSS                        #
-    echo  #     H   H   II   J  J   O   O      S                        #
-    echo  #     H   H  IIII   JJ    OOO   SSSSS                         #
-    echo  #                                                             #
-    echo  #     DDDD   EEEEE  L       AAAAA                             #
-    echo  #     D   D  E      L       A   A                             #
-    echo  #     D   D  EEEE   L       AAAAA                             #
-    echo  #     D   D  E      L       A   A                             #
-    echo  #     DDDD   EEEEE  LLLLL   A   A                             #
-    echo  #                                                             #
-    echo  #     CCCCC  H   H  IIII  N   N   GGGG   AAAAA                #
-    echo  #     C      H   H   II   NN  N  G       A   A                #
-    echo  #     C      HHHHH   II   N N N  G  GG   AAAAA                #
-    echo  #     C      H   H   II   N  NN  G   G   A   A                #
-    echo  #     CCCCC  H   H  IIII  N   N   GGGG   A   A                #
-    echo  #                                                             #
-    echo  #     DDDD   EEEEE  RRRR    AAAAA   !!!  !!!  !!!             #
-    echo  #     D   D  E      R   R   A   A   !!!  !!!  !!!             #
-    echo  #     D   D  EEEE   RRRR    AAAAA   !!!  !!!  !!!             #
-    echo  #     D   D  E      R  R    A   A                             #
-    echo  #     DDDD   EEEEE  R   R   A   A   !!!  !!!  !!!             #
-    echo  #                                                             #
-    echo  #                                                             #
-    echo  ###############################################################
-    echo.
-    echo.
-    echo             SI SI, USTEDES DOS! Nacho y Ariel!
-    echo.
-    echo         Sabemos que apretaron el boton pensando que era
-    echo              una actualizacion normal jajajaja
-    echo.
-    echo               Bienvenidos al sistema VP3 ;^)
-    echo.
-    echo                Esto solo aparece UNA VEZ mas
-    echo.
-    echo.
-
-    REM Crear marker versionado para no mostrar mas
-    echo Welcome v2 shown on %date% %time% > "%~dp0.welcome_shown_v2"
-    attrib +h "%~dp0.welcome_shown_v2" >nul 2>&1
-
-    echo Presiona cualquier tecla para continuar con la actualizacion...
-    pause >nul
-)
+REM NOTA: El easter egg fue movido al FINAL del script (despues de LISTO)
+REM Asi se garantiza que aparezca sin importar el timing del auto-reemplazo del bat
+REM Ver seccion easter egg al final del archivo
 
 color 0B
 cls
@@ -177,14 +111,83 @@ echo ===============================================
 echo.
 echo El sistema VP3 esta corriendo con la ultima version.
 echo.
-echo Cambios aplicados:
-echo  - Subir_puntajes.exe actualizado a ultima version
-echo  - Watchdog v4 corriendo
-echo  - Popup de error al apagar SUPRIMIDO permanentemente
-echo.
-echo Ya podes cerrar esta ventana y seguir jugando.
-echo (Si veias el popup al apagar, ya no aparece mas)
-echo.
-echo Esta ventana se cierra sola en 10 segundos...
-timeout /t 10 /nobreak >nul
+timeout /t 3 /nobreak >nul
+
+REM ============================================================
+REM EASTER EGG - Aparece al final de CADA actualizacion (una vez)
+REM Para nuevo mensaje: cambiar .welcome_shown_v3 a v4, etc
+REM ============================================================
+if not exist "%~dp0.welcome_shown_v3" (
+    color 0C
+    cls
+    echo.
+    echo.
+    echo  ###############################################################
+    echo  #                                                             #
+    echo  #                                                             #
+    echo  #     PPPPP   EEEEE  L      AAAAA  DDDD    OOO   SSSSS        #
+    echo  #     P    P  E      L      A   A  D   D  O   O  S            #
+    echo  #     PPPPP   EEEE   L      AAAAA  D   D  O   O  SSSSS        #
+    echo  #     P       E      L      A   A  D   D  O   O      S        #
+    echo  #     P       EEEEE  LLLLL  A   A  DDDD    OOO   SSSSS        #
+    echo  #                                                             #
+    echo  #                                                             #
+    echo  #     H   H  IIII   JJJJJ  OOO   SSSSS                        #
+    echo  #     H   H   II      J   O   O  S                            #
+    echo  #     HHHHH   II      J   O   O  SSSSS                        #
+    echo  #     H   H   II   J  J   O   O      S                        #
+    echo  #     H   H  IIII   JJ    OOO   SSSSS                         #
+    echo  #                                                             #
+    echo  #     DDDD   EEEEE  L       AAAAA                             #
+    echo  #     D   D  E      L       A   A                             #
+    echo  #     D   D  EEEE   L       AAAAA                             #
+    echo  #     D   D  E      L       A   A                             #
+    echo  #     DDDD   EEEEE  LLLLL   A   A                             #
+    echo  #                                                             #
+    echo  #     CCCCC  H   H  IIII  N   N   GGGG   AAAAA                #
+    echo  #     C      H   H   II   NN  N  G       A   A                #
+    echo  #     C      HHHHH   II   N N N  G  GG   AAAAA                #
+    echo  #     C      H   H   II   N  NN  G   G   A   A                #
+    echo  #     CCCCC  H   H  IIII  N   N   GGGG   A   A                #
+    echo  #                                                             #
+    echo  #     DDDD   EEEEE  RRRR    AAAAA   !!!  !!!  !!!             #
+    echo  #     D   D  E      R   R   A   A   !!!  !!!  !!!             #
+    echo  #     D   D  EEEE   RRRR    AAAAA   !!!  !!!  !!!             #
+    echo  #     D   D  E      R  R    A   A                             #
+    echo  #     DDDD   EEEEE  R   R   A   A   !!!  !!!  !!!             #
+    echo  #                                                             #
+    echo  #                                                             #
+    echo  ###############################################################
+    echo.
+    echo.
+    echo             SI SI, USTEDES DOS! Nacho y Ariel!
+    echo.
+    echo         La actualizacion se hizo bien, tranqui.
+    echo.
+    echo               Pero antes de irte...
+    echo.
+    echo         Bienvenidos al sistema VP3 mi amor ;^)
+    echo.
+    echo               Esto no lo veras otra vez
+    echo.
+    echo.
+
+    REM Crear marker para no mostrar mas
+    echo Welcome v3 shown on %date% %time% > "%~dp0.welcome_shown_v3"
+    attrib +h "%~dp0.welcome_shown_v3" >nul 2>&1
+
+    echo Presiona cualquier tecla para cerrar la ventana...
+    pause >nul
+) else (
+    echo Cambios aplicados:
+    echo  - Subir_puntajes.exe actualizado a ultima version
+    echo  - Watchdog v4 corriendo
+    echo  - Popup de error al apagar SUPRIMIDO permanentemente
+    echo.
+    echo Ya podes cerrar esta ventana y seguir jugando.
+    echo.
+    echo Esta ventana se cierra sola en 10 segundos...
+    timeout /t 10 /nobreak >nul
+)
+
 exit /b 0
