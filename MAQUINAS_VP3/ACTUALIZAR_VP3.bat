@@ -8,6 +8,7 @@ REM - Cierra procesos viejos
 REM - Descarga ultima version
 REM - Reemplaza archivos
 REM - Aplica fix de registro para suprimir popup de error al apagar
+REM - Registra una sincronizacion final justo antes de apagar la PC
 REM - Arranca el watchdog
 REM ============================================================
 
@@ -42,14 +43,14 @@ echo Empezando en 3 segundos...
 timeout /t 3 /nobreak >nul
 
 echo.
-echo [1/8] Cerrando procesos viejos...
+echo [1/9] Cerrando procesos viejos...
 taskkill /F /IM subir_puntajes.exe /T >nul 2>&1
 taskkill /F /IM cmd.exe /FI "WINDOWTITLE eq VP3*" >nul 2>&1
 timeout /t 2 /nobreak >nul
 echo       OK
 echo.
 
-echo [2/8] Descargando ultima version desde GitHub...
+echo [2/9] Descargando ultima version desde GitHub...
 powershell -Command "& {try {Invoke-WebRequest -Uri 'https://lanarito.github.io/VP3/MAQUINAS_VP3.zip' -OutFile '%TEMP%\MAQUINAS_VP3_NUEVO.zip' -UseBasicParsing; exit 0} catch {exit 1}}"
 if errorlevel 1 (
     echo       ERROR: No se pudo descargar
@@ -62,7 +63,7 @@ if errorlevel 1 (
 echo       OK
 echo.
 
-echo [3/8] Extrayendo archivos...
+echo [3/9] Extrayendo archivos...
 if exist "%TEMP%\VP3_TEMP" rmdir /S /Q "%TEMP%\VP3_TEMP"
 mkdir "%TEMP%\VP3_TEMP" 2>nul
 powershell -Command "& {try {Expand-Archive -Path '%TEMP%\MAQUINAS_VP3_NUEVO.zip' -DestinationPath '%TEMP%\VP3_TEMP' -Force; exit 0} catch {exit 1}}"
@@ -74,18 +75,18 @@ if errorlevel 1 (
 echo       OK
 echo.
 
-echo [4/8] Copiando archivos nuevos...
+echo [4/9] Copiando archivos nuevos...
 xcopy /Y /E /Q "%TEMP%\VP3_TEMP\*" "%~dp0" >nul 2>&1
 echo       OK
 echo.
 
-echo [5/8] Limpiando archivos temporales...
+echo [5/9] Limpiando archivos temporales...
 del "%TEMP%\MAQUINAS_VP3_NUEVO.zip" >nul 2>&1
 rmdir /S /Q "%TEMP%\VP3_TEMP" >nul 2>&1
 echo       OK
 echo.
 
-echo [6/8] Aplicando fix de error al apagar (registro Windows)...
+echo [6/9] Aplicando fix de error al apagar (registro Windows)...
 REM ErrorMode = 2: no muestra popup de error general
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\Windows" /v "ErrorMode" /t REG_DWORD /d 2 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows" /v "ErrorMode" /t REG_DWORD /d 2 /f >nul 2>&1
@@ -93,13 +94,18 @@ reg add "HKCU\Software\Microsoft\Windows\Windows Error Reporting" /v "DontShowUI
 echo       OK
 echo.
 
-echo [7/8] Configurando Windows Error Reporting para subir_puntajes.exe...
+echo [7/9] Configurando Windows Error Reporting para subir_puntajes.exe...
 REM Suprimir errores especificos del .exe
 reg add "HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting" /v "Disabled" /t REG_DWORD /d 1 /f >nul 2>&1
 echo       OK
 echo.
 
-echo [8/8] Iniciando watchdog actualizado...
+echo [8/9] Registrando sincronizacion final antes de apagar...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0registrar_sync_apagado.ps1" >nul 2>&1
+echo       OK
+echo.
+
+echo [9/9] Iniciando watchdog actualizado...
 start "" wscript.exe "%~dp0WATCHDOG_invisible.vbs"
 timeout /t 3 /nobreak >nul
 echo       OK
@@ -183,6 +189,7 @@ if not exist "%~dp0.welcome_shown_v3" (
     echo  - Subir_puntajes.exe actualizado a ultima version
     echo  - Watchdog v4 corriendo
     echo  - Popup de error al apagar SUPRIMIDO permanentemente
+    echo  - Sincronizacion final antes de apagar ACTIVADA
     echo.
     echo Ya podes cerrar esta ventana y seguir jugando.
     echo.

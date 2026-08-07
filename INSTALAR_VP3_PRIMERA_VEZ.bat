@@ -10,6 +10,7 @@ REM - Descarga la ultima version
 REM - Extrae los archivos
 REM - Configura inicio automatico
 REM - Aplica fix de error al apagar
+REM - Registra una sincronizacion final justo antes de apagar la PC
 REM - Arranca el watchdog
 REM
 REM Solo doble-click y listo
@@ -44,13 +45,13 @@ timeout /t 5 /nobreak >nul
 set INSTALL_DIR=C:\VP3\MAQUINAS_VP3
 
 echo.
-echo [1/7] Creando carpeta de instalacion...
+echo [1/8] Creando carpeta de instalacion...
 if not exist "C:\VP3" mkdir "C:\VP3"
 if not exist "%INSTALL_DIR%" mkdir "%INSTALL_DIR%"
 echo       OK
 echo.
 
-echo [2/7] Descargando ultima version desde GitHub...
+echo [2/8] Descargando ultima version desde GitHub...
 powershell -Command "& {try {Invoke-WebRequest -Uri 'https://lanarito.github.io/VP3/MAQUINAS_VP3.zip' -OutFile '%TEMP%\MAQUINAS_VP3.zip' -UseBasicParsing; exit 0} catch {exit 1}}"
 if errorlevel 1 (
     echo       ERROR: No se pudo descargar
@@ -61,7 +62,7 @@ if errorlevel 1 (
 echo       OK
 echo.
 
-echo [3/7] Extrayendo en %INSTALL_DIR%...
+echo [3/8] Extrayendo en %INSTALL_DIR%...
 powershell -Command "& {try {Expand-Archive -Path '%TEMP%\MAQUINAS_VP3.zip' -DestinationPath '%INSTALL_DIR%' -Force; exit 0} catch {exit 1}}"
 if errorlevel 1 (
     echo       ERROR: No se pudo extraer
@@ -72,7 +73,7 @@ del "%TEMP%\MAQUINAS_VP3.zip" >nul 2>&1
 echo       OK
 echo.
 
-echo [4/7] Configurando inicio automatico (shell:startup)...
+echo [4/8] Configurando inicio automatico (shell:startup)...
 set STARTUP_FOLDER=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup
 
 REM Borrar acceso directo viejo si existe
@@ -84,7 +85,7 @@ powershell -Command "& {$ws = New-Object -ComObject WScript.Shell; $sc = $ws.Cre
 echo       OK
 echo.
 
-echo [5/7] Aplicando fix de error al apagar (registro Windows)...
+echo [5/8] Aplicando fix de error al apagar (registro Windows)...
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\Windows" /v "ErrorMode" /t REG_DWORD /d 2 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows" /v "ErrorMode" /t REG_DWORD /d 2 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting" /v "Disabled" /t REG_DWORD /d 1 /f >nul 2>&1
@@ -92,12 +93,17 @@ reg add "HKCU\Software\Microsoft\Windows\Windows Error Reporting" /v "DontShowUI
 echo       OK
 echo.
 
-echo [6/7] Creando acceso directo en escritorio...
+echo [6/8] Registrando sincronizacion final antes de apagar...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%INSTALL_DIR%\registrar_sync_apagado.ps1" >nul 2>&1
+echo       OK
+echo.
+
+echo [7/8] Creando acceso directo en escritorio...
 powershell -Command "& {$ws = New-Object -ComObject WScript.Shell; $sc = $ws.CreateShortcut([Environment]::GetFolderPath('Desktop') + '\Actualizar VP3.lnk'); $sc.TargetPath = '%INSTALL_DIR%\ACTUALIZAR_VP3.bat'; $sc.WorkingDirectory = '%INSTALL_DIR%'; $sc.IconLocation = 'C:\Windows\System32\shell32.dll,238'; $sc.Save()}"
 echo       OK
 echo.
 
-echo [7/7] Iniciando watchdog ahora...
+echo [8/8] Iniciando watchdog ahora...
 start "" wscript.exe "%INSTALL_DIR%\WATCHDOG_invisible.vbs"
 timeout /t 3 /nobreak >nul
 echo       OK
@@ -111,6 +117,7 @@ echo Ubicacion: %INSTALL_DIR%
 echo Inicio automatico: configurado
 echo Watchdog: corriendo
 echo Fix de error al apagar: aplicado
+echo Sincronizacion final antes de apagar: activada
 echo Acceso directo en escritorio: "Actualizar VP3"
 echo.
 echo Cosas que tenes que hacer despues:

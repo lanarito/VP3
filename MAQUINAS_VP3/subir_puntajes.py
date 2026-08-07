@@ -48,6 +48,8 @@ DEFAULT_INITIALS = {
     "BTA", "MDT", "MPE", "GTC", "WGP", "BEV", "BFW", "RAY", "GIL", "TWS",
     "ASR", "CJL", "LED", "DOA", "FEJ", "NTS", "TON", "VLD", "WAG", "XAQ", "TEX",
     "SAC", "GSC", "JWC", "BSO", "KGG", "DAY", "LFS", "KRT",
+    # Agregados 2026-06: detectados como fabrica en Back to the Future / Walking Dead / Indianapolis 500
+    "NMI", "GLV", "MDX", "EFG", "JKL", "MNO", "PQR",
     # Genéricas o dummy
     "AAA", "BBB", "CCC", "DDD", "EEE", "FFF", "GGG", "HHH", "III", "JJJ",
     "KKK", "LLL", "MMM", "NNN", "OOO", "PPP", "QQQ", "RRR", "SSS", "TTT",
@@ -281,15 +283,37 @@ def procesar_y_subir():
             
             for s in scores:
 
-                # Comprobar si es un récord de la línea base local (puntaje de fábrica registrado al instalar)
+                # FILTRO 1: Lista negra dinamica (records de fabrica ya identificados)
                 firma = f"{mesa['nombre']}-{s['jugador']}-{s['puntaje']}"
                 if firma in base_records.get("signatures", []):
-                    continue # Lo ignoramos
-                
+                    continue # Es de fabrica conocido, lo ignoramos
+
+                # FILTRO 2: Iniciales de fabrica con puntajes sospechosos
+                # Solo bloquea si las iniciales son de fabrica Y el puntaje parece de fabrica
+                # (numeros redondos como 1.000.000, 5.000.000, etc.)
+                # Asi un invitado real con iniciales RAY/BLS/etc puede subir su record
+                # con puntaje especifico (ej: 3.458.950) sin problema
+                if s['jugador'] in DEFAULT_INITIALS:
+                    # Detectar puntajes "redondos" tipicos de fabrica
+                    es_puntaje_redondo = (
+                        s['puntaje'] % 1000000 == 0 or  # Multiplo de 1M
+                        s['puntaje'] % 500000 == 0 or   # Multiplo de 500K
+                        s['puntaje'] % 100000 == 0      # Multiplo de 100K
+                    )
+                    if es_puntaje_redondo:
+                        # Auto-agregar a signatures para futuro
+                        if firma not in base_records.get("signatures", []):
+                            if "signatures" not in base_records:
+                                base_records["signatures"] = []
+                            base_records["signatures"].append(firma)
+                            modificado_base_records = True
+                        continue # Es probablemente de fabrica
+                    # Si NO es puntaje redondo, dejarlo pasar (probablemente jugador real)
+
                 siglas = "".join([p[0].upper() for p in mesa["nombre"].split()][:2])
                 id_unico = f"{siglas}-{s['jugador']}-{s['puntaje']}"
                 nuevos_puntajes.append({
-                    "ID_Record": id_unico, "Mesa": mesa["nombre"], 
+                    "ID_Record": id_unico, "Mesa": mesa["nombre"],
                     "Jugador": s["jugador"], "Puntaje": s["puntaje"], "Fecha": datetime.now().strftime("%Y-%m-%d")
                 })
 
@@ -316,7 +340,7 @@ def procesar_y_subir():
 
         # 1. Leer lo que ya hay en la base de datos
         req_get = urllib.request.Request(f"{SUPABASE_URL}?select=*", headers=headers)
-        with urllib.request.urlopen(req_get) as response:
+        with urllib.request.urlopen(req_get, timeout=10) as response:
             existentes = json.loads(response.read().decode())
         
         ids_nube = {r["id_record"] for r in existentes} if existentes else set()
@@ -407,10 +431,19 @@ def procesar_y_subir():
 
         filas_finales = []
         nuevos_top5 = [] # PARA NOTIFICAR
+
         for mesa_nombre, recs in mesas_agrupadas.items():
             recs.sort(key=lambda x: x["Puntaje"], reverse=True)
-            for i, r in enumerate(recs[:5]): # LIMITADO AL TOP 5 GLOBAL
-                pos = "Gran Campeon" if i == 0 else f"{i+1}ro"
+            # SUBIR TODOS LOS REGISTROS VÁLIDOS (sin límite de Top 5)
+            # El filtrado al Top 5 se hará en la web (JavaScript)
+            for i, r in enumerate(recs):
+                # Asignar posición: Top 5 obtiene posición en Supabase
+                if i < 5:
+                    pos = "Gran Campeon" if i == 0 else f"{i+1}ro"
+                else:
+                    # Registros fuera del Top 5 se guardan con su posición real pero son opcionales en la web
+                    pos = f"{i+1}to"
+
                 filas_finales.append({
                     "id_record": r["ID_Record"],
                     "mesa": r["Mesa"],
@@ -419,7 +452,8 @@ def procesar_y_subir():
                     "puntaje": r["Puntaje"],
                     "fecha": r["Fecha"]
                 })
-                # Notificar si este record entró al Top 5 y no estaba en la nube
+                # Notificar TODOS los records nuevos (autorizados + invitados)
+                # sin importar posicion ni quien sea el jugador
                 if r["ID_Record"] not in ids_nube:
                     nuevos_top5.append((r, pos))
         
@@ -437,17 +471,12 @@ def procesar_y_subir():
             headers_upsert = {**headers, "Prefer": "resolution=merge-duplicates"}
             data = json.dumps(filas_finales).encode("utf-8")
             req_ups = urllib.request.Request(SUPABASE_URL, data=data, headers=headers_upsert, method="POST")
-            urllib.request.urlopen(req_ups)
+            urllib.request.urlopen(req_ups, timeout=10)
 
-            # Limpiar registros que ya no están en el Top 5 (si falla, se limpian en el próximo ciclo)
-            ids_finales = ",".join(r["id_record"] for r in filas_finales)
-            try:
-                req_del = urllib.request.Request(
-                    f"{SUPABASE_URL}?id_record=not.in.({ids_finales})",
-                    headers=headers, method="DELETE"
-                )
-                urllib.request.urlopen(req_del)
-            except: pass
+            # IMPORTANTE: Se suben TODOS los registros válidos a Supabase
+            # El filtrado al Top 5 se realiza en el lado del cliente (web)
+            # Esto asegura que no se pierdan registros de jugadores válidos
+            print(f"✅ Supabase sincronizado con {len(filas_finales)} registros totales")
             
             # Guardar el nuevo estado de la nube en el historial local
             try:
@@ -483,37 +512,109 @@ def copiar_vp_alias_automatico():
     except Exception as e:
         print(f"⚠️ Error al copiar VPMAlias.txt automaticamente: {e}")
 
+def escribir_heartbeat(estado="ALIVE"):
+    """Escribe archivo de heartbeat para saber que el script esta vivo"""
+    try:
+        with open("vp3_heartbeat.txt", "w") as f:
+            f.write(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} | {estado}\n")
+    except Exception:
+        pass
+
+def log_evento(mensaje):
+    """Loguea eventos importantes con timestamp en archivo persistente"""
+    try:
+        with open("vp3_script_log.txt", "a", encoding="utf-8") as f:
+            f.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {mensaje}\n")
+    except Exception:
+        pass
+
 if __name__ == "__main__":
-    print("--- VP3 SYSTEM ONLINE (SUPABASE EDITION) ---")
-    copiar_vp_alias_automatico()
-    tiempos_mod = {}
-    procesar_y_subir()
-    
-    for m in MESAS_CONFIG:
-        archivos = glob.glob(os.path.join(NVRAM_PATH, m["prefijo"] + "*.nv"))
-        if archivos: 
-            fp = max(archivos, key=os.path.getmtime)
-            tiempos_mod[m["nombre"]] = os.path.getmtime(fp)
-    
-    print("👀 Monitoreando cambios en NVRAM... (Ctrl+C para salir)")
-    while True:
+    if "--sync-once" in sys.argv:
+        # Modo usado por el script de apagado de Windows: una sola pasada
+        # de sincronizacion y listo (sin loop), para no demorar el apagado.
+        log_evento("Sincronizacion forzada antes de apagar (shutdown script)")
         try:
-            hubo_cambio = False
-            for m in MESAS_CONFIG:
-                archivos = glob.glob(os.path.join(NVRAM_PATH, m["prefijo"] + "*.nv"))
-                if archivos:
-                    fp = max(archivos, key=os.path.getmtime)
-                    t = os.path.getmtime(fp)
-                    if tiempos_mod.get(m["nombre"]) != t:
-                        hubo_cambio = True
-                        tiempos_mod[m["nombre"]] = t
-            if hubo_cambio:
-                print("Cambio detectado en NVRAM. Sincronizando...")
-                time.sleep(2)
-                procesar_y_subir()
-            time.sleep(10)
-        except KeyboardInterrupt:
-            print("\n🛑 VP3 System detenido por el usuario.")
-            break
-        except Exception:
-            time.sleep(10)
+            procesar_y_subir()
+            escribir_heartbeat("SHUTDOWN_SYNC_OK")
+        except Exception as e:
+            log_evento(f"Error en sincronizacion de apagado: {e}")
+            escribir_heartbeat(f"SHUTDOWN_SYNC_ERROR: {e}")
+        sys.exit(0)
+
+    print("--- VP3 SYSTEM ONLINE (SUPABASE EDITION) ---")
+    log_evento("Script iniciado")
+    escribir_heartbeat("STARTING")
+
+    try:
+        copiar_vp_alias_automatico()
+        tiempos_mod = {}
+
+        # Sincronizacion inicial (procesar TODO al arrancar)
+        log_evento("Sincronizacion inicial")
+        procesar_y_subir()
+        escribir_heartbeat("INITIAL_SYNC_OK")
+
+        for m in MESAS_CONFIG:
+            archivos = glob.glob(os.path.join(NVRAM_PATH, m["prefijo"] + "*.nv"))
+            if archivos:
+                fp = max(archivos, key=os.path.getmtime)
+                tiempos_mod[m["nombre"]] = os.path.getmtime(fp)
+
+        print("👀 Monitoreando cambios en NVRAM... (Ctrl+C para salir)")
+        log_evento("Entrando en modo monitoreo")
+
+        # Heartbeat cada 5 minutos para verificar que esta vivo
+        contador_heartbeat = 0
+        # Sincronizacion forzada cada 10 minutos como red de seguridad
+        contador_sync_periodico = 0
+
+        while True:
+            try:
+                hubo_cambio = False
+                for m in MESAS_CONFIG:
+                    archivos = glob.glob(os.path.join(NVRAM_PATH, m["prefijo"] + "*.nv"))
+                    if archivos:
+                        fp = max(archivos, key=os.path.getmtime)
+                        t = os.path.getmtime(fp)
+                        if tiempos_mod.get(m["nombre"]) != t:
+                            hubo_cambio = True
+                            tiempos_mod[m["nombre"]] = t
+
+                if hubo_cambio:
+                    print("Cambio detectado en NVRAM. Sincronizando...")
+                    log_evento("Cambio detectado en NVRAM - sincronizando")
+                    time.sleep(2)
+                    procesar_y_subir()
+                    escribir_heartbeat("SYNCED")
+
+                # Heartbeat cada 30 ciclos (5 minutos aprox)
+                contador_heartbeat += 1
+                if contador_heartbeat >= 30:
+                    escribir_heartbeat("ALIVE")
+                    contador_heartbeat = 0
+
+                # Sincronizacion forzada cada 60 ciclos (10 minutos aprox)
+                # Red de seguridad por si NVRAM cambia sin actualizar mtime
+                contador_sync_periodico += 1
+                if contador_sync_periodico >= 60:
+                    log_evento("Sincronizacion periodica de seguridad (cada 10 min)")
+                    procesar_y_subir()
+                    escribir_heartbeat("PERIODIC_SYNC_OK")
+                    contador_sync_periodico = 0
+
+                time.sleep(10)
+            except KeyboardInterrupt:
+                print("\n🛑 VP3 System detenido por el usuario.")
+                log_evento("Detenido por usuario")
+                escribir_heartbeat("STOPPED_BY_USER")
+                break
+            except Exception as e:
+                log_evento(f"Error en bucle de monitoreo: {e}")
+                escribir_heartbeat(f"ERROR: {e}")
+                time.sleep(10)
+    except Exception as e:
+        print(f"❌ Error fatal: {e}")
+        log_evento(f"ERROR FATAL: {e}")
+        escribir_heartbeat(f"FATAL_ERROR: {e}")
+        # No salir - dormir e intentar reiniciar
+        time.sleep(30)

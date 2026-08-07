@@ -340,7 +340,7 @@ def procesar_y_subir():
 
         # 1. Leer lo que ya hay en la base de datos
         req_get = urllib.request.Request(f"{SUPABASE_URL}?select=*", headers=headers)
-        with urllib.request.urlopen(req_get) as response:
+        with urllib.request.urlopen(req_get, timeout=10) as response:
             existentes = json.loads(response.read().decode())
         
         ids_nube = {r["id_record"] for r in existentes} if existentes else set()
@@ -471,7 +471,7 @@ def procesar_y_subir():
             headers_upsert = {**headers, "Prefer": "resolution=merge-duplicates"}
             data = json.dumps(filas_finales).encode("utf-8")
             req_ups = urllib.request.Request(SUPABASE_URL, data=data, headers=headers_upsert, method="POST")
-            urllib.request.urlopen(req_ups)
+            urllib.request.urlopen(req_ups, timeout=10)
 
             # IMPORTANTE: Se suben TODOS los registros válidos a Supabase
             # El filtrado al Top 5 se realiza en el lado del cliente (web)
@@ -529,6 +529,18 @@ def log_evento(mensaje):
         pass
 
 if __name__ == "__main__":
+    if "--sync-once" in sys.argv:
+        # Modo usado por el script de apagado de Windows: una sola pasada
+        # de sincronizacion y listo (sin loop), para no demorar el apagado.
+        log_evento("Sincronizacion forzada antes de apagar (shutdown script)")
+        try:
+            procesar_y_subir()
+            escribir_heartbeat("SHUTDOWN_SYNC_OK")
+        except Exception as e:
+            log_evento(f"Error en sincronizacion de apagado: {e}")
+            escribir_heartbeat(f"SHUTDOWN_SYNC_ERROR: {e}")
+        sys.exit(0)
+
     print("--- VP3 SYSTEM ONLINE (SUPABASE EDITION) ---")
     log_evento("Script iniciado")
     escribir_heartbeat("STARTING")
