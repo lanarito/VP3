@@ -6,14 +6,15 @@
 // --- PARÁMETROS AJUSTABLES (en mm) ---
 distancia_centros = 63.0;     // Distancia entre el centro del tornillo frontal Allen y el trasero de madera
 ancho_guardamonte = 14.5;     // Ancho total de la pieza (se adapta al ancho de la culata)
-radio_redondeado_bordes = 1.8;// Radio de redondeado de los bordes laterales (Z)
+radio_redondeado_bordes = 2.0;// Radio de redondeado de los bordes laterales (Z)
 
 // Espesores de la Pieza
 espesor_pestana_front = 9.5;  // Espesor del bloque delantero
+espesor_pestana_rear = 3.5;   // Espesor de la cinta/pestaña trasera
+espesor_techo_arco = 3.5;     // Espesor del techo plano superior del arco
 espesor_pared_arco = 3.5;     // Espesor de la pared del arco del gatillo
 
 // Dimensiones del Arco (Espacio libre para el gatillo)
-alto_interno = 25.0;          // Diámetro interno libre del arco (25mm para espacio total del gatillo)
 desplazamiento_arco = 16.0;   // Distancia desde el centro del tornillo frontal Allen hasta el inicio del arco
 
 // Tornillo Frontal Allen (Fijación principal de culata)
@@ -41,32 +42,40 @@ $fn = 100;
 // 1. Perfil 2D del Guardamonte (Vista Lateral Fiel al Rifle Real)
 module perfil_base_2d() {
     // Doble offset suave para empalmes curvos de alta calidad
-    offset(r = 0.8, $fn = 80) offset(r = -0.8, $fn = 80)
+    offset(r = 1.0, $fn = 80) offset(r = -1.0, $fn = 80)
     difference() {
         union() {
             // A. Nose delantero redondeado
             translate([-20, -espesor_pestana_front/2])
                 circle(d = espesor_pestana_front);
             
-            // Bloque Delantero
+            // Bloque Delantero (x = -20 a x = 16)
             polygon([
                 [-20, 0],
-                [desplazamiento_arco, 0],
-                [desplazamiento_arco, -espesor_pestana_front],
+                [16, 0],
+                [16, -espesor_pestana_front],
                 [-20, -espesor_pestana_front]
             ]);
             
-            // B. Anillo del Arco del Gatillo y Pestaña Trasera (Unificados)
+            // B. Techo Superior Continuo (x = 16 a x = 42, 100% SÓLIDO AL RAS DE LA MADERA)
+            polygon([
+                [16, 0],
+                [42, 0],
+                [42, -espesor_techo_arco],
+                [16, -espesor_techo_arco]
+            ]);
+            
+            // C. Anillo Exterior del Arco del Gatillo que cuelga hacia abajo
             hull() {
-                translate([desplazamiento_arco + alto_interno/2, -alto_interno/2])
-                    circle(r = alto_interno/2 + espesor_pared_arco);
-                translate([38, -6.5])
-                    circle(r = 5.5);
+                translate([27.0, -12.0])
+                    circle(r = 12.0);
+                translate([37.0, -6.5])
+                    circle(d = 7.0);
             }
             
-            // C. Pestaña Trasera de la Empuñadura (CINTA DELGADA que envuelve el manillar)
+            // D. Pestaña Trasera (Cinta delgada de 3.5mm que envuelve el manillar)
             hull() {
-                translate([36.0, -5.0])
+                translate([37.0, -5.0])
                     circle(d = 6.0);
                 translate([45.0, -4.5])
                     circle(d = 5.0);
@@ -79,15 +88,15 @@ module perfil_base_2d() {
             }
         }
         
-        // D. Hueco Interior Amplio para el Gatillo (Termina en x = 38.0)
+        // E. Hueco del Gatillo (Bolsillo inferior: termina exactamente en y = -3.5, JAMÁS corta el techo superior)
         hull() {
-            translate([desplazamiento_arco + alto_interno/2, -alto_interno/2])
-                circle(r = alto_interno/2);
-            translate([31.0, -8.0])
-                circle(r = 7.0);
+            translate([27.0, -12.0])
+                circle(r = 8.5);
+            translate([31.0, -8.5])
+                circle(r = 5.0);
         }
         
-        // E. Superficie de Asiento con la Culata de Madera (Corte superior al ras)
+        // F. Superficie de Asiento con la Culata de Madera (Corte superior al ras)
         polygon([
             [-50, 100],
             [120, 100],
