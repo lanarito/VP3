@@ -90,7 +90,13 @@ def mandar_whatsapp(mensaje):
 # ALIAS DE ROMS (VPMAlias.txt) - "origen,destino" por linea.
 # pinemhi.exe NO conoce estas alias (son de VPinMAME), asi que si un
 # .nv no tiene rom soportada pero SI tiene alias, se lee copiandolo
-# temporalmente con el nombre del rom destino que pinemhi si soporta.
+# con el nombre del rom destino que pinemhi si soporta.
+#
+# IMPORTANTE: esa copia se hace SIEMPRE en una carpeta temporal aparte,
+# NUNCA dentro de la carpeta real de NVRAM. El rom destino de una alias
+# suele ser una mesa que el usuario tambien juega (ej: hook_501 ->
+# hook_408), asi que escribir ahi podia pisar el archivo real justo
+# cuando el juego estaba guardando un puntaje, y perderlo.
 # ============================================================
 def cargar_alias_vpm():
     alias_map = {}
@@ -108,6 +114,48 @@ def cargar_alias_vpm():
 
 ALIAS_VPM = cargar_alias_vpm()
 
+_ALIAS_WORKSPACE = None
+
+def obtener_workspace_alias():
+    """
+    Prepara (una sola vez) una carpeta temporal con su propia copia de
+    pinemhi.exe y de pinemhi.ini, con la ruta de NVRAM apuntando a esa
+    misma carpeta temporal. Ahi se leen los archivos con alias, sin
+    tocar jamas la carpeta real de NVRAM.
+    Devuelve la ruta, o None si no se pudo preparar.
+    """
+    global _ALIAS_WORKSPACE
+    if _ALIAS_WORKSPACE is not None:
+        return _ALIAS_WORKSPACE or None
+
+    try:
+        import tempfile, shutil
+        workspace = tempfile.mkdtemp(prefix="vp3_alias_")
+        shutil.copy2("pinemhi.exe", os.path.join(workspace, "pinemhi.exe"))
+
+        # pinemhi.ini propio, con VP= apuntando al workspace
+        with open("pinemhi.ini", "r", encoding="utf-8", errors="ignore") as f:
+            lineas = f.read().split("\n")
+        salida = []
+        for ln in lineas:
+            if ln.startswith("VP="):
+                ln = "VP=" + workspace + os.sep
+            salida.append(ln)
+        with open(os.path.join(workspace, "pinemhi.ini"), "w", encoding="utf-8", errors="ignore") as f:
+            f.write("\n".join(salida))
+
+        # Borrar la carpeta temporal al terminar, para no ir acumulando
+        # una copia de pinemhi.exe por cada reinicio del watchdog
+        import atexit
+        atexit.register(lambda: shutil.rmtree(workspace, ignore_errors=True))
+
+        _ALIAS_WORKSPACE = workspace
+        return workspace
+    except Exception as e:
+        print(f"⚠️ No se pudo preparar el area temporal para alias: {e}")
+        _ALIAS_WORKSPACE = False
+        return None
+
 # ============================================================
 # MOTOR UNICO: PINemHi (El Salvador)
 # ============================================================
@@ -118,10 +166,10 @@ def leer_con_pinemhi(nombre_archivo):
         return scores
 
     import shutil
+    # Por defecto: leer el archivo directo desde la carpeta real de NVRAM
     rom_a_leer = nombre_archivo
-    respaldo_destino = None
-    creado_temporal = False
-    temp_path = None
+    cwd_pinemhi = None
+    copia_temporal = None
 
     rom_origen = os.path.splitext(nombre_archivo)[0].lower()
     # Tom y Jerry se lee siempre via Hollywood Heat (no esta en VPMAlias.txt)
@@ -129,23 +177,20 @@ def leer_con_pinemhi(nombre_archivo):
 
     if rom_destino:
         orig_path = os.path.join(NVRAM_PATH, nombre_archivo)
-        temp_path = os.path.join(NVRAM_PATH, rom_destino + ".nv")
-        print(f"🔀 Alias detectada: leyendo {nombre_archivo} como {rom_destino}.nv")
-
-        if os.path.exists(orig_path):
+        workspace = obtener_workspace_alias()
+        if workspace and os.path.exists(orig_path):
             try:
-                # Si ya existe un archivo con el nombre destino, lo respaldamos
-                if os.path.exists(temp_path):
-                    respaldo_destino = temp_path + ".bak"
-                    shutil.copy2(temp_path, respaldo_destino)
-
-                # Copiamos el archivo original con el nombre del rom que pinemhi si soporta
-                shutil.copy2(orig_path, temp_path)
+                # La copia va al workspace temporal, NO a la carpeta de NVRAM
+                copia_temporal = os.path.join(workspace, rom_destino + ".nv")
+                shutil.copy2(orig_path, copia_temporal)
                 rom_a_leer = rom_destino + ".nv"
-                creado_temporal = True
+                cwd_pinemhi = workspace
+                print(f"🔀 Alias: {nombre_archivo} se lee como {rom_destino}.nv (en carpeta temporal)")
             except Exception as e_prep:
                 print(f"⚠️ Error preparando alias ({nombre_archivo}): {e_prep}")
-                creado_temporal = False
+                copia_temporal = None
+                cwd_pinemhi = None
+                rom_a_leer = nombre_archivo
 
     try:
         startupinfo = None
@@ -153,7 +198,12 @@ def leer_con_pinemhi(nombre_archivo):
             startupinfo = subprocess.STARTUPINFO()
             startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
-        result = subprocess.run(["pinemhi.exe", rom_a_leer], capture_output=True, text=True, startupinfo=startupinfo, timeout=5)
+        if cwd_pinemhi:
+            comando = [os.path.join(cwd_pinemhi, "pinemhi.exe"), rom_a_leer]
+        else:
+            comando = ["pinemhi.exe", rom_a_leer]
+
+        result = subprocess.run(comando, capture_output=True, text=True, startupinfo=startupinfo, timeout=5, cwd=cwd_pinemhi)
         texto_limpio = result.stdout
 
         vistos = set()
@@ -172,17 +222,15 @@ def leer_con_pinemhi(nombre_archivo):
     except Exception as e:
         print(f"⚠️ Error ejecutando PINemHi con {nombre_archivo}: {e}")
     finally:
-        # Restaurar el archivo original SIEMPRE, pase lo que pase arriba
-        # (si esto quedara fuera del finally, un cuelgue/timeout de pinemhi
-        # dejaba el archivo real pisado con el contenido de otra mesa)
-        if creado_temporal:
+        # Borrar la copia temporal SIEMPRE, pase lo que pase arriba.
+        # Vive en el workspace temporal, asi que aunque esto fallara no hay
+        # ningun riesgo para los archivos reales de NVRAM.
+        if copia_temporal:
             try:
-                if os.path.exists(temp_path):
-                    os.remove(temp_path)
-                if respaldo_destino and os.path.exists(respaldo_destino):
-                    shutil.move(respaldo_destino, temp_path)
+                if os.path.exists(copia_temporal):
+                    os.remove(copia_temporal)
             except Exception as e_limpieza:
-                print(f"⚠️ Error limpiando alias temporal ({rom_a_leer}): {e_limpieza}")
+                print(f"⚠️ Error limpiando copia temporal ({rom_a_leer}): {e_limpieza}")
 
     return scores
 
@@ -269,8 +317,9 @@ def procesar_y_subir():
                         print(f"🔄 ¡Detección de máquina clonada! El usuario anterior era '{saved_user}' y el actual es '{current_user}'.")
                         clon_detectado = True
                         base_records["machine_user"] = current_user
-                        # Forzar re-baselineado completo: vaciamos las mesas registradas para que se registren todas de nuevo con sus valores actuales
+                        # Forzar re-baselineado completo: vaciamos las mesas y archivos registrados para que se registren todos de nuevo con sus valores actuales
                         base_records["baselined_tables"] = []
+                        base_records["baselined_files"] = []
                         modificado_base_records = True
                     elif not saved_user:
                         base_records["machine_user"] = current_user
@@ -286,6 +335,19 @@ def procesar_y_subir():
     if not os.path.exists(NVRAM_PATH):
         print(f"⚠️ ATENCION: La carpeta {NVRAM_PATH} NO EXISTE en esta maquina.")
     
+    # La linea base se registra por ARCHIVO, no por mesa. Antes era por mesa,
+    # y eso dejaba un agujero: si aparecia un .nv nuevo de una mesa YA
+    # inicializada (otra version de rom), su tabla de fabrica se salteaba el
+    # filtro y entraba como records reales.
+    # "migrando" = primera corrida con el esquema por archivo: los .nv que ya
+    # existen se dan por cubiertos por la linea base vieja, para no volver a
+    # blacklistear records de invitados que hoy son validos.
+    migrando_a_por_archivo = "baselined_files" not in base_records
+    if migrando_a_por_archivo:
+        base_records["baselined_files"] = []
+        modificado_base_records = True
+    baselined_files = base_records["baselined_files"]
+
     archivos_encontrados = 0
     for mesa in MESAS_CONFIG:
         archivos = glob.glob(os.path.join(NVRAM_PATH, mesa["prefijo"] + "*.nv"))
@@ -295,6 +357,7 @@ def procesar_y_subir():
             # Se leen TODOS, no solo el de fecha de modificacion mas reciente,
             # porque el puntaje real puede haber quedado grabado en cualquiera.
             archivos_encontrados += 1
+            mesa_ya_baselineada = mesa["nombre"] in base_records.get("baselined_tables", [])
             scores = []
             for filepath in archivos:
                 archivo_base = os.path.basename(filepath)
@@ -302,27 +365,40 @@ def procesar_y_subir():
                 if not scores_archivo:
                     print(f"⚠️ Pinemhi no devolvio puntajes para: {archivo_base}")
                     continue
+
+                clave_archivo = archivo_base.lower()
+                if clave_archivo not in baselined_files:
+                    if migrando_a_por_archivo and mesa_ya_baselineada:
+                        # Ya estaba cubierto por la linea base vieja (por mesa):
+                        # solo lo registramos, sin volver a blacklistear nada.
+                        pass
+                    else:
+                        # Archivo nuevo de verdad: su tabla de fabrica se
+                        # registra como linea base y NO se sube como records.
+                        print(f"📋 Registrando linea base automatica para: {archivo_base} ({mesa['nombre']})")
+                        for s in scores_archivo:
+                            # Si es un clon detectado, bloqueamos ABSOLUTAMENTE TODOS los puntajes actuales (incluyendo reales)
+                            # para evitar que la máquina clonada suba puntajes del dueño anterior.
+                            if not clon_detectado:
+                                if s["jugador"] in JUGADORES_AUTORIZADOS:
+                                    continue
+                            firma = f"{mesa['nombre']}-{s['jugador']}-{s['puntaje']}"
+                            if firma not in base_records["signatures"]:
+                                base_records["signatures"].append(firma)
+                    baselined_files.append(clave_archivo)
+                    modificado_base_records = True
+
                 scores.extend(scores_archivo)
             if not scores:
                 continue
-                
-            # Si esta mesa no ha sido baselineada, la registramos ahora mismo como línea base
-            if mesa["nombre"] not in base_records.get("baselined_tables", []):
-                print(f"📋 Registrando linea base automatica para la mesa: {mesa['nombre']}")
-                for s in scores:
-                    # Si es un clon detectado, bloqueamos ABSOLUTAMENTE TODOS los puntajes actuales (incluyendo reales)
-                    # para evitar que la máquina clonada suba puntajes del dueño anterior.
-                    if not clon_detectado:
-                        if s["jugador"] in JUGADORES_AUTORIZADOS:
-                            continue
-                    firma = f"{mesa['nombre']}-{s['jugador']}-{s['puntaje']}"
-                    if firma not in base_records["signatures"]:
-                        base_records["signatures"].append(firma)
+
+            # Se mantiene baselined_tables por compatibilidad con el formato viejo
+            if not mesa_ya_baselineada:
                 if "baselined_tables" not in base_records:
                     base_records["baselined_tables"] = []
                 base_records["baselined_tables"].append(mesa["nombre"])
                 modificado_base_records = True
-            
+
             for s in scores:
 
                 # FILTRO 1: Lista negra dinamica (records de fabrica ya identificados)

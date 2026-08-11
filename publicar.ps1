@@ -27,12 +27,45 @@ if (-not $cambios) {
 Log "Cambios detectados. Iniciando publicacion..."
 
 # ---- 2. Si cambiaron los .py, compilar exe ----
+# IMPORTANTE: 'pyinstaller' a secas NO esta en el PATH. Hay que invocarlo como
+# modulo ('python -m PyInstaller', con mayusculas). Antes fallaba silenciosamente
+# y el script seguia igual, publicando el ZIP con el .exe VIEJO adentro: las
+# maquinas descargaban codigo nuevo con ejecutable viejo, sin ningun aviso.
 $pyModificados = git status --porcelain | Where-Object { $_ -match "subir_puntajes\.py|RESET_NUBE\.py" }
 if ($pyModificados) {
+    # Limpiar restos de compilaciones anteriores (si quedan, pyinstaller falla)
+    Remove-Item "dist_auto" -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item "build"     -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item "*.spec"               -Force -ErrorAction SilentlyContinue
+
+    $compilacionOk = $true
+
     Log "Compilando subir_puntajes.exe..."
-    pyinstaller --onefile --console --name subir_puntajes subir_puntajes.py --distpath dist_auto 2>&1 | Out-Null
-    Log "Compilando RESET_NUBE.exe..."
-    pyinstaller --onefile --console --name RESET_NUBE RESET_NUBE.py --distpath dist_auto 2>&1 | Out-Null
+    $salida = python -m PyInstaller --onefile --console --name subir_puntajes subir_puntajes.py --distpath dist_auto 2>&1
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path "dist_auto\subir_puntajes.exe")) {
+        Log "ERROR: Fallo la compilacion de subir_puntajes.exe"
+        Log ($salida | Select-Object -Last 5 | Out-String).Trim()
+        $compilacionOk = $false
+    }
+
+    if ($compilacionOk) {
+        Log "Compilando RESET_NUBE.exe..."
+        $salida = python -m PyInstaller --onefile --console --name RESET_NUBE RESET_NUBE.py --distpath dist_auto 2>&1
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path "dist_auto\RESET_NUBE.exe")) {
+            Log "ERROR: Fallo la compilacion de RESET_NUBE.exe"
+            Log ($salida | Select-Object -Last 5 | Out-String).Trim()
+            $compilacionOk = $false
+        }
+    }
+
+    if (-not $compilacionOk) {
+        # NO seguir: publicar ahora significaria mandar el .exe viejo con el .py nuevo
+        Log "ABORTADO: no se publica nada para no distribuir un .exe desactualizado."
+        Remove-Item "dist_auto" -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item "build"     -Recurse -Force -ErrorAction SilentlyContinue
+        Remove-Item "*.spec"               -Force -ErrorAction SilentlyContinue
+        exit 1
+    }
 
     Copy-Item "dist_auto\subir_puntajes.exe" "MAQUINAS_VP3\subir_puntajes.exe" -Force
     Copy-Item "dist_auto\RESET_NUBE.exe"     "MAQUINAS_VP3\RESET_NUBE.exe"     -Force
