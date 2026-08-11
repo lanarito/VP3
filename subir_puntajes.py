@@ -87,6 +87,28 @@ def mandar_whatsapp(mensaje):
         print(f"⚠️ Error enviando alerta a Telegram: {e}")
 
 # ============================================================
+# ALIAS DE ROMS (VPMAlias.txt) - "origen,destino" por linea.
+# pinemhi.exe NO conoce estas alias (son de VPinMAME), asi que si un
+# .nv no tiene rom soportada pero SI tiene alias, se lee copiandolo
+# temporalmente con el nombre del rom destino que pinemhi si soporta.
+# ============================================================
+def cargar_alias_vpm():
+    alias_map = {}
+    try:
+        with open("VPMAlias.txt", "r", encoding="utf-8", errors="ignore") as f:
+            for linea in f:
+                linea = linea.strip()
+                if not linea or "," not in linea:
+                    continue
+                origen, destino = linea.split(",", 1)
+                alias_map[origen.strip().lower()] = destino.strip()
+    except Exception:
+        pass
+    return alias_map
+
+ALIAS_VPM = cargar_alias_vpm()
+
+# ============================================================
 # MOTOR UNICO: PINemHi (El Salvador)
 # ============================================================
 def leer_con_pinemhi(nombre_archivo):
@@ -97,24 +119,28 @@ def leer_con_pinemhi(nombre_archivo):
             return scores
 
         rom_a_leer = nombre_archivo
-        respaldo_hlywoodh = None
+        respaldo_destino = None
         creado_temporal = False
+        temp_path = None
 
-        # Si es el archivo de Tom y Jerry, hacemos el truco de pasarlo por Hollywood Heat (hlywoodh)
-        if "tomjerry" in nombre_archivo.lower():
+        rom_origen = os.path.splitext(nombre_archivo)[0].lower()
+        # Tom y Jerry se lee siempre via Hollywood Heat (no esta en VPMAlias.txt)
+        rom_destino = "hlywoodh" if "tomjerry" in rom_origen else ALIAS_VPM.get(rom_origen)
+
+        if rom_destino:
             import shutil
             orig_path = os.path.join(NVRAM_PATH, nombre_archivo)
-            temp_path = os.path.join(NVRAM_PATH, "hlywoodh.nv")
-            
+            temp_path = os.path.join(NVRAM_PATH, rom_destino + ".nv")
+
             if os.path.exists(orig_path):
-                # Si ya existe un hlywoodh.nv, lo respaldamos
+                # Si ya existe un archivo con el nombre destino, lo respaldamos
                 if os.path.exists(temp_path):
-                    respaldo_hlywoodh = temp_path + ".bak"
-                    shutil.copy2(temp_path, respaldo_hlywoodh)
-                
-                # Copiamos tomjerry.nv como hlywoodh.nv
+                    respaldo_destino = temp_path + ".bak"
+                    shutil.copy2(temp_path, respaldo_destino)
+
+                # Copiamos el archivo original con el nombre del rom que pinemhi si soporta
                 shutil.copy2(orig_path, temp_path)
-                rom_a_leer = "hlywoodh.nv"
+                rom_a_leer = rom_destino + ".nv"
                 creado_temporal = True
 
         startupinfo = None
@@ -124,18 +150,17 @@ def leer_con_pinemhi(nombre_archivo):
 
         result = subprocess.run(["pinemhi.exe", rom_a_leer], capture_output=True, text=True, startupinfo=startupinfo, timeout=5)
         texto_limpio = result.stdout
-        
-        # Limpieza del truco temporal de Tom y Jerry
+
+        # Limpieza del archivo temporal de alias
         if creado_temporal:
             import shutil
-            temp_path = os.path.join(NVRAM_PATH, "hlywoodh.nv")
             try:
                 if os.path.exists(temp_path):
                     os.remove(temp_path)
-                if respaldo_hlywoodh and os.path.exists(respaldo_hlywoodh):
-                    shutil.move(respaldo_hlywoodh, temp_path)
+                if respaldo_destino and os.path.exists(respaldo_destino):
+                    shutil.move(respaldo_destino, temp_path)
             except Exception as e_limpieza:
-                print(f"⚠️ Error limpiando alias temporal de Tom y Jerry: {e_limpieza}")
+                print(f"⚠️ Error limpiando alias temporal ({rom_a_leer}): {e_limpieza}")
 
         vistos = set()
         for linea in texto_limpio.split('\n'):
