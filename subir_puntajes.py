@@ -52,6 +52,8 @@ DEFAULT_INITIALS = {
     "NMI", "GLV", "MDX", "EFG", "JKL", "MNO", "PQR",
     # Agregado 2026-08: defaults de fabrica en Hook (tabla hook_408 y hook_501)
     "HEC", "CNH", "PUP", "UGR", "JAY", "LAR", "DAN",
+    # Agregado 2026-08: default de fabrica en Last Action Hero (puntaje redondo)
+    "LON",
     # Genéricas o dummy
     "AAA", "BBB", "CCC", "DDD", "EEE", "FFF", "GGG", "HHH", "III", "JJJ",
     "KKK", "LLL", "MMM", "NNN", "OOO", "PPP", "QQQ", "RRR", "SSS", "TTT",
