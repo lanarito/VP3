@@ -44,6 +44,10 @@ timeout /t 3 /nobreak >nul
 
 echo.
 echo [1/9] Cerrando procesos viejos...
+REM Primero el watchdog (si no, revive subir_puntajes.exe solo y traba el archivo
+REM justo cuando el paso 4 intenta reemplazarlo)
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+    "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*WATCHDOG_subir_puntajes.bat*' -or $_.CommandLine -like '*WATCHDOG_invisible.vbs*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }" >nul 2>&1
 taskkill /F /IM subir_puntajes.exe /T >nul 2>&1
 taskkill /F /IM cmd.exe /FI "WINDOWTITLE eq VP3*" >nul 2>&1
 timeout /t 2 /nobreak >nul
