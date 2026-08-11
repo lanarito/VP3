@@ -50,8 +50,8 @@ DEFAULT_INITIALS = {
     "SAC", "GSC", "JWC", "BSO", "KGG", "DAY", "LFS", "KRT",
     # Agregados 2026-06: detectados como fabrica en Back to the Future / Walking Dead / Indianapolis 500
     "NMI", "GLV", "MDX", "EFG", "JKL", "MNO", "PQR",
-    # Agregado 2026-08: default de fabrica en Hook (puntaje redondo de 10.000.000)
-    "HEC",
+    # Agregado 2026-08: defaults de fabrica en Hook (tabla hook_408 y hook_501)
+    "HEC", "CNH", "PUP", "UGR", "JAY", "LAR", "DAN",
     # Genéricas o dummy
     "AAA", "BBB", "CCC", "DDD", "EEE", "FFF", "GGG", "HHH", "III", "JJJ",
     "KKK", "LLL", "MMM", "NNN", "OOO", "PPP", "QQQ", "RRR", "SSS", "TTT",
