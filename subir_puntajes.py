@@ -113,27 +113,27 @@ ALIAS_VPM = cargar_alias_vpm()
 # ============================================================
 def leer_con_pinemhi(nombre_archivo):
     scores = []
-    try:
-        if not os.path.exists("pinemhi.exe"):
-            print("❌ ERROR CRITICO: ¡No encuentro pinemhi.exe en esta carpeta!")
-            return scores
+    if not os.path.exists("pinemhi.exe"):
+        print("❌ ERROR CRITICO: ¡No encuentro pinemhi.exe en esta carpeta!")
+        return scores
 
-        rom_a_leer = nombre_archivo
-        respaldo_destino = None
-        creado_temporal = False
-        temp_path = None
+    import shutil
+    rom_a_leer = nombre_archivo
+    respaldo_destino = None
+    creado_temporal = False
+    temp_path = None
 
-        rom_origen = os.path.splitext(nombre_archivo)[0].lower()
-        # Tom y Jerry se lee siempre via Hollywood Heat (no esta en VPMAlias.txt)
-        rom_destino = "hlywoodh" if "tomjerry" in rom_origen else ALIAS_VPM.get(rom_origen)
+    rom_origen = os.path.splitext(nombre_archivo)[0].lower()
+    # Tom y Jerry se lee siempre via Hollywood Heat (no esta en VPMAlias.txt)
+    rom_destino = "hlywoodh" if "tomjerry" in rom_origen else ALIAS_VPM.get(rom_origen)
 
-        if rom_destino:
-            import shutil
-            orig_path = os.path.join(NVRAM_PATH, nombre_archivo)
-            temp_path = os.path.join(NVRAM_PATH, rom_destino + ".nv")
-            print(f"🔀 Alias detectada: leyendo {nombre_archivo} como {rom_destino}.nv")
+    if rom_destino:
+        orig_path = os.path.join(NVRAM_PATH, nombre_archivo)
+        temp_path = os.path.join(NVRAM_PATH, rom_destino + ".nv")
+        print(f"🔀 Alias detectada: leyendo {nombre_archivo} como {rom_destino}.nv")
 
-            if os.path.exists(orig_path):
+        if os.path.exists(orig_path):
+            try:
                 # Si ya existe un archivo con el nombre destino, lo respaldamos
                 if os.path.exists(temp_path):
                     respaldo_destino = temp_path + ".bak"
@@ -143,7 +143,11 @@ def leer_con_pinemhi(nombre_archivo):
                 shutil.copy2(orig_path, temp_path)
                 rom_a_leer = rom_destino + ".nv"
                 creado_temporal = True
+            except Exception as e_prep:
+                print(f"⚠️ Error preparando alias ({nombre_archivo}): {e_prep}")
+                creado_temporal = False
 
+    try:
         startupinfo = None
         if os.name == 'nt':
             startupinfo = subprocess.STARTUPINFO()
@@ -151,17 +155,6 @@ def leer_con_pinemhi(nombre_archivo):
 
         result = subprocess.run(["pinemhi.exe", rom_a_leer], capture_output=True, text=True, startupinfo=startupinfo, timeout=5)
         texto_limpio = result.stdout
-
-        # Limpieza del archivo temporal de alias
-        if creado_temporal:
-            import shutil
-            try:
-                if os.path.exists(temp_path):
-                    os.remove(temp_path)
-                if respaldo_destino and os.path.exists(respaldo_destino):
-                    shutil.move(respaldo_destino, temp_path)
-            except Exception as e_limpieza:
-                print(f"⚠️ Error limpiando alias temporal ({rom_a_leer}): {e_limpieza}")
 
         vistos = set()
         for linea in texto_limpio.split('\n'):
@@ -178,6 +171,19 @@ def leer_con_pinemhi(nombre_archivo):
                             vistos.add(val)
     except Exception as e:
         print(f"⚠️ Error ejecutando PINemHi con {nombre_archivo}: {e}")
+    finally:
+        # Restaurar el archivo original SIEMPRE, pase lo que pase arriba
+        # (si esto quedara fuera del finally, un cuelgue/timeout de pinemhi
+        # dejaba el archivo real pisado con el contenido de otra mesa)
+        if creado_temporal:
+            try:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                if respaldo_destino and os.path.exists(respaldo_destino):
+                    shutil.move(respaldo_destino, temp_path)
+            except Exception as e_limpieza:
+                print(f"⚠️ Error limpiando alias temporal ({rom_a_leer}): {e_limpieza}")
+
     return scores
 
 # ============================================================
