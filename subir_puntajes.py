@@ -131,6 +131,7 @@ def leer_con_pinemhi(nombre_archivo):
             import shutil
             orig_path = os.path.join(NVRAM_PATH, nombre_archivo)
             temp_path = os.path.join(NVRAM_PATH, rom_destino + ".nv")
+            print(f"🔀 Alias detectada: leyendo {nombre_archivo} como {rom_destino}.nv")
 
             if os.path.exists(orig_path):
                 # Si ya existe un archivo con el nombre destino, lo respaldamos
