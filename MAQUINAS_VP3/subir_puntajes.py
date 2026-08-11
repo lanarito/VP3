@@ -50,6 +50,8 @@ DEFAULT_INITIALS = {
     "SAC", "GSC", "JWC", "BSO", "KGG", "DAY", "LFS", "KRT",
     # Agregados 2026-06: detectados como fabrica en Back to the Future / Walking Dead / Indianapolis 500
     "NMI", "GLV", "MDX", "EFG", "JKL", "MNO", "PQR",
+    # Agregado 2026-08: default de fabrica en Hook (puntaje redondo de 10.000.000)
+    "HEC",
     # Genéricas o dummy
     "AAA", "BBB", "CCC", "DDD", "EEE", "FFF", "GGG", "HHH", "III", "JJJ",
     "KKK", "LLL", "MMM", "NNN", "OOO", "PPP", "QQQ", "RRR", "SSS", "TTT",
@@ -256,12 +258,20 @@ def procesar_y_subir():
     for mesa in MESAS_CONFIG:
         archivos = glob.glob(os.path.join(NVRAM_PATH, mesa["prefijo"] + "*.nv"))
         if archivos:
-            filepath = max(archivos, key=os.path.getmtime)
-            archivo_base = os.path.basename(filepath)
+            # Puede haber mas de un archivo .nv para la misma mesa (distintas
+            # versiones de ROM instaladas, ej: hook_408.nv, hook_500.nv, hook_501.nv).
+            # Se leen TODOS, no solo el de fecha de modificacion mas reciente,
+            # porque el puntaje real puede haber quedado grabado en cualquiera.
             archivos_encontrados += 1
-            scores = leer_con_pinemhi(archivo_base) 
+            scores = []
+            for filepath in archivos:
+                archivo_base = os.path.basename(filepath)
+                scores_archivo = leer_con_pinemhi(archivo_base)
+                if not scores_archivo:
+                    print(f"⚠️ Pinemhi no devolvio puntajes para: {archivo_base}")
+                    continue
+                scores.extend(scores_archivo)
             if not scores:
-                print(f"⚠️ Pinemhi no devolvio puntajes para: {archivo_base}")
                 continue
                 
             # Si esta mesa no ha sido baselineada, la registramos ahora mismo como línea base
@@ -557,8 +567,9 @@ if __name__ == "__main__":
         for m in MESAS_CONFIG:
             archivos = glob.glob(os.path.join(NVRAM_PATH, m["prefijo"] + "*.nv"))
             if archivos:
-                fp = max(archivos, key=os.path.getmtime)
-                tiempos_mod[m["nombre"]] = os.path.getmtime(fp)
+                # Se guarda el mtime mas reciente entre TODOS los .nv de la mesa
+                # (puede haber varias versiones de ROM instaladas)
+                tiempos_mod[m["nombre"]] = max(os.path.getmtime(fp) for fp in archivos)
 
         print("👀 Monitoreando cambios en NVRAM... (Ctrl+C para salir)")
         log_evento("Entrando en modo monitoreo")
@@ -574,8 +585,7 @@ if __name__ == "__main__":
                 for m in MESAS_CONFIG:
                     archivos = glob.glob(os.path.join(NVRAM_PATH, m["prefijo"] + "*.nv"))
                     if archivos:
-                        fp = max(archivos, key=os.path.getmtime)
-                        t = os.path.getmtime(fp)
+                        t = max(os.path.getmtime(fp) for fp in archivos)
                         if tiempos_mod.get(m["nombre"]) != t:
                             hubo_cambio = True
                             tiempos_mod[m["nombre"]] = t
