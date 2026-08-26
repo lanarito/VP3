@@ -1,6 +1,6 @@
 # 📋 CAMBIOS RECIENTES - VP3
 
-**Última sesión: 4 de junio 2026**
+**Última sesión: 25 de agosto 2026**
 
 ---
 
@@ -234,5 +234,111 @@ Es una broma interna divertida sin afectar la funcionalidad. Después del cartel
 
 ---
 
-**Última actualización:** 4 junio 2026
+## 💾 4. Sincronización forzada antes de apagar (6-11 agosto 2026)
+
+### Problema:
+Un jugador (LAL) apagaba la máquina justo después de terminar de jugar, y el puntaje nunca llegaba a subirse — `subir_puntajes.exe` quedaba cortado a mitad de la sincronización.
+
+### Solución:
+`ACTUALIZAR_VP3.bat` ahora registra un **script de apagado de Windows** (mecanismo nativo, sin necesitar `gpedit.msc` — funciona también en Windows Home). Windows lo ejecuta automáticamente antes de terminar de apagar la PC, y **espera** a que termine (con un tope de 25 segundos para nunca colgar el apagado).
+
+Funciona sin importar cómo se dispare el apagado — desde PinUP Popper ("salir, salir") o desde el menú de Windows — porque ambos caminos terminan en el mismo mecanismo de apagado del sistema operativo.
+
+### Archivos nuevos:
+- `subir_puntajes.exe --sync-once`: una sola pasada de sincronización, sin loop
+- `SYNC_ANTES_DE_APAGAR.bat`: la ejecuta con tope de 25s
+- `registrar_sync_apagado.ps1`: registra el script de apagado (via `scripts.ini`/`gpt.ini`, sin gpedit)
+
+De paso: las llamadas a Supabase ahora tienen timeout de 10s (antes podían quedar colgadas sin límite si fallaba la red).
+
+`ACTUALIZAR_VP3.bat` pasó de 8 a **9 pasos** (nuevo paso: "Registrando sincronización final antes de apagar").
+
+---
+
+## 🐛 5. El watchdog revivía el .exe viejo durante la actualización (11 agosto 2026)
+
+### Problema:
+Un fix en el código no se reflejaba en la máquina de un jugador aunque corriera "Actualizar VP3" varias veces. El `.exe` quedaba siempre con la misma fecha vieja.
+
+### Causa raíz:
+El actualizador mataba `subir_puntajes.exe`, pero **no mataba al watchdog** — que lo revivía solo en segundos, dejando el archivo trabado justo cuando el paso de copia intentaba reemplazarlo. La copia fallaba en silencio (xcopy no revisa el resultado) y el script terminaba diciendo "LISTO!" con la versión vieja todavía corriendo.
+
+### Solución:
+`ACTUALIZAR_VP3.bat` ahora mata primero al watchdog (busca por línea de comando con PowerShell/CIM, ya que corre oculto sin título de ventana) y recién después reemplaza el `.exe`.
+
+---
+
+## 🎰 6. Mesas con varias versiones de ROM instaladas (11 agosto 2026)
+
+### Problema:
+Una máquina tenía **3 archivos `.nv` de Hook** (`hook_408`, `hook_500`, `hook_501` — distintas versiones de rom). El sistema solo leía el de fecha de modificación más reciente; si la partida real quedaba grabada en otro, nunca se subía.
+
+### Solución:
+`subir_puntajes.py` ahora lee y combina **todos** los `.nv` que matcheen el prefijo de una mesa, no solo el más nuevo. La detección de cambios en NVRAM también usa el mtime más reciente entre todos los archivos.
+
+### Alias de VPinMAME (VPMAlias.txt) generalizadas:
+Algunas versiones de rom no son reconocidas por `pinemhi.exe` directamente, pero SÍ tienen una alias en `VPMAlias.txt` (le dice a VPinMAME "tratá esta rom igual que esta otra"). Como `pinemhi.exe` no conoce esas alias por su cuenta, ahora `subir_puntajes.py` las lee de `VPMAlias.txt` y las aplica él mismo (antes solo existía este truco hardcodeado para un caso: Tom & Jerry → Hollywood Heat).
+
+**Alias agregadas:** `hook_501,hook_408` y `hook_500,hook_408`.
+
+### 🔴 Bug crítico que esto introdujo, y su fix:
+El truco de alias funciona copiando el archivo con el nombre del rom "destino" para que `pinemhi` lo pueda leer. La primera versión de este código **copiaba directo en la carpeta real de NVRAM**, pisando temporalmente el archivo del rom destino. Si ese rom destino es una mesa que el usuario también juega (como pasaba con `hook_408`), y algo fallaba a mitad de camino (timeout de pinemhi, por ejemplo), el archivo real **quedaba pisado para siempre** con el contenido de otra mesa — pérdida real de puntajes.
+
+Dos arreglos, verificados con test automatizado antes de publicar:
+1. La copia ahora se hace en una **carpeta temporal aparte** (con su propia copia de `pinemhi.exe` y `pinemhi.ini` apuntando ahí), nunca en la carpeta real de NVRAM. Riesgo cero para los archivos reales.
+2. La restauración quedaba fuera del `try/finally` que envuelve la llamada a `pinemhi.exe` — si pinemhi se colgaba, la excepción saltaba directo al error y la restauración nunca corría. Ahora está en un `finally`, se ejecuta siempre.
+
+### Línea base ahora es por ARCHIVO, no por mesa:
+Antes, si una mesa ya estaba "inicializada" (aunque fuera por un solo archivo), un `.nv` nuevo de esa misma mesa (otra versión de rom) se saltaba el filtro de línea base y sus valores de fábrica entraban como records reales. Ahora cada archivo se registra por separado.
+
+---
+
+## 🧹 7. Nuevas limpiezas de jugadores fantasma (agosto 2026)
+
+Mismo patrón que la limpieza de junio, aplicado a mesas nuevas:
+
+| Mesa | Iniciales de fábrica agregadas |
+|------|-------------------------------|
+| Hook | HEC, CNH, PUP, UGR, JAY, LAR, DAN |
+| Last Action Hero | LON |
+| Terminator 2 | JCS, AJA, DOC, JAS |
+
+### Categoría nueva: `SIEMPRE_FABRICA`
+Se encontraron 5 iniciales (`AAA`, `SLL`, `MAB`, `CCC`, `AII`) con puntajes **NO redondos** que igual eran de fábrica — el filtro normal (`DEFAULT_INITIALS`) las dejaba pasar porque asumía que un puntaje específico significaba jugador real. El usuario confirmó que en este grupo esas iniciales puntuales nunca son reales, tengan el puntaje que tengan.
+
+`SIEMPRE_FABRICA` bloquea sin mirar el puntaje. Es distinto de `DEFAULT_INITIALS` (que sigue dejando pasar puntajes no redondos, para no tapar a un invitado real como RAY/BLS/etc). **`MIK` se dejó afuera a propósito** — sigue confirmado como invitado real desde junio 2026.
+
+---
+
+## 🔧 8. Publicador automático (`publicar.ps1`) mandaba el .exe viejo
+
+### Problema:
+El script que auto-compila y publica a GitHub llamaba a `pyinstaller` a secas, que no está en el PATH — fallaba siempre, en silencio, y el script seguía igual: armaba el ZIP y lo subía **con el `.exe` viejo adentro**. Resultado: código nuevo publicado con ejecutable desactualizado, sin ningún aviso de error.
+
+### Solución:
+Ahora usa `python -m PyInstaller` (el módulo, con mayúsculas) y revisa que el `.exe` realmente se haya generado. Si la compilación falla, **aborta la publicación** en vez de subir algo a medias.
+
+---
+
+## 📥 9. ACTUALIZAR_VP3.bat ahora también en la Zona de Descargas de la web
+
+Antes solo se conseguía por el link de WhatsApp o el acceso directo del escritorio. Ahora también aparece como descarga independiente en la web (categoría "Sistema completo"), como backup por si se pierde el acceso directo o para instalarlo en otra máquina.
+
+---
+
+## ✅ Estado actual del sistema (25 agosto 2026)
+
+- ✅ Watchdog v4 funcionando, y ya no revive el .exe durante una actualización
+- ✅ Sincronización forzada antes de apagar (paso 9 de `ACTUALIZAR_VP3.bat`)
+- ✅ Lee todas las versiones de ROM instaladas por mesa, no solo la más nueva
+- ✅ Alias de VPMAlias.txt aplicadas automáticamente, en carpeta temporal segura
+- ✅ Línea base por archivo (no por mesa) — sin agujeros al agregar una ROM nueva
+- ✅ Filtro de fábrica con 2 niveles: `DEFAULT_INITIALS` (solo puntaje redondo) y `SIEMPRE_FABRICA` (siempre)
+- ✅ Publicador automático aborta si falla la compilación, no publica .exe viejo
+- ✅ Notificaciones Telegram universales
+- ✅ Actualizador disponible también en la Zona de Descargas de la web
+
+---
+
+**Última actualización:** 25 agosto 2026
 **Filosofía:** Un solo doble click + un solo UAC = TODO resuelto
