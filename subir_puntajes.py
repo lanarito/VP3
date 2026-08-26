@@ -54,6 +54,8 @@ DEFAULT_INITIALS = {
     "HEC", "CNH", "PUP", "UGR", "JAY", "LAR", "DAN",
     # Agregado 2026-08: default de fabrica en Last Action Hero (puntaje redondo)
     "LON",
+    # Agregado 2026-08-25: defaults de fabrica en Terminator 2 (maquina nueva)
+    "JCS", "AJA", "DOC", "JAS",
     # Genéricas o dummy
     "AAA", "BBB", "CCC", "DDD", "EEE", "FFF", "GGG", "HHH", "III", "JJJ",
     "KKK", "LLL", "MMM", "NNN", "OOO", "PPP", "QQQ", "RRR", "SSS", "TTT",
