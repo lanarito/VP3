@@ -64,6 +64,13 @@ DEFAULT_INITIALS = {
     "SYS", "BAM", "CPU", "AMD", "INT", "NV ", "NV", "HP ", "HP", "COM", "ARC"
 }
 
+# Iniciales que en ESTE grupo nunca corresponden a un jugador real, sin
+# importar si el puntaje es redondo o no. A diferencia de DEFAULT_INITIALS
+# (que solo bloquea puntajes redondos, para no tapar a un invitado real que
+# coincida con esas iniciales), estas se confirmaron manualmente como
+# siempre-de-fabrica y se bloquean directo.
+SIEMPRE_FABRICA = {"AAA", "SLL", "MAB", "CCC", "AII"}
+
 # ============================================================
 # CONFIGURACION DE ALERTAS (TELEGRAM)
 # ============================================================
@@ -409,6 +416,16 @@ def procesar_y_subir():
                 firma = f"{mesa['nombre']}-{s['jugador']}-{s['puntaje']}"
                 if firma in base_records.get("signatures", []):
                     continue # Es de fabrica conocido, lo ignoramos
+
+                # FILTRO 1.5: Iniciales confirmadas manualmente como SIEMPRE de fabrica
+                # (a diferencia de FILTRO 2, bloquea sin importar si el puntaje es redondo)
+                if s['jugador'] in SIEMPRE_FABRICA:
+                    if firma not in base_records.get("signatures", []):
+                        if "signatures" not in base_records:
+                            base_records["signatures"] = []
+                        base_records["signatures"].append(firma)
+                        modificado_base_records = True
+                    continue
 
                 # FILTRO 2: Iniciales de fabrica con puntajes sospechosos
                 # Solo bloquea si las iniciales son de fabrica Y el puntaje parece de fabrica
