@@ -1,0 +1,3 @@
+[2026-08-27 12:36:50] Script iniciado
+[2026-08-27 12:36:50] Sincronizacion inicial
+[2026-08-27 12:36:54] Entrando en modo monitoreo
