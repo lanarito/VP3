@@ -1,6 +1,60 @@
 # 📋 CAMBIOS RECIENTES - VP3
 
-**Última sesión: 25 de agosto 2026**
+**Última sesión: 27 de agosto 2026**
+
+---
+
+## ⚡ SUBIDA INMEDIATA DE RECORDS (sin esperar a apagar)
+
+### Problema:
+Un jugador hacía un record, salía de la mesa y apagaba la máquina. El puntaje no llegaba
+a subir y no se veía ni en la página ni en Telegram **hasta que la máquina se reiniciaba**.
+Eso además abría la puerta a picardías: hasta el reinicio, nadie veía el record.
+
+### Por qué pasaba:
+El sistema ya vigilaba la NVRAM, pero con dos demoras encima:
+
+1. Miraba si había cambios **cada 10 segundos**.
+2. Cuando detectaba uno, volvía a escanear **las 37 mesas** con PINemHi (varios segundos).
+
+Entre una cosa y la otra podían pasar 15 a 45 segundos desde que el `.nv` se escribía
+hasta que el record llegaba a Supabase. Si apagaban en el medio, se perdía la subida.
+
+### Solución (`subir_puntajes.py`):
+
+1. **Vigilancia cada 2 segundos** en vez de 10.
+2. **Sincronización dirigida:** cuando cambia una mesa, se escanea **solo esa mesa**,
+   no las 37. `procesar_y_subir()` ahora acepta `solo_mesas=[...]`.
+3. Se mantiene la **pasada completa cada 10 minutos** como red de seguridad, y la
+   sincronización al apagar.
+
+**Resultado medido:** de hasta 45 segundos a **1 segundo** de reacción.
+
+### Por qué es seguro:
+La sincronización dirigida **no borra nada**. Los records de las demás mesas se leen igual
+de la nube y todo se sube con *upsert*. Probado con dos tests automatizados antes de publicar:
+
+- `test_dirigida`: al cambiar Hook lee únicamente `hook_408.nv` y `hook_501.nv`,
+  y no toca Twilight Zone ni Terminator 2.
+- `test_seguridad`: con Supabase simulada, al sincronizar solo Hook sobreviven los records
+  de Twilight Zone, Attack from Mars y Terminator 2, y sube el nuevo de Hook.
+- Prueba en vivo del `.exe` compilado: detectó el cambio del `.nv` en **1,0 segundos**.
+
+### Límite que queda (importante):
+El puntaje llega al archivo `.nv` cuando **VPinMAME lo escribe**, o sea al salir de la mesa.
+No existe forma de subirlo antes de eso. Lo que se arregló es todo lo que viene después:
+apenas el archivo se escribe, en un par de segundos ya está en la web y en Telegram.
+
+### Para las máquinas:
+Nada especial. El "Actualizar VP3" de siempre.
+
+---
+
+## 🗂️ CONTEXTO PERMANENTE ENTRE CHATS
+
+- `CLAUDE.md` — se carga solo en cada chat nuevo: reglas, arquitectura, reglas de oro y flujo.
+- `HISTORIAL_CHATS.md` — todo lo hablado desde el 20 de mayo de 2026, día por día.
+- `actualizar_historial.py` — regenera ese historial desde las transcripciones.
 
 ---
 

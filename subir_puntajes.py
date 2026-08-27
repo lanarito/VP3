@@ -291,8 +291,18 @@ MESAS_CONFIG = [
 # ============================================================
 # LOGICA DE SINCRONIZACION PRINCIPAL
 # ============================================================
-def procesar_y_subir():
-    print("\n--- INICIANDO ESCANEO DE MEMORIA CON PINEMHI ---")
+def procesar_y_subir(solo_mesas=None):
+    """Escanea la NVRAM y sincroniza con Supabase.
+
+    solo_mesas: lista de nombres de mesa. Si viene, se escanean SOLO esas
+    (sincronizacion dirigida: tarda ~1 segundo en vez de recorrer las 37).
+    Es seguro: los records de las demas mesas no se pierden porque igual se
+    leen de la nube y todo se sube con upsert, nunca se borra nada.
+    """
+    if solo_mesas:
+        print("\n--- ESCANEO RAPIDO: " + ", ".join(solo_mesas) + " ---")
+    else:
+        print("\n--- INICIANDO ESCANEO DE MEMORIA CON PINEMHI ---")
     nuevos_puntajes = []
     
     # Cargar récords base para ignorar (Formato nuevo/viejo auto-detectable)
@@ -360,7 +370,10 @@ def procesar_y_subir():
     baselined_files = base_records["baselined_files"]
 
     archivos_encontrados = 0
-    for mesa in MESAS_CONFIG:
+    mesas_a_revisar = MESAS_CONFIG
+    if solo_mesas:
+        mesas_a_revisar = [m for m in MESAS_CONFIG if m["nombre"] in solo_mesas]
+    for mesa in mesas_a_revisar:
         archivos = glob.glob(os.path.join(NVRAM_PATH, mesa["prefijo"] + "*.nv"))
         if archivos:
             # Puede haber mas de un archivo .nv para la misma mesa (distintas
@@ -708,40 +721,50 @@ if __name__ == "__main__":
         # Sincronizacion forzada cada 10 minutos como red de seguridad
         contador_sync_periodico = 0
 
+        # Cada cuanto se mira la NVRAM. Antes eran 10 segundos: si el jugador
+        # salia de la mesa y apagaba enseguida, el record no llegaba a subir y
+        # recien aparecia al reiniciar. Con 2 segundos la ventana es minima.
+        INTERVALO = 2
+        CICLOS_HEARTBEAT = 150      # 5 minutos
+        CICLOS_SYNC_COMPLETO = 300  # 10 minutos
+
         while True:
             try:
-                hubo_cambio = False
+                mesas_cambiadas = []
                 for m in MESAS_CONFIG:
                     archivos = glob.glob(os.path.join(NVRAM_PATH, m["prefijo"] + "*.nv"))
                     if archivos:
                         t = max(os.path.getmtime(fp) for fp in archivos)
                         if tiempos_mod.get(m["nombre"]) != t:
-                            hubo_cambio = True
+                            mesas_cambiadas.append(m["nombre"])
                             tiempos_mod[m["nombre"]] = t
 
-                if hubo_cambio:
+                if mesas_cambiadas:
                     print("Cambio detectado en NVRAM. Sincronizando...")
-                    log_evento("Cambio detectado en NVRAM - sincronizando")
+                    log_evento("Cambio detectado: " + ", ".join(mesas_cambiadas))
+                    # Esperar a que VPinMAME termine de escribir el .nv
                     time.sleep(2)
-                    procesar_y_subir()
+                    # Sincronizacion DIRIGIDA: solo las mesas que cambiaron.
+                    # Escanear las 37 tardaba demasiado y el jugador alcanzaba a
+                    # apagar antes de que subiera. Asi tarda alrededor de un segundo.
+                    procesar_y_subir(solo_mesas=mesas_cambiadas)
                     escribir_heartbeat("SYNCED")
 
-                # Heartbeat cada 30 ciclos (5 minutos aprox)
                 contador_heartbeat += 1
-                if contador_heartbeat >= 30:
+                if contador_heartbeat >= CICLOS_HEARTBEAT:
                     escribir_heartbeat("ALIVE")
                     contador_heartbeat = 0
 
-                # Sincronizacion forzada cada 60 ciclos (10 minutos aprox)
-                # Red de seguridad por si NVRAM cambia sin actualizar mtime
+                # Sincronizacion completa periodica: red de seguridad por si la
+                # NVRAM cambia sin que se actualice la fecha de modificacion
                 contador_sync_periodico += 1
-                if contador_sync_periodico >= 60:
+                if contador_sync_periodico >= CICLOS_SYNC_COMPLETO:
                     log_evento("Sincronizacion periodica de seguridad (cada 10 min)")
                     procesar_y_subir()
                     escribir_heartbeat("PERIODIC_SYNC_OK")
                     contador_sync_periodico = 0
 
-                time.sleep(10)
+                time.sleep(INTERVALO)
             except KeyboardInterrupt:
                 print("\n🛑 VP3 System detenido por el usuario.")
                 log_evento("Detenido por usuario")
