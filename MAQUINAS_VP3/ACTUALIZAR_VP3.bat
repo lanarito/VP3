@@ -81,6 +81,26 @@ echo.
 
 echo [4/10] Copiando archivos nuevos...
 xcopy /Y /E /Q "%TEMP%\VP3_TEMP\*" "%~dp0" >nul 2>&1
+REM Comprobar de verdad que se copio. Antes los errores se mandaban a la
+REM nada y el actualizador decia OK igual: una maquina podia quedar meses
+REM sin actualizarse sin que nadie se enterara.
+if not exist "%~dp0activar_lectura_en_vivo.ps1" (
+    color 0C
+    echo.
+    echo    ***************************************************
+    echo      NO SE PUDO COPIAR - LA ACTUALIZACION NO SE HIZO
+    echo    ***************************************************
+    echo.
+    echo    Windows no dejo escribir en esta carpeta:
+    echo    %~dp0
+    echo.
+    echo    QUE HACER:
+    echo    Cerra esta ventana, hace CLICK DERECHO sobre
+    echo    ACTUALIZAR_VP3 y elegi "Ejecutar como administrador".
+    echo.
+    pause
+    exit /b 1
+)
 echo       OK
 echo.
 
