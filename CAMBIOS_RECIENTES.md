@@ -27,7 +27,7 @@ servidor COM **in-process**, corre adentro del proceso de Visual Pinball.
 - Una sola línea al principio de `PinMAMETimer_Timer`, que llama a una rutina aislada
 - Vuelca la memoria cada 3 segundos, **de a 256 bytes por vuelta** para no frenar el juego
 - Solo escribe si el puntaje cambió de verdad
-- Sale como texto hexadecimal a `C:Pinball\VP3_LIVE\<rom>.hex`
+- Sale como texto hexadecimal a `C:\vPinball\VP3_LIVE\<rom>.hex`
   (escribir binario desde VBScript es frágil)
 
 **Lado uploader** (`subir_puntajes.py`):
