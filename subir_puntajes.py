@@ -32,6 +32,9 @@ _cfg = configparser.ConfigParser()
 _cfg.read(os.path.join(application_path, "config.ini"), encoding="utf-8")
 
 NVRAM_PATH   = _cfg.get("sistema", "nvram_path",  fallback=r"C:\vPinball\VisualPinball\VPinMAME\nvram")
+# Carpeta donde el enganche de core.vbs deja la memoria de la mesa EN VIVO
+# (mientras se juega, sin cerrarla). Ver LECTURA_EN_VIVO.bat.
+LIVE_PATH    = _cfg.get("sistema", "live_path",   fallback=r"C:\vPinball\VP3_LIVE")
 SUPABASE_URL = _cfg.get("supabase", "url",         fallback="")
 SUPABASE_KEY = _cfg.get("supabase", "key",         fallback="")
 JUGADORES_AUTORIZADOS = set(
@@ -168,9 +171,72 @@ def obtener_workspace_alias():
         return None
 
 # ============================================================
+# LECTURA EN VIVO
+# El enganche puesto en core.vbs deja la memoria de la mesa en LIVE_PATH
+# mientras se juega, en texto hexadecimal (escribir binario desde VBScript
+# es fragil). Aca se pasa a un .nv de verdad que PINemHi sabe leer.
+# ============================================================
+def convertir_volcados_en_vivo():
+    """Devuelve la lista de .nv que cambiaron. Vacia si no hay nada nuevo."""
+    convertidos = []
+    try:
+        if not LIVE_PATH or not os.path.isdir(LIVE_PATH):
+            return convertidos
+        for ruta_hex in glob.glob(os.path.join(LIVE_PATH, "*.hex")):
+            try:
+                with open(ruta_hex, "r", encoding="ascii", errors="ignore") as f:
+                    contenido = f.read()
+                rom, datos = "", ""
+                for linea in contenido.splitlines():
+                    linea = linea.strip()
+                    if linea.lower().startswith("rom="):
+                        rom = linea[4:].strip().lower()
+                    elif len(linea) >= 64 and len(linea) % 2 == 0:
+                        try:
+                            int(linea, 16)
+                            datos = linea
+                        except ValueError:
+                            pass
+                if not rom or not datos:
+                    continue
+                crudo = bytes.fromhex(datos)
+                destino = os.path.join(LIVE_PATH, rom + ".nv")
+                anterior = None
+                if os.path.exists(destino):
+                    with open(destino, "rb") as f:
+                        anterior = f.read()
+                if anterior != crudo:
+                    with open(destino, "wb") as f:
+                        f.write(crudo)
+                    convertidos.append(destino)
+                    print("Volcado EN VIVO recibido: " + rom + " (" + str(len(crudo)) + " bytes)")
+            except Exception as e:
+                print("Aviso: no pude convertir el volcado " + os.path.basename(ruta_hex) + ": " + str(e))
+    except Exception as e:
+        print("Aviso: error revisando la carpeta de lectura en vivo: " + str(e))
+    return convertidos
+
+
+def archivos_de_la_mesa(mesa):
+    """Todos los .nv de una mesa: los reales y el volcado en vivo si existe.
+    Devuelve pares (ruta, carpeta_origen); carpeta_origen None = NVRAM real."""
+    pares = [(fp, None) for fp in glob.glob(os.path.join(NVRAM_PATH, mesa["prefijo"] + "*.nv"))]
+    if LIVE_PATH and os.path.isdir(LIVE_PATH):
+        for fp in glob.glob(os.path.join(LIVE_PATH, mesa["prefijo"] + "*.nv")):
+            pares.append((fp, LIVE_PATH))
+    return pares
+
+
+# ============================================================
 # MOTOR UNICO: PINemHi (El Salvador)
 # ============================================================
-def leer_con_pinemhi(nombre_archivo):
+def leer_con_pinemhi(nombre_archivo, carpeta_origen=None):
+    """Lee los puntajes de un .nv con PINemHi.
+
+    carpeta_origen: si viene, el archivo se toma de ahi. Se usa para el
+    volcado EN VIVO que deja la mesa mientras se juega. Se copia siempre al
+    area temporal; la NVRAM real no se toca nunca.
+    """
     scores = []
     if not os.path.exists("pinemhi.exe"):
         print("❌ ERROR CRITICO: ¡No encuentro pinemhi.exe en esta carpeta!")
@@ -186,15 +252,18 @@ def leer_con_pinemhi(nombre_archivo):
     # Tom y Jerry se lee siempre via Hollywood Heat (no esta en VPMAlias.txt)
     rom_destino = "hlywoodh" if "tomjerry" in rom_origen else ALIAS_VPM.get(rom_origen)
 
-    if rom_destino:
-        orig_path = os.path.join(NVRAM_PATH, nombre_archivo)
+    # Se copia al area temporal si hay alias, o si viene de otra carpeta
+    # (el volcado en vivo). En los dos casos, la NVRAM real ni se toca.
+    if rom_destino or carpeta_origen:
+        orig_path = os.path.join(carpeta_origen or NVRAM_PATH, nombre_archivo)
         workspace = obtener_workspace_alias()
+        nombre_en_workspace = (rom_destino + ".nv") if rom_destino else nombre_archivo
         if workspace and os.path.exists(orig_path):
             try:
                 # La copia va al workspace temporal, NO a la carpeta de NVRAM
-                copia_temporal = os.path.join(workspace, rom_destino + ".nv")
+                copia_temporal = os.path.join(workspace, nombre_en_workspace)
                 shutil.copy2(orig_path, copia_temporal)
-                rom_a_leer = rom_destino + ".nv"
+                rom_a_leer = nombre_en_workspace
                 cwd_pinemhi = workspace
                 print(f"🔀 Alias: {nombre_archivo} se lee como {rom_destino}.nv (en carpeta temporal)")
             except Exception as e_prep:
@@ -374,7 +443,7 @@ def procesar_y_subir(solo_mesas=None):
     if solo_mesas:
         mesas_a_revisar = [m for m in MESAS_CONFIG if m["nombre"] in solo_mesas]
     for mesa in mesas_a_revisar:
-        archivos = glob.glob(os.path.join(NVRAM_PATH, mesa["prefijo"] + "*.nv"))
+        archivos = archivos_de_la_mesa(mesa)
         if archivos:
             # Puede haber mas de un archivo .nv para la misma mesa (distintas
             # versiones de ROM instaladas, ej: hook_408.nv, hook_500.nv, hook_501.nv).
@@ -383,15 +452,19 @@ def procesar_y_subir(solo_mesas=None):
             archivos_encontrados += 1
             mesa_ya_baselineada = mesa["nombre"] in base_records.get("baselined_tables", [])
             scores = []
-            for filepath in archivos:
+            for filepath, carpeta_origen in archivos:
                 archivo_base = os.path.basename(filepath)
-                scores_archivo = leer_con_pinemhi(archivo_base)
+                scores_archivo = leer_con_pinemhi(archivo_base, carpeta_origen)
                 if not scores_archivo:
                     print(f"⚠️ Pinemhi no devolvio puntajes para: {archivo_base}")
                     continue
 
                 clave_archivo = archivo_base.lower()
-                if clave_archivo not in baselined_files:
+                # OJO: el volcado EN VIVO nunca crea linea base. La linea base
+                # sale del .nv real. Si el volcado pudiera crearla, el primer
+                # record que hace el jugador quedaria marcado como de fabrica
+                # y no subiria nunca.
+                if carpeta_origen is None and clave_archivo not in baselined_files:
                     if migrando_a_por_archivo and mesa_ya_baselineada:
                         # Ya estaba cubierto por la linea base vieja (por mesa):
                         # solo lo registramos, sin volver a blacklistear nada.
@@ -706,12 +779,13 @@ if __name__ == "__main__":
         procesar_y_subir()
         escribir_heartbeat("INITIAL_SYNC_OK")
 
+        convertir_volcados_en_vivo()
         for m in MESAS_CONFIG:
-            archivos = glob.glob(os.path.join(NVRAM_PATH, m["prefijo"] + "*.nv"))
+            archivos = archivos_de_la_mesa(m)
             if archivos:
                 # Se guarda el mtime mas reciente entre TODOS los .nv de la mesa
-                # (puede haber varias versiones de ROM instaladas)
-                tiempos_mod[m["nombre"]] = max(os.path.getmtime(fp) for fp in archivos)
+                # (puede haber varias versiones de ROM instaladas, y el volcado en vivo)
+                tiempos_mod[m["nombre"]] = max(os.path.getmtime(fp) for fp, _ in archivos)
 
         print("👀 Monitoreando cambios en NVRAM... (Ctrl+C para salir)")
         log_evento("Entrando en modo monitoreo")
@@ -730,11 +804,13 @@ if __name__ == "__main__":
 
         while True:
             try:
+                # Primero pasar a .nv lo que la mesa haya volcado en vivo
+                convertir_volcados_en_vivo()
                 mesas_cambiadas = []
                 for m in MESAS_CONFIG:
-                    archivos = glob.glob(os.path.join(NVRAM_PATH, m["prefijo"] + "*.nv"))
+                    archivos = archivos_de_la_mesa(m)
                     if archivos:
-                        t = max(os.path.getmtime(fp) for fp in archivos)
+                        t = max(os.path.getmtime(fp) for fp, _ in archivos)
                         if tiempos_mod.get(m["nombre"]) != t:
                             mesas_cambiadas.append(m["nombre"])
                             tiempos_mod[m["nombre"]] = t
