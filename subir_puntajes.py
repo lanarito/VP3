@@ -74,6 +74,10 @@ DEFAULT_INITIALS = {
 # siempre-de-fabrica y se bloquean directo.
 SIEMPRE_FABRICA = {"AAA", "SLL", "MAB", "CCC", "AII"}
 
+# Hasta que puesto de cada mesa se avisa por Telegram (1 = solo el Gran Campeon).
+# Los que quedan mas abajo se suben igual y se ven en la pagina, pero no avisan.
+TOPE_AVISO = 10
+
 # ============================================================
 # CONFIGURACION DE ALERTAS (TELEGRAM)
 # ============================================================
@@ -677,9 +681,11 @@ def procesar_y_subir(solo_mesas=None):
                     "puntaje": r["Puntaje"],
                     "fecha": r["Fecha"]
                 })
-                # Notificar TODOS los records nuevos (autorizados + invitados)
-                # sin importar posicion ni quien sea el jugador
-                if r["ID_Record"] not in ids_nube:
+                # Avisar por Telegram solo hasta el puesto 10 de la mesa.
+                # Mas abajo igual se sube y se ve en la pagina, pero no se
+                # anuncia: si no, cualquier partida floja llena el grupo.
+                # No importa quien sea el jugador (autorizados e invitados).
+                if i < TOPE_AVISO and r["ID_Record"] not in ids_nube:
                     nuevos_top5.append((r, pos))
         
         # Los avisos de Telegram NO van aca: primero se guarda en Supabase
