@@ -682,13 +682,8 @@ def procesar_y_subir(solo_mesas=None):
                 if r["ID_Record"] not in ids_nube:
                     nuevos_top5.append((r, pos))
         
-        # 4. Notificar por WhatsApp de manera correcta
-        if not existentes and filas_finales:
-            mandar_whatsapp(f"🚀 *VP3 System:* ¡Base de datos inicializada/actualizada! Se subieron {len(filas_finales)} récords al Top 5 Global.")
-        else:
-            for r, pos in nuevos_top5:
-                pf = f"{r['Puntaje']:,}".replace(',', '.')
-                mandar_whatsapp(f"🚨 *¡NUEVO RÉCORD VP3!* 🚨\n\n🎰 Mesa: *{r['Mesa']}*\n🏅 Posición: *{pos}*\n👤 Jugador: *{r['Jugador']}*\n💥 Puntaje: *{pf}*")
+        # Los avisos de Telegram NO van aca: primero se guarda en Supabase
+        # y recien despues se avisa. Ver mas abajo.
 
         # 4. Actualizar Supabase (Upsert seguro: primero actualizar, luego limpiar sobrantes)
         if filas_finales:
@@ -702,6 +697,9 @@ def procesar_y_subir(solo_mesas=None):
             # El filtrado al Top 5 se realiza en el lado del cliente (web)
             # Esto asegura que no se pierdan registros de jugadores válidos
             print(f"✅ Supabase sincronizado con {len(filas_finales)} registros totales")
+
+            # Ahora si: el record ya esta guardado, se puede avisar tranquilo.
+            avisar_records_nuevos(nuevos_top5, not existentes, len(filas_finales))
             
             # Guardar el nuevo estado de la nube en el historial local
             try:
@@ -736,6 +734,55 @@ def copiar_vp_alias_automatico():
                 print(f"⚠️ No se pudo copiar VPMAlias.txt porque la carpeta {destino_dir} no existe.")
     except Exception as e:
         print(f"⚠️ Error al copiar VPMAlias.txt automaticamente: {e}")
+
+ARCHIVO_AVISOS = "avisos_enviados.json"
+
+def avisos_ya_enviados():
+    """IDs de records que ya se anunciaron por Telegram alguna vez."""
+    try:
+        with open(ARCHIVO_AVISOS, "r", encoding="utf-8") as f:
+            return list(json.load(f))
+    except Exception:
+        return []
+
+
+def avisar_records_nuevos(nuevos, es_primera_carga, total_filas):
+    """Manda el Telegram DESPUES de que el record quedo guardado en Supabase.
+
+    Antes se avisaba antes de guardar: si la subida fallaba, el mensaje salia
+    igual y al ciclo siguiente se repetia. De ahi los mensajes dobles.
+    Ademas se lleva memoria de lo ya anunciado, asi que aunque haya dos copias
+    del programa corriendo, cada record se anuncia una sola vez.
+    """
+    ya = avisos_ya_enviados()
+    conocidos = set(ya)
+    salto = chr(10)
+
+    if es_primera_carga:
+        mandar_whatsapp("🚀 *VP3 System:* Base de datos inicializada. Se subieron "
+                        + str(total_filas) + " records.")
+        return
+
+    for r, pos in nuevos:
+        if r["ID_Record"] in conocidos:
+            print("Ya se habia avisado " + r["ID_Record"] + ", no lo repito.")
+            continue
+        pf = format(r["Puntaje"], ",").replace(",", ".")
+        mensaje = ("🚨 *¡NUEVO RÉCORD VP3!* 🚨" + salto + salto
+                   + "🎰 Mesa: *" + r["Mesa"] + "*" + salto
+                   + "🏅 Posición: *" + pos + "*" + salto
+                   + "👤 Jugador: *" + r["Jugador"] + "*" + salto
+                   + "💥 Puntaje: *" + pf + "*")
+        mandar_whatsapp(mensaje)
+        ya.append(r["ID_Record"])
+        conocidos.add(r["ID_Record"])
+
+    try:
+        with open(ARCHIVO_AVISOS, "w", encoding="utf-8") as f:
+            json.dump(ya[-500:], f, indent=2)
+    except Exception as e:
+        print("Aviso: no pude guardar la lista de avisos: " + str(e))
+
 
 def escribir_heartbeat(estado="ALIVE"):
     """Escribe archivo de heartbeat para saber que el script esta vivo"""
