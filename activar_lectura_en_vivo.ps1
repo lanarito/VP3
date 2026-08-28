@@ -12,7 +12,7 @@
 # ============================================================
 param([switch]$Auto, [switch]$Quitar)
 
-$VERSION = "v1"
+$VERSION = "v2"
 $ini = "' ===== VP3 LECTURA EN VIVO $VERSION INICIO ====="
 $fin = "' ===== VP3 LECTURA EN VIVO $VERSION FIN ====="
 $llamada = "    On Error Resume Next : VP3EnVivo : On Error Goto 0"
@@ -50,22 +50,44 @@ $ini
 Dim vp3rom, vp3ult, vp3buf, vp3pos, vp3nv, vp3reloj, vp3activo
 Sub VP3EnVivo()
     On Error Resume Next
-    Dim i, hasta, txt, fso, arch, carpeta
+    Err.Clear
+    Dim i, hasta, txt, fso, arch, carpeta, est
     carpeta = "$carpetaLive"
 
     If vp3activo <> True Then
         If vp3reloj <> Empty Then
             If Timer - vp3reloj < 3 And Timer >= vp3reloj Then Exit Sub
         End If
-        vp3nv = Controller.NVRAM
-        If Err.Number <> 0 Then Err.Clear : vp3reloj = Timer : Exit Sub
-        If Not IsArray(vp3nv) Then vp3reloj = Timer : Exit Sub
+        vp3reloj = Timer
+
+        ' --- nombre de la rom: primero el del propio juego ---
         If vp3rom = "" Then
-            vp3rom = Controller.GameName
-            If Err.Number <> 0 Or vp3rom = "" Then Err.Clear : vp3rom = cGameName
-            If Err.Number <> 0 Then Err.Clear
+            Err.Clear
+            vp3rom = cGameName
+            If Err.Number <> 0 Or vp3rom = "" Then
+                Err.Clear
+                vp3rom = Controller.GameName
+                If Err.Number <> 0 Then vp3rom = "" : Err.Clear
+            End If
         End If
-        If vp3rom = "" Then vp3reloj = Timer : Exit Sub
+
+        ' --- memoria en vivo ---
+        Err.Clear
+        vp3nv = Controller.NVRAM
+        If Err.Number <> 0 Then
+            VP3Estado carpeta, "sin NVRAM (" & Err.Description & ") rom=" & vp3rom
+            Err.Clear
+            Exit Sub
+        End If
+        If Not IsArray(vp3nv) Then
+            VP3Estado carpeta, "NVRAM no es lista de bytes, rom=" & vp3rom
+            Exit Sub
+        End If
+        If vp3rom = "" Then
+            VP3Estado carpeta, "no pude averiguar el nombre de la rom"
+            Exit Sub
+        End If
+
         ReDim vp3buf(UBound(vp3nv))
         vp3pos = 0
         vp3activo = True
@@ -82,9 +104,13 @@ Sub VP3EnVivo()
     vp3activo = False
     vp3reloj = Timer
     txt = Join(vp3buf, "")
-    If txt = vp3ult Then Exit Sub
+    If txt = vp3ult Then
+        VP3Estado carpeta, "leido " & LCase(vp3rom) & " (" & (UBound(vp3nv) + 1) & " bytes), sin cambios"
+        Exit Sub
+    End If
     vp3ult = txt
 
+    Err.Clear
     Set fso = CreateObject("Scripting.FileSystemObject")
     If Not fso.FolderExists(carpeta) Then fso.CreateFolder carpeta
     Set arch = fso.CreateTextFile(carpeta & "\" & LCase(vp3rom) & ".hex", True)
@@ -95,6 +121,25 @@ Sub VP3EnVivo()
     arch.Close
     Set arch = Nothing
     Set fso = Nothing
+    If Err.Number <> 0 Then
+        VP3Estado carpeta, "ERROR al escribir: " & Err.Description
+    Else
+        VP3Estado carpeta, "PUNTAJE NUEVO VOLCADO: " & LCase(vp3rom) & " (" & (UBound(vp3nv) + 1) & " bytes)"
+    End If
+    Err.Clear
+End Sub
+
+' Deja constancia de que paso, para poder diagnosticar sin adivinar
+Sub VP3Estado(carpeta, texto)
+    On Error Resume Next
+    Dim f, a
+    Set f = CreateObject("Scripting.FileSystemObject")
+    If Not f.FolderExists(carpeta) Then f.CreateFolder carpeta
+    Set a = f.OpenTextFile(carpeta & "\_estado.txt", 8, True)
+    a.WriteLine Now & "  " & texto
+    a.Close
+    Set a = Nothing
+    Set f = Nothing
     Err.Clear
 End Sub
 $fin
