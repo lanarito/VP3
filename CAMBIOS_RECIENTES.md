@@ -4,6 +4,55 @@
 
 ---
 
+## 🔴 EL RECORD SUBE AL GRABAR LAS INICIALES (sin salir de la mesa)
+
+### Lo que se pedía:
+Que el puntaje suba apenas el jugador graba sus iniciales, sin esperar a salir
+de la mesa ni a apagar la máquina. Así se ve al instante y no hay lugar a picardías.
+
+### Por qué antes no se podía:
+VPinMAME escribe el archivo `.nv` **recién cuando se cierra la mesa**. Mientras se
+juega, el puntaje vive solo en la memoria. Se confirmó con dos pruebas reales:
+HER actualizó a la versión nueva ANTES de jugar y aun así no subió nada hasta cerrar.
+
+También se probó engancharse desde afuera por COM: imposible. `VPinMAME.dll` es un
+servidor COM **in-process**, corre adentro del proceso de Visual Pinball.
+
+### La solución: engancharse DESDE ADENTRO
+`core.vbs` es un archivo compartido que cargan las 37 mesas, y tiene
+`Sub PinMAMETimer_Timer`, que corre todo el tiempo mientras se juega. Ahí el objeto
+`Controller` ya existe y expone la memoria en vivo.
+
+**Lado mesa** (`activar_lectura_en_vivo.ps1`):
+- Una sola línea al principio de `PinMAMETimer_Timer`, que llama a una rutina aislada
+- Vuelca la memoria cada 3 segundos, **de a 256 bytes por vuelta** para no frenar el juego
+- Solo escribe si el puntaje cambió de verdad
+- Sale como texto hexadecimal a `C:Pinball\VP3_LIVE\<rom>.hex`
+  (escribir binario desde VBScript es frágil)
+
+**Lado uploader** (`subir_puntajes.py`):
+- `convertir_volcados_en_vivo()` pasa el `.hex` a un `.nv` que PINemHi entiende
+- `archivos_de_la_mesa()` junta los `.nv` reales con el volcado en vivo
+- El volcado en vivo **NUNCA crea línea base**. Si pudiera, el primer record de cada
+  jugador quedaría marcado como "de fábrica" y no subiría nunca más.
+
+### Para los chicos: nada nuevo
+Se activa sola en el **paso 9 de 10** del `ACTUALIZAR_VP3.bat`. Un solo doble click.
+La activación es idempotente: correrla mil veces no duplica nada, y si hay una versión
+vieja del enganche la reemplaza.
+
+`LECTURA_EN_VIVO.bat` queda por si alguna vez hay que activarla o desactivarla a mano.
+
+### Probado antes de publicar:
+- El código original de la mesa sigue corriendo: **300 de 300 vueltas**
+- La mesa generó el volcado correcto (12.334 bytes, igual que el real de HER)
+- El uploader lo leyó **byte por byte idéntico**
+- Activar y desactivar deja `core.vbs` **idéntico al original** (mismo md5)
+- Correr la activación 3 veces seguidas no duplica nada
+- Siguen pasando los tests viejos: escaneo dirigido 4/4 y seguridad 4/4
+
+---
+
 ## ⚡ SUBIDA INMEDIATA DE RECORDS (sin esperar a apagar)
 
 ### Problema:
