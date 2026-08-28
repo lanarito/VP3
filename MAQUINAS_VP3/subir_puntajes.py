@@ -180,6 +180,37 @@ def obtener_workspace_alias():
 # mientras se juega, en texto hexadecimal (escribir binario desde VBScript
 # es fragil). Aca se pasa a un .nv de verdad que PINemHi sabe leer.
 # ============================================================
+def identificar_mesa_por_contenido(crudo):
+    """Averigua de que mesa es un volcado SIN depender de que la mesa nos diga
+    su nombre (con B2S y otras configuraciones no siempre se puede saber).
+
+    Compara el volcado contra los .nv reales de la NVRAM: el de la misma mesa
+    comparte casi todos los bytes, el de otra mesa no se parece en nada.
+    Devuelve el nombre de archivo (ej "mb_106b.nv") o None si no hay match claro.
+    """
+    try:
+        mejor, mejor_pct = None, 0.0
+        for ruta in glob.glob(os.path.join(NVRAM_PATH, "*.nv")):
+            try:
+                if os.path.getsize(ruta) != len(crudo):
+                    continue
+                with open(ruta, "rb") as f:
+                    otro = f.read()
+                iguales = sum(1 for a, b in zip(crudo, otro) if a == b)
+                pct = iguales / float(len(crudo))
+                if pct > mejor_pct:
+                    mejor, mejor_pct = os.path.basename(ruta), pct
+            except Exception:
+                continue
+        # 60% de bytes iguales ya es muchisimo: dos mesas distintas del mismo
+        # tamano coinciden en torno al 1%, y la misma mesa arriba del 90%.
+        if mejor and mejor_pct >= 0.60:
+            return mejor
+    except Exception as e:
+        print("Aviso: no pude identificar la mesa del volcado: " + str(e))
+    return None
+
+
 def convertir_volcados_en_vivo():
     """Devuelve la lista de .nv que cambiaron. Vacia si no hay nada nuevo."""
     convertidos = []
@@ -201,10 +232,28 @@ def convertir_volcados_en_vivo():
                             datos = linea
                         except ValueError:
                             pass
-                if not rom or not datos:
+                if not datos:
                     continue
                 crudo = bytes.fromhex(datos)
-                destino = os.path.join(LIVE_PATH, rom + ".nv")
+
+                # El nombre de la mesa puede venir vacio: hay maquinas (las que
+                # usan B2S) donde no se puede averiguar. Entonces lo deducimos
+                # comparando el volcado con los .nv reales. Asi anda en todas.
+                nombre_archivo = ""
+                if rom and rom != "desconocido":
+                    candidato = rom + ".nv"
+                    if any(candidato.startswith(m["prefijo"]) for m in MESAS_CONFIG):
+                        nombre_archivo = candidato
+                if not nombre_archivo:
+                    detectado = identificar_mesa_por_contenido(crudo)
+                    if detectado:
+                        nombre_archivo = detectado
+                        print("Volcado identificado por contenido: " + detectado)
+                if not nombre_archivo:
+                    print("Aviso: no se de que mesa es el volcado " + os.path.basename(ruta_hex))
+                    continue
+
+                destino = os.path.join(LIVE_PATH, nombre_archivo)
                 anterior = None
                 if os.path.exists(destino):
                     with open(destino, "rb") as f:
@@ -213,7 +262,7 @@ def convertir_volcados_en_vivo():
                     with open(destino, "wb") as f:
                         f.write(crudo)
                     convertidos.append(destino)
-                    print("Volcado EN VIVO recibido: " + rom + " (" + str(len(crudo)) + " bytes)")
+                    print("Volcado EN VIVO recibido: " + nombre_archivo + " (" + str(len(crudo)) + " bytes)")
             except Exception as e:
                 print("Aviso: no pude convertir el volcado " + os.path.basename(ruta_hex) + ": " + str(e))
     except Exception as e:

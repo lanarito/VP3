@@ -12,7 +12,7 @@
 # ============================================================
 param([switch]$Auto, [switch]$Quitar)
 
-$VERSION = "v2"
+$VERSION = "v3"
 $ini = "' ===== VP3 LECTURA EN VIVO $VERSION INICIO ====="
 $fin = "' ===== VP3 LECTURA EN VIVO $VERSION FIN ====="
 $llamada = "    On Error Resume Next : VP3EnVivo : On Error Goto 0"
@@ -83,10 +83,9 @@ Sub VP3EnVivo()
             VP3Estado carpeta, "NVRAM no es lista de bytes, rom=" & vp3rom
             Exit Sub
         End If
-        If vp3rom = "" Then
-            VP3Estado carpeta, "no pude averiguar el nombre de la rom"
-            Exit Sub
-        End If
+        ' Si no se pudo averiguar el nombre (pasa con B2S), se vuelca igual
+        ' con nombre generico: VP3 despues deduce la mesa comparando el contenido.
+        If vp3rom = "" Then vp3rom = "desconocido"
 
         ReDim vp3buf(UBound(vp3nv))
         vp3pos = 0
