@@ -40,6 +40,7 @@ for ($intento = 1; $intento -le 4; $intento++) {
     }
     if ($fallados.Count -eq 0) {
         Write-Host ("      Verificado: los " + $total + " archivos quedaron identicos.")
+        Set-Content -Path (Join-Path $Origen "_copia_resultado.txt") -Value "OK" -Encoding ASCII -Force
         exit 0
     }
     if ($intento -lt 4) {
@@ -56,4 +57,5 @@ for ($intento = 1; $intento -le 4; $intento++) {
 Write-Host ""
 Write-Host ("      AVISO: " + $fallados.Count + " archivo(s) NO se pudieron copiar bien:")
 foreach ($fa in $fallados) { Write-Host ("        - " + $fa.rel) }
+Set-Content -Path (Join-Path $Origen "_copia_resultado.txt") -Value ("FALLO: " + $fallados.Count + " archivos") -Encoding ASCII -Force
 exit 1
