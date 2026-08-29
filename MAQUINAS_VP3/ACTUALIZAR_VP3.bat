@@ -85,7 +85,7 @@ REM quedo con un script de dos dias de atraso mientras el resto SI se
 REM actualizaba, y nadie lo noto hasta que empezo a laguear.
 REM Se usa el verificador que viene DENTRO del zip recien bajado (no el
 REM que ya estaba en esta carpeta), asi funciona tambien la primerisima vez.
-powershell -NoProfile -ExecutionPolicy Bypass -File "%TEMP%\VP3_TEMP\copiar_y_verificar.ps1" -Origen "%TEMP%\VP3_TEMP" -Destino "%~dp0"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%TEMP%\VP3_TEMP\copiar_y_verificar.ps1" -Origen "%TEMP%\VP3_TEMP" -Destino "%~dp0."
 if errorlevel 1 (
     color 0C
     echo.
