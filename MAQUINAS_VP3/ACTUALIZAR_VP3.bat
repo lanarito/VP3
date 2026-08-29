@@ -90,11 +90,12 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%TEMP%\VP3_TEMP\copiar_y_ve
 REM No confiar solo en el codigo de salida de powershell.exe (puede fallar
 REM en formas raras y poco confiables segun el contexto). Se confirma con
 REM un archivo que el propio script deja escrito, sin ambiguedad posible.
-set COPIA_OK=NO
+set COPIA_RESULTADO=
 if exist "%TEMP%\VP3_TEMP\_copia_resultado.txt" (
-    findstr /B /C:"OK" "%TEMP%\VP3_TEMP\_copia_resultado.txt" >nul 2>&1 && set COPIA_OK=SI
+    set /p COPIA_RESULTADO=<"%TEMP%\VP3_TEMP\_copia_resultado.txt"
 )
-if not "%COPIA_OK%"=="SI" (
+echo       (confirmacion: %COPIA_RESULTADO%)
+if not "%COPIA_RESULTADO%"=="OK" (
     color 0C
     echo.
     echo    ***************************************************
