@@ -44,14 +44,12 @@ timeout /t 3 /nobreak >nul
 
 echo.
 echo [1/10] Cerrando procesos viejos...
-REM Primero el watchdog (si no, revive subir_puntajes.exe solo y traba el archivo
-REM justo cuando el paso 4 intenta reemplazarlo)
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-    "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*WATCHDOG_subir_puntajes.bat*' -or $_.CommandLine -like '*WATCHDOG_invisible.vbs*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }" >nul 2>&1
-taskkill /F /IM subir_puntajes.exe /T >nul 2>&1
-taskkill /F /IM cmd.exe /FI "WINDOWTITLE eq VP3*" >nul 2>&1
-timeout /t 2 /nobreak >nul
-echo       OK
+REM Mata TODO lo relacionado (watchdogs + subir_puntajes.exe) y VERIFICA
+REM que de verdad quedo limpio. Antes era un intento unico y silencioso: si
+REM no llegaba a matar el watchdog viejo, quedaba corriendo PARA SIEMPRE, y
+REM cada actualizacion sumaba una copia mas del sistema entero (varias
+REM vigilando la NVRAM y mandando Telegram a la vez).
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0cerrar_procesos_viejos.ps1"
 echo.
 
 echo [2/10] Descargando ultima version desde GitHub...
@@ -80,30 +78,33 @@ echo       OK
 echo.
 
 echo [4/10] Copiando archivos nuevos...
-xcopy /Y /E /Q "%TEMP%\VP3_TEMP\*" "%~dp0" >nul 2>&1
-REM Comprobar de verdad que se copio. Antes los errores se mandaban a la
-REM nada y el actualizador decia OK igual: una maquina podia quedar meses
-REM sin actualizarse sin que nadie se enterara.
-if not exist "%~dp0activar_lectura_en_vivo.ps1" (
+REM Copia y VERIFICA por hash cada archivo, no solo si "algo" existe al
+REM final. El xcopy viejo podia saltear un archivo suelto en silencio (un
+REM antivirus que lo tiene agarrado un instante, por ejemplo): una maquina
+REM quedo con un script de dos dias de atraso mientras el resto SI se
+REM actualizaba, y nadie lo noto hasta que empezo a laguear.
+REM Se usa el verificador que viene DENTRO del zip recien bajado (no el
+REM que ya estaba en esta carpeta), asi funciona tambien la primerisima vez.
+powershell -NoProfile -ExecutionPolicy Bypass -File "%TEMP%\VP3_TEMP\copiar_y_verificar.ps1" -Origen "%TEMP%\VP3_TEMP" -Destino "%~dp0"
+if errorlevel 1 (
     color 0C
     echo.
     echo    ***************************************************
-    echo      NO SE PUDO COPIAR - LA ACTUALIZACION NO SE HIZO
+    echo      NO SE PUDO ACTUALIZAR ALGUN ARCHIVO
     echo    ***************************************************
     echo.
-    echo    Windows no dejo escribir en esta carpeta:
+    echo    Windows no dejo escribir todos los archivos en:
     echo    %~dp0
+    echo    (mira arriba cual archivo fallo)
     echo.
     echo    QUE HACER:
-    echo    Cerra esta ventana, hace CLICK DERECHO sobre
-    echo    ACTUALIZAR_VP3 y elegi "Ejecutar como administrador".
+    echo    Cerra todo lo que tengas abierto de VP3 y volve a intentar.
+    echo    Si sigue igual: CLICK DERECHO sobre ACTUALIZAR_VP3
+    echo    y elegi "Ejecutar como administrador".
     echo.
     pause
     exit /b 1
 )
-echo       OK
-echo.
-
 echo [5/10] Limpiando archivos temporales...
 del "%TEMP%\MAQUINAS_VP3_NUEVO.zip" >nul 2>&1
 rmdir /S /Q "%TEMP%\VP3_TEMP" >nul 2>&1
