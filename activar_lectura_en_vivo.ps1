@@ -12,7 +12,7 @@
 # ============================================================
 param([switch]$Auto, [switch]$Quitar)
 
-$VERSION = "v3"
+$VERSION = "v4"
 $ini = "' ===== VP3 LECTURA EN VIVO $VERSION INICIO ====="
 $fin = "' ===== VP3 LECTURA EN VIVO $VERSION FIN ====="
 $llamada = "    On Error Resume Next : VP3EnVivo : On Error Goto 0"
@@ -35,7 +35,7 @@ function Buscar-Core {
 # Saca CUALQUIER version del enganche (para poder reemplazarla)
 function Quitar-Enganche($texto) {
     $texto = [regex]::Replace($texto, "(?s)\r?\n?' ===== VP3 LECTURA EN VIVO.*?FIN =====", "")
-    $texto = [regex]::Replace($texto, "(?m)^[ \t]*On Error Resume Next : VP3EnVivo : On Error Goto 0[ \t]*\r?\n", "")
+    $texto = [regex]::Replace($texto, "(?m)^[ \t]*On Error Resume Next : VP3EnVivo : On Error Goto 0[ \t]*\n", "")
     return $texto
 }
 
@@ -48,21 +48,68 @@ $ini
 ' Trabaja de a pedacitos (256 bytes por vuelta) para no frenar el juego,
 ' y solo escribe cuando el puntaje cambio de verdad.
 Dim vp3rom, vp3ult, vp3buf, vp3pos, vp3nv, vp3reloj, vp3activo
+Dim vp3iniciado
 Sub VP3EnVivo()
     On Error Resume Next
     Err.Clear
-    Dim i, hasta, txt, fso, arch, carpeta, est
+    Dim carpeta, i, hasta, txt, fso, arch, hayCambios, cambios, n, idx, val
     carpeta = "$carpetaLive"
 
-    If vp3activo <> True Then
-        If vp3reloj <> Empty Then
-            If Timer - vp3reloj < 3 And Timer >= vp3reloj Then Exit Sub
-        End If
-        vp3reloj = Timer
+    ' --- fase 1: si ya estamos armando el volcado, seguir de a poquito ---
+    If vp3activo = True Then
+        hasta = vp3pos + 255
+        If hasta > UBound(vp3nv) Then hasta = UBound(vp3nv)
+        For i = vp3pos To hasta
+            vp3buf(i) = Right("0" & Hex(vp3nv(i)), 2)
+        Next
+        vp3pos = hasta + 1
+        If vp3pos <= UBound(vp3nv) Then Exit Sub
 
-        ' --- nombre de la rom: primero el del propio juego ---
-        If vp3rom = "" Then
+        vp3activo = False
+        txt = Join(vp3buf, "")
+        If txt = vp3ult Then Exit Sub
+        vp3ult = txt
+
+        Set fso = CreateObject("Scripting.FileSystemObject")
+        If Not fso.FolderExists(carpeta) Then fso.CreateFolder carpeta
+        Set arch = fso.CreateTextFile(carpeta & "\" & LCase(vp3rom) & ".hex", True)
+        arch.WriteLine "VP3LIVE1"
+        arch.WriteLine "rom=" & LCase(vp3rom)
+        arch.WriteLine "bytes=" & (UBound(vp3nv) + 1)
+        arch.WriteLine txt
+        arch.Close
+        Set arch = Nothing
+        Set fso = Nothing
+        If Err.Number <> 0 Then
+            VP3Estado carpeta, "ERROR al escribir: " & Err.Description
+        Else
+            VP3Estado carpeta, "PUNTAJE NUEVO VOLCADO: " & LCase(vp3rom) & " (" & (UBound(vp3nv) + 1) & " bytes)"
+        End If
+        Err.Clear
+        Exit Sub
+    End If
+
+    ' --- fase 2: cada 3 segundos, ver si hay algo nuevo ---
+    If vp3reloj <> Empty Then
+        If Timer - vp3reloj < 3 And Timer >= vp3reloj Then Exit Sub
+    End If
+    vp3reloj = Timer
+
+    If vp3iniciado <> True Then
+        ' primera vez en esta mesa: una unica lectura COMPLETA (necesaria
+        ' para tener una imagen de referencia). De ahi en mas solo se piden
+        ' los CAMBIOS, mucho mas liviano que traer todo cada vez.
+        vp3nv = Controller.NVRAM
+        If Err.Number <> 0 Then
+            VP3Estado carpeta, "sin NVRAM (" & Err.Description & ")"
             Err.Clear
+            Exit Sub
+        End If
+        If Not IsArray(vp3nv) Then
+            VP3Estado carpeta, "NVRAM no es lista de bytes"
+            Exit Sub
+        End If
+        If vp3rom = "" Then
             vp3rom = cGameName
             If Err.Number <> 0 Or vp3rom = "" Then
                 Err.Clear
@@ -70,62 +117,42 @@ Sub VP3EnVivo()
                 If Err.Number <> 0 Then vp3rom = "" : Err.Clear
             End If
         End If
-
-        ' --- memoria en vivo ---
-        Err.Clear
-        vp3nv = Controller.NVRAM
+        If vp3rom = "" Then vp3rom = "desconocido"
+        vp3iniciado = True
+        hayCambios = True
+    Else
+        ' ya iniciado: pedir solo los cambios (liviano, hecho para esto)
+        cambios = Controller.ChangedNVRAM
         If Err.Number <> 0 Then
-            VP3Estado carpeta, "sin NVRAM (" & Err.Description & ") rom=" & vp3rom
+            VP3Estado carpeta, "ChangedNVRAM fallo (" & Err.Description & ")"
             Err.Clear
             Exit Sub
         End If
-        If Not IsArray(vp3nv) Then
-            VP3Estado carpeta, "NVRAM no es lista de bytes, rom=" & vp3rom
-            Exit Sub
+        hayCambios = False
+        If IsArray(cambios) Then
+            n = -1
+            n = UBound(cambios, 1)
+            If Err.Number = 0 And n >= 0 Then
+                For i = 0 To n
+                    idx = cambios(i, 0)
+                    val = cambios(i, 1)
+                    If Err.Number = 0 And idx >= 0 And idx <= UBound(vp3nv) Then
+                        vp3nv(idx) = val
+                        hayCambios = True
+                    End If
+                Next
+            End If
+            Err.Clear
         End If
-        ' Si no se pudo averiguar el nombre (pasa con B2S), se vuelca igual
-        ' con nombre generico: VP3 despues deduce la mesa comparando el contenido.
-        If vp3rom = "" Then vp3rom = "desconocido"
-
-        ReDim vp3buf(UBound(vp3nv))
-        vp3pos = 0
-        vp3activo = True
     End If
 
-    hasta = vp3pos + 255
-    If hasta > UBound(vp3nv) Then hasta = UBound(vp3nv)
-    For i = vp3pos To hasta
-        vp3buf(i) = Right("0" & Hex(vp3nv(i)), 2)
-    Next
-    vp3pos = hasta + 1
-    If vp3pos <= UBound(vp3nv) Then Exit Sub
+    If Not hayCambios Then Exit Sub
 
-    vp3activo = False
-    vp3reloj = Timer
-    txt = Join(vp3buf, "")
-    If txt = vp3ult Then
-        VP3Estado carpeta, "leido " & LCase(vp3rom) & " (" & (UBound(vp3nv) + 1) & " bytes), sin cambios"
-        Exit Sub
-    End If
-    vp3ult = txt
-
-    Err.Clear
-    Set fso = CreateObject("Scripting.FileSystemObject")
-    If Not fso.FolderExists(carpeta) Then fso.CreateFolder carpeta
-    Set arch = fso.CreateTextFile(carpeta & "\" & LCase(vp3rom) & ".hex", True)
-    arch.WriteLine "VP3LIVE1"
-    arch.WriteLine "rom=" & LCase(vp3rom)
-    arch.WriteLine "bytes=" & (UBound(vp3nv) + 1)
-    arch.WriteLine txt
-    arch.Close
-    Set arch = Nothing
-    Set fso = Nothing
-    If Err.Number <> 0 Then
-        VP3Estado carpeta, "ERROR al escribir: " & Err.Description
-    Else
-        VP3Estado carpeta, "PUNTAJE NUEVO VOLCADO: " & LCase(vp3rom) & " (" & (UBound(vp3nv) + 1) & " bytes)"
-    End If
-    Err.Clear
+    ' hay algo para volcar: arrancar el armado de a poquito (fase 1
+    ' de la proxima vez que se llame), asi nunca se bloquea de una
+    ReDim vp3buf(UBound(vp3nv))
+    vp3pos = 0
+    vp3activo = True
 End Sub
 
 ' Deja constancia de que paso, para poder diagnosticar sin adivinar
@@ -195,7 +222,7 @@ if ($yaEsta) {
     exit 0
 }
 
-$patron = "(?m)^([ \t]*Sub[ \t]+PinMAMETimer_Timer)[ \t]*\r?$"
+$patron = "(?m)^([ \t]*Sub[ \t]+PinMAMETimer_Timer[ \t]*)(\r?\n)"
 if ($texto -notmatch $patron) {
     if ($Auto) { Write-Host "      Aviso: no encontre PinMAMETimer_Timer, no se activo" }
     else { Write-Host " No encontre 'Sub PinMAMETimer_Timer'. No toco nada." -ForegroundColor Red; Read-Host " Enter" }
@@ -206,7 +233,7 @@ New-Item -ItemType Directory -Force -Path $carpetaLive | Out-Null
 
 # limpiar cualquier version vieja antes de poner la nueva
 $texto = Quitar-Enganche $texto
-$texto = $texto -replace $patron, "`$1`r`n$llamada"
+$texto = $texto -replace $patron, "`$1`$2$llamada`n"
 Set-Content $archivo ($texto + $codigo) -Encoding Default -NoNewline
 
 if ($Auto) {
