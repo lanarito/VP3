@@ -26,6 +26,26 @@ except Exception:
     pass
 
 # ============================================================
+# INSTANCIA UNICA (MUTEX DE WINDOWS)
+# Evita que se acumulen multiples copias en segundo plano
+# que disparen mensajes repetidos a Telegram.
+# ============================================================
+_mutex_handle = None
+def asegurar_instancia_unica():
+    global _mutex_handle
+    if os.name == 'nt':
+        try:
+            import ctypes
+            mutex_name = "Global\\VP3_SubirPuntajes_SingleInstance_Mutex"
+            _mutex_handle = ctypes.windll.kernel32.CreateMutexW(None, False, mutex_name)
+            last_error = ctypes.windll.kernel32.GetLastError()
+            if last_error == 183:  # ERROR_ALREADY_EXISTS
+                print("⚠️ Ya hay otra instancia de subir_puntajes corriendo. Saliendo para evitar duplicados.")
+                sys.exit(0)
+        except Exception:
+            pass
+
+# ============================================================
 # CONFIGURACION — leída desde config.ini (nunca hardcodeada aquí)
 # ============================================================
 _cfg = configparser.ConfigParser()
@@ -926,6 +946,9 @@ if __name__ == "__main__":
             log_evento(f"Error en sincronizacion de apagado: {e}")
             escribir_heartbeat(f"SHUTDOWN_SYNC_ERROR: {e}")
         sys.exit(0)
+
+    # Evitar que se acumulen copias en memoria
+    asegurar_instancia_unica()
 
     print("--- VP3 SYSTEM ONLINE (SUPABASE EDITION) ---")
     log_evento("Script iniciado")
