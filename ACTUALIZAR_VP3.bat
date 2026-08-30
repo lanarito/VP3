@@ -97,12 +97,26 @@ if exist "%TEMP%\VP3_TEMP\ACTUALIZAR_VP3.bat" copy /Y "%TEMP%\VP3_TEMP\ACTUALIZA
 REM No confiar solo en el codigo de salida de powershell.exe (puede fallar
 REM en formas raras y poco confiables segun el contexto). Se confirma con
 REM un archivo que el propio script deja escrito, sin ambiguedad posible.
+REM Diagnostico completo a un archivo, para poder revisar despues sin
+REM depender de una captura de pantalla recortada.
+echo ===== %date% %time% ===== > "%~dp0debug_actualizacion.log"
+echo TEMP resuelve a: %TEMP% >> "%~dp0debug_actualizacion.log"
+echo dp0 resuelve a: %~dp0 >> "%~dp0debug_actualizacion.log"
+if exist "%TEMP%\VP3_TEMP\_copia_resultado.txt" (
+    echo El archivo _copia_resultado.txt SI existe >> "%~dp0debug_actualizacion.log"
+    powershell -NoProfile -Command "$b = [System.IO.File]::ReadAllBytes('%TEMP%\VP3_TEMP\_copia_resultado.txt'); Write-Output ('bytes (' + $b.Length + '): ' + (($b | ForEach-Object { $_.ToString('X2') }) -join ' '))" >> "%~dp0debug_actualizacion.log"
+) else (
+    echo El archivo _copia_resultado.txt NO existe >> "%~dp0debug_actualizacion.log"
+)
 set COPIA_RESULTADO=
 if exist "%TEMP%\VP3_TEMP\_copia_resultado.txt" (
     set /p COPIA_RESULTADO=<"%TEMP%\VP3_TEMP\_copia_resultado.txt"
 )
+echo COPIA_RESULTADO leido como: [%COPIA_RESULTADO%] >> "%~dp0debug_actualizacion.log"
+if "%COPIA_RESULTADO%"=="OK" (echo la comparacion "==OK" dio VERDADERO >> "%~dp0debug_actualizacion.log") else (echo la comparacion "==OK" dio FALSO >> "%~dp0debug_actualizacion.log")
 echo       (confirmacion: %COPIA_RESULTADO%)
 if not "%COPIA_RESULTADO%"=="OK" (
+    echo ENTRANDO AL BLOQUE DE ERROR >> "%~dp0debug_actualizacion.log"
     color 0C
     echo.
     echo    ***************************************************
