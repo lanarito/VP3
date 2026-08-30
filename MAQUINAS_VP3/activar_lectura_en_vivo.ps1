@@ -12,7 +12,7 @@
 # ============================================================
 param([switch]$Auto, [switch]$Quitar)
 
-$VERSION = "v4"
+$VERSION = "v5"
 $ini = "' ===== VP3 LECTURA EN VIVO $VERSION INICIO ====="
 $fin = "' ===== VP3 LECTURA EN VIVO $VERSION FIN ====="
 $llamada = "    On Error Resume Next : VP3EnVivo : On Error Goto 0"
@@ -35,137 +35,71 @@ function Buscar-Core {
 # Saca CUALQUIER version del enganche (para poder reemplazarla)
 function Quitar-Enganche($texto) {
     $texto = [regex]::Replace($texto, "(?s)\r?\n?' ===== VP3 LECTURA EN VIVO.*?FIN =====", "")
-    $texto = [regex]::Replace($texto, "(?m)^[ \t]*On Error Resume Next : VP3EnVivo : On Error Goto 0[ \t]*\n", "")
+    $texto = [regex]::Replace($texto, "(?m)^[ \t]*On Error Resume Next : VP3EnVivo : On Error Goto 0[ \t]*\r?\n?", "")
     return $texto
 }
 
 $codigo = @"
 
 $ini
-' Pasa el puntaje a VP3 apenas se graban las iniciales, sin salir de la mesa.
-' Lo pone y lo saca ACTUALIZAR_VP3.bat / LECTURA_EN_VIVO.bat. No editar a mano.
-'
-' Trabaja de a pedacitos (256 bytes por vuelta) para no frenar el juego,
-' y solo escribe cuando el puntaje cambio de verdad.
-Dim vp3rom, vp3ult, vp3buf, vp3pos, vp3nv, vp3reloj, vp3activo
-Dim vp3iniciado
+' VP3 - Lectura en vivo sin lag (v5)
+' Detecta cuando se guardan las iniciales/records durante el juego y vuelca a VP3_LIVE
+Dim vp3rom, vp3ult, vp3reloj, vp3fso
+
 Sub VP3EnVivo()
     On Error Resume Next
-    Err.Clear
-    Dim carpeta, i, hasta, txt, fso, arch, hayCambios, cambios, n, idx, val
-    carpeta = "$carpetaLive"
+    Dim t
+    t = Timer
+    If vp3reloj <> 0 And (t - vp3reloj < 2.5) And (t >= vp3reloj) Then Exit Sub
+    vp3reloj = t
 
-    ' --- fase 1: si ya estamos armando el volcado, seguir de a poquito ---
-    If vp3activo = True Then
-        hasta = vp3pos + 255
-        If hasta > UBound(vp3nv) Then hasta = UBound(vp3nv)
-        For i = vp3pos To hasta
-            vp3buf(i) = Right("0" & Hex(vp3nv(i)), 2)
-        Next
-        vp3pos = hasta + 1
-        If vp3pos <= UBound(vp3nv) Then Exit Sub
+    If IsEmpty(Controller) Then Exit Sub
+    If Controller Is Nothing Then Exit Sub
+    If Not Controller.Running Then Exit Sub
 
-        vp3activo = False
-        txt = Join(vp3buf, "")
-        If txt = vp3ult Then Exit Sub
-        vp3ult = txt
-
-        Set fso = CreateObject("Scripting.FileSystemObject")
-        If Not fso.FolderExists(carpeta) Then fso.CreateFolder carpeta
-        Set arch = fso.CreateTextFile(carpeta & "\" & LCase(vp3rom) & ".hex", True)
-        arch.WriteLine "VP3LIVE1"
-        arch.WriteLine "rom=" & LCase(vp3rom)
-        arch.WriteLine "bytes=" & (UBound(vp3nv) + 1)
-        arch.WriteLine txt
-        arch.Close
-        Set arch = Nothing
-        Set fso = Nothing
-        If Err.Number <> 0 Then
-            VP3Estado carpeta, "ERROR al escribir: " & Err.Description
-        Else
-            VP3Estado carpeta, "PUNTAJE NUEVO VOLCADO: " & LCase(vp3rom) & " (" & (UBound(vp3nv) + 1) & " bytes)"
-        End If
+    Dim nv
+    nv = Controller.NVRAM
+    If Err.Number <> 0 Or Not IsArray(nv) Then
         Err.Clear
         Exit Sub
     End If
 
-    ' --- fase 2: cada 3 segundos, ver si hay algo nuevo ---
-    If vp3reloj <> Empty Then
-        If Timer - vp3reloj < 3 And Timer >= vp3reloj Then Exit Sub
-    End If
-    vp3reloj = Timer
+    Dim i, ub, hexArr()
+    ub = UBound(nv)
+    If ub < 0 Then Exit Sub
 
-    If vp3iniciado <> True Then
-        ' primera vez en esta mesa: una unica lectura COMPLETA (necesaria
-        ' para tener una imagen de referencia). De ahi en mas solo se piden
-        ' los CAMBIOS, mucho mas liviano que traer todo cada vez.
-        vp3nv = Controller.NVRAM
-        If Err.Number <> 0 Then
-            VP3Estado carpeta, "sin NVRAM (" & Err.Description & ")"
+    ReDim hexArr(ub)
+    For i = 0 To ub
+        hexArr(i) = Right("0" & Hex(nv(i)), 2)
+    Next
+
+    Dim txt
+    txt = Join(hexArr, "")
+    If txt = vp3ult Then Exit Sub
+    vp3ult = txt
+
+    If vp3rom = "" Then
+        vp3rom = cGameName
+        If Err.Number <> 0 Or vp3rom = "" Then
             Err.Clear
-            Exit Sub
-        End If
-        If Not IsArray(vp3nv) Then
-            VP3Estado carpeta, "NVRAM no es lista de bytes"
-            Exit Sub
-        End If
-        If vp3rom = "" Then
-            vp3rom = cGameName
-            If Err.Number <> 0 Or vp3rom = "" Then
-                Err.Clear
-                vp3rom = Controller.GameName
-                If Err.Number <> 0 Then vp3rom = "" : Err.Clear
-            End If
+            vp3rom = Controller.GameName
+            If Err.Number <> 0 Then vp3rom = ""
         End If
         If vp3rom = "" Then vp3rom = "desconocido"
-        vp3iniciado = True
-        hayCambios = True
-    Else
-        ' ya iniciado: pedir solo los cambios (liviano, hecho para esto)
-        cambios = Controller.ChangedNVRAM
-        If Err.Number <> 0 Then
-            VP3Estado carpeta, "ChangedNVRAM fallo (" & Err.Description & ")"
-            Err.Clear
-            Exit Sub
-        End If
-        hayCambios = False
-        If IsArray(cambios) Then
-            n = -1
-            n = UBound(cambios, 1)
-            If Err.Number = 0 And n >= 0 Then
-                For i = 0 To n
-                    idx = cambios(i, 0)
-                    val = cambios(i, 1)
-                    If Err.Number = 0 And idx >= 0 And idx <= UBound(vp3nv) Then
-                        vp3nv(idx) = val
-                        hayCambios = True
-                    End If
-                Next
-            End If
-            Err.Clear
-        End If
+        vp3rom = LCase(vp3rom)
     End If
 
-    If Not hayCambios Then Exit Sub
+    If vp3fso Is Nothing Then Set vp3fso = CreateObject("Scripting.FileSystemObject")
+    If Not vp3fso.FolderExists("$carpetaLive") Then vp3fso.CreateFolder "$carpetaLive"
 
-    ' hay algo para volcar: arrancar el armado de a poquito (fase 1
-    ' de la proxima vez que se llame), asi nunca se bloquea de una
-    ReDim vp3buf(UBound(vp3nv))
-    vp3pos = 0
-    vp3activo = True
-End Sub
-
-' Deja constancia de que paso, para poder diagnosticar sin adivinar
-Sub VP3Estado(carpeta, texto)
-    On Error Resume Next
-    Dim f, a
-    Set f = CreateObject("Scripting.FileSystemObject")
-    If Not f.FolderExists(carpeta) Then f.CreateFolder carpeta
-    Set a = f.OpenTextFile(carpeta & "\_estado.txt", 8, True)
-    a.WriteLine Now & "  " & texto
-    a.Close
-    Set a = Nothing
-    Set f = Nothing
+    Dim arch
+    Set arch = vp3fso.CreateTextFile("$carpetaLive\" & vp3rom & ".hex", True)
+    arch.WriteLine "VP3LIVE1"
+    arch.WriteLine "rom=" & vp3rom
+    arch.WriteLine "bytes=" & (ub + 1)
+    arch.WriteLine txt
+    arch.Close
+    Set arch = Nothing
     Err.Clear
 End Sub
 $fin
