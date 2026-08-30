@@ -7,10 +7,20 @@
 # Eso paso de verdad: activar_lectura_en_vivo.ps1 quedo con dos
 # dias de atraso en una maquina, con la mesa laggeando de mas,
 # mientras el resto de los archivos si se habian actualizado.
+#
+# -Excluir: nombres de archivo (relativos a Origen, sin
+# subcarpetas) que NO hay que copiar aca. Se usa para
+# ACTUALIZAR_VP3.bat: si un .bat se sobrescribe a si mismo
+# mientras cmd.exe lo esta leyendo, el resultado es imprevisible
+# (probado: cmd.exe puede cortarse a mitad de camino o saltar a
+# contenido que no corresponde). Ese archivo se reemplaza aparte,
+# como ULTIMO paso del actualizador, cuando ya no queda nada mas
+# por leer del archivo.
 # ============================================================
 param(
     [Parameter(Mandatory=$true)][string]$Origen,
-    [Parameter(Mandatory=$true)][string]$Destino
+    [Parameter(Mandatory=$true)][string]$Destino,
+    [string[]]$Excluir = @()
 )
 
 function Hash-De($ruta) {
@@ -19,12 +29,16 @@ function Hash-De($ruta) {
     catch { return $null }
 }
 
-$archivos = Get-ChildItem -Path $Origen -Recurse -File
+$archivos = Get-ChildItem -Path $Origen -Recurse -File | Where-Object { $Excluir -notcontains $_.Name }
 $total = $archivos.Count
 Write-Host ("      Copiando " + $total + " archivos...")
 
-# Copia masiva inicial (rapida)
-try { Copy-Item -Path (Join-Path $Origen '*') -Destination $Destino -Recurse -Force -ErrorAction Stop } catch { }
+# Copia masiva inicial (rapida): todo el contenido de Origen, salvo lo excluido
+try {
+    Get-ChildItem -Path $Origen -Force | Where-Object { $Excluir -notcontains $_.Name } | ForEach-Object {
+        Copy-Item -Path $_.FullName -Destination $Destino -Recurse -Force -ErrorAction Stop
+    }
+} catch { }
 
 # Verificar archivo por archivo, reintentando los que no coincidan
 for ($intento = 1; $intento -le 4; $intento++) {

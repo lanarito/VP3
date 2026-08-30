@@ -85,8 +85,15 @@ REM quedo con un script de dos dias de atraso mientras el resto SI se
 REM actualizaba, y nadie lo noto hasta que empezo a laguear.
 REM Se usa el verificador que viene DENTRO del zip recien bajado (no el
 REM que ya estaba en esta carpeta), asi funciona tambien la primerisima vez.
+REM ACTUALIZAR_VP3.bat NO se copia aca (ver -Excluir mas abajo). Si un .bat
+REM se sobrescribe a si mismo mientras cmd.exe lo esta interpretando, el
+REM resultado es imprevisible: probado que puede cortar la ejecucion a
+REM mitad de camino, o saltar a contenido que no corresponde a esa linea.
+REM Eso explicaba los "exito" seguidos de un error sin relacion. Se guarda
+REM aparte una copia fresca para reemplazarse recien al final del todo.
 del "%TEMP%\VP3_TEMP\_copia_resultado.txt" >nul 2>&1
-powershell -NoProfile -ExecutionPolicy Bypass -File "%TEMP%\VP3_TEMP\copiar_y_verificar.ps1" -Origen "%TEMP%\VP3_TEMP" -Destino "%~dp0."
+powershell -NoProfile -ExecutionPolicy Bypass -File "%TEMP%\VP3_TEMP\copiar_y_verificar.ps1" -Origen "%TEMP%\VP3_TEMP" -Destino "%~dp0." -Excluir "ACTUALIZAR_VP3.bat"
+if exist "%TEMP%\VP3_TEMP\ACTUALIZAR_VP3.bat" copy /Y "%TEMP%\VP3_TEMP\ACTUALIZAR_VP3.bat" "%TEMP%\ACTUALIZAR_VP3_nuevo.bat" >nul 2>&1
 REM No confiar solo en el codigo de salida de powershell.exe (puede fallar
 REM en formas raras y poco confiables segun el contexto). Se confirma con
 REM un archivo que el propio script deja escrito, sin ambiguedad posible.
@@ -235,4 +242,11 @@ if not exist "%~dp0.welcome_shown_v3" (
     timeout /t 10 /nobreak >nul
 )
 
+REM Reemplazo del propio .bat, como ULTIMA accion de todas. Nada mas se lee
+REM de este archivo despues de esta linea, asi que aunque cmd.exe se
+REM confunda con el cambio, ya no importa: no hay nada mas por ejecutar.
+if exist "%TEMP%\ACTUALIZAR_VP3_nuevo.bat" (
+    copy /Y "%TEMP%\ACTUALIZAR_VP3_nuevo.bat" "%~dp0ACTUALIZAR_VP3.bat" >nul 2>&1
+    del "%TEMP%\ACTUALIZAR_VP3_nuevo.bat" >nul 2>&1
+)
 exit /b 0
