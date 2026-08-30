@@ -72,7 +72,11 @@ DEFAULT_INITIALS = {
 # (que solo bloquea puntajes redondos, para no tapar a un invitado real que
 # coincida con esas iniciales), estas se confirmaron manualmente como
 # siempre-de-fabrica y se bloquean directo.
-SIEMPRE_FABRICA = {"AAA", "SLL", "MAB", "CCC", "AII"}
+SIEMPRE_FABRICA = {
+    "AAA", "SLL", "MAB", "CCC", "AII",
+    "A", "NF", "YW", "EB", "L", "K O", "KO", "C G", "CG", "ES", "GG",
+    "MW", "P G", "PG", "R+N", "L E", "LE", "LFS", "11:", "1:", "1", "2", "3", "4", "5"
+}
 
 # Hasta que puesto de cada mesa se avisa por Telegram (1 = solo el Gran Campeon).
 # Los que quedan mas abajo se suben igual y se ven en la pagina, pero no avisan.
@@ -318,7 +322,7 @@ def leer_con_pinemhi(nombre_archivo, carpeta_origen=None):
                 shutil.copy2(orig_path, copia_temporal)
                 rom_a_leer = nombre_en_workspace
                 cwd_pinemhi = workspace
-                print(f"🔀 Alias: {nombre_archivo} se lee como {rom_destino}.nv (en carpeta temporal)")
+                print(f"🔀 Alias: {nombre_archivo} se lee como {nombre_en_workspace} (en carpeta temporal)")
             except Exception as e_prep:
                 print(f"⚠️ Error preparando alias ({nombre_archivo}): {e_prep}")
                 copia_temporal = None
@@ -340,18 +344,46 @@ def leer_con_pinemhi(nombre_archivo, carpeta_origen=None):
         texto_limpio = result.stdout
 
         vistos = set()
-        for linea in texto_limpio.split('\n'):
-            nombres = re.findall(r'\b[A-Z]{3}\b', linea)
-            if nombres:
-                nombre = nombres[-1]
-                numeros = re.findall(r'[\d,\.]{2,}', linea)
-                if numeros:
-                    score_str = numeros[-1].replace(',', '').replace('.', '')
-                    if score_str.isdigit():
-                        val = int(score_str)
-                        if val > 10 and val not in vistos:
-                            scores.append({"jugador": nombre, "puntaje": val})
+        IGNORAR_PALABRAS = {
+            "SCORES", "CHAMPION", "BELT", "HERO", "RECORD", "GRAND", "HIGH",
+            "TOP", "ACE", "BLACK", "BROWN", "BLUE", "PURPLE", "ORANGE", "YELLOW",
+            "CHIEF", "DEPUTY", "SERGEANT", "PATROLMAN", "SUPER", "COMMANDER", "LIEUTENANT"
+        }
+        for linea in texto_limpio.splitlines():
+            linea = linea.strip()
+            if not linea:
+                continue
+            # Ignorar lineas de estadisticas secundarias (combos, loops, etc.)
+            if any(linea.upper().endswith(suffix) for suffix in ["COMBOS", "WALKERS", "LOOPS", "BOATS", "TALES", "RECORD", "MULTIBALL"]):
+                continue
+
+            # Buscar patron: (Posicion opcional) (Iniciales 1 a 5 chars) (Puntaje con puntos/comas)
+            m = re.search(r'^(?:(?:#|\b)?\d+[\)\.\s]+)?\s*([A-Za-z0-9_\+\.\-\s]{1,5}?)\s+([\d\.\,]{2,})\s*$', linea)
+            if m:
+                jugador = m.group(1).strip().upper()
+                score_str = m.group(2).replace(',', '').replace('.', '').strip()
+                if score_str.isdigit():
+                    val = int(score_str)
+                    if val > 10 and val not in vistos and jugador:
+                        if jugador not in IGNORAR_PALABRAS:
+                            scores.append({"jugador": jugador, "puntaje": val})
                             vistos.add(val)
+                            continue
+
+            # Fallback general si no coincidio con el regex estricto
+            numeros = re.findall(r'[\d,\.]{2,}', linea)
+            if numeros:
+                score_str = numeros[-1].replace(',', '').replace('.', '')
+                if score_str.isdigit():
+                    val = int(score_str)
+                    if val > 10 and val not in vistos:
+                        prefix = linea[:linea.rfind(numeros[-1])].strip()
+                        prefix = re.sub(r'^(?:#|\b)?\d+[\)\.\s]+', '', prefix).strip()
+                        if prefix:
+                            jugador = prefix.split()[-1].upper()
+                            if len(jugador) <= 5 and jugador not in IGNORAR_PALABRAS:
+                                scores.append({"jugador": jugador, "puntaje": val})
+                                vistos.add(val)
     except Exception as e:
         print(f"⚠️ Error ejecutando PINemHi con {nombre_archivo}: {e}")
     finally:

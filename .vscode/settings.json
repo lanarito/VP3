@@ -1,0 +1,9 @@
+{
+  "python.languageServer": "Default",
+  "antigravity.toolExecutionPolicy": "always-proceed",
+  "antigravity.artifactReviewMode": "always-proceed",
+  "antigravity.nonWorkspaceFileAccess": "allow",
+  "antigravity.internetAccessPolicy": "allow",
+  "antigravity.agent.autoApprove": true,
+  "chat.tools.autoApprove": true
+}

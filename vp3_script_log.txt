@@ -1,3 +1,5 @@
 [2026-08-27 12:36:50] Script iniciado
 [2026-08-27 12:36:50] Sincronizacion inicial
 [2026-08-27 12:36:54] Entrando en modo monitoreo
+[2026-08-30 15:22:34] Sincronizacion forzada antes de apagar (shutdown script)
+[2026-08-30 15:23:12] Sincronizacion forzada antes de apagar (shutdown script)

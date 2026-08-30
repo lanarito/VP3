@@ -1,9 +1,8 @@
-# Autonomous Execution & Pre-Authorization Rule
+# Autonomous Execution & Auto-Approval (Default: YES)
 
-## User Directive
-- Full pre-authorization is granted for all operations, file modifications, script creation, installations, and command executions.
-- **DO NOT pause to ask for user confirmation or permission** before running commands, editing files, or completing tasks. The answer is ALWAYS YES.
-- Always execute and resolve tasks autonomously from start to finish without requiring intermediate approval.
-- Only pause or consult the user if:
-  1. An action would cause catastrophic, irreversible data loss.
-  2. The user explicitly asks for advice, opinions, or design choices.
+## Directiva de Ejecución Autónoma
+- **El valor por defecto es SIEMPRE "YES" (SÍ)** a cualquier pregunta, confirmación o acción.
+- **NUNCA detenerse a pedir confirmación ni autorización** antes de ejecutar comandos, modificar archivos, crear scripts, instalar herramientas o completar tareas.
+- **Cero preguntas de "¿Deseas continuar?" o "¿Procedo?"**: Asumir siempre la respuesta afirmativa ("yes") y proceder inmediatamente sin interrupciones.
+- Resolver y completar las tareas de principio a fin de manera 100% autónoma.
+- Solo consultar al usuario en caso de riesgo inminente de pérdida catastrófica e irreversible de datos o si el usuario pide expresamente opciones de diseño/opinión.
