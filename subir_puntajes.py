@@ -879,17 +879,16 @@ def avisos_ya_enviados():
     except Exception:
         return []
 
+AVISOS_ENVIADOS_MEMORIA = set(avisos_ya_enviados())
+
 
 def avisar_records_nuevos(nuevos, es_primera_carga, total_filas):
-    """Manda el Telegram DESPUES de que el record quedo guardado en Supabase.
+    """Manda el Telegram DESPUES de que el record quedo guardado en Supabase."""
+    global AVISOS_ENVIADOS_MEMORIA
+    # Sincronizar memoria con lo que haya en disco
+    for id_ya in avisos_ya_enviados():
+        AVISOS_ENVIADOS_MEMORIA.add(id_ya)
 
-    Antes se avisaba antes de guardar: si la subida fallaba, el mensaje salia
-    igual y al ciclo siguiente se repetia. De ahi los mensajes dobles.
-    Ademas se lleva memoria de lo ya anunciado, asi que aunque haya dos copias
-    del programa corriendo, cada record se anuncia una sola vez.
-    """
-    ya = avisos_ya_enviados()
-    conocidos = set(ya)
     salto = chr(10)
 
     if es_primera_carga:
@@ -897,10 +896,16 @@ def avisar_records_nuevos(nuevos, es_primera_carga, total_filas):
                         + str(total_filas) + " records.")
         return
 
+    enviados_ahora = []
     for r, pos in nuevos:
-        if r["ID_Record"] in conocidos:
-            print("Ya se habia avisado " + r["ID_Record"] + ", no lo repito.")
+        id_rec = r["ID_Record"]
+        if id_rec in AVISOS_ENVIADOS_MEMORIA:
+            print("Ya se habia avisado " + id_rec + ", no lo repito.")
             continue
+
+        # Reservar inmediatamente en memoria para evitar duplicados en rafagas
+        AVISOS_ENVIADOS_MEMORIA.add(id_rec)
+
         pf = format(r["Puntaje"], ",").replace(",", ".")
         mensaje = ("🚨 *¡NUEVO RÉCORD VP3!* 🚨" + salto + salto
                    + "🎰 Mesa: *" + r["Mesa"] + "*" + salto
@@ -908,14 +913,21 @@ def avisar_records_nuevos(nuevos, es_primera_carga, total_filas):
                    + "👤 Jugador: *" + r["Jugador"] + "*" + salto
                    + "💥 Puntaje: *" + pf + "*")
         if mandar_whatsapp(mensaje):
-            ya.append(r["ID_Record"])
-            conocidos.add(r["ID_Record"])
+            enviados_ahora.append(id_rec)
+        else:
+            # Si fallo el envio, permitir reintento
+            AVISOS_ENVIADOS_MEMORIA.discard(id_rec)
 
-    try:
-        with open(ARCHIVO_AVISOS, "w", encoding="utf-8") as f:
-            json.dump(ya[-500:], f, indent=2)
-    except Exception as e:
-        print("Aviso: no pude guardar la lista de avisos: " + str(e))
+    if enviados_ahora:
+        try:
+            lista_disco = avisos_ya_enviados()
+            for x in enviados_ahora:
+                if x not in lista_disco:
+                    lista_disco.append(x)
+            with open(ARCHIVO_AVISOS, "w", encoding="utf-8") as f:
+                json.dump(lista_disco[-500:], f, indent=2)
+        except Exception as e:
+            print("Aviso: no pude guardar la lista de avisos: " + str(e))
 
 
 def escribir_heartbeat(estado="ALIVE"):
@@ -1004,10 +1016,14 @@ if __name__ == "__main__":
                     log_evento("Cambio detectado: " + ", ".join(mesas_cambiadas))
                     # Esperar a que VPinMAME termine de escribir el .nv
                     time.sleep(2)
-                    # Sincronizacion DIRIGIDA: solo las mesas que cambiaron.
-                    # Escanear las 37 tardaba demasiado y el jugador alcanzaba a
-                    # apagar antes de que subiera. Asi tarda alrededor de un segundo.
                     procesar_y_subir(solo_mesas=mesas_cambiadas)
+                    # Actualizar tiempos_mod DESPUES del procesado para absorber escrituras rezagadas
+                    for m_nombre in mesas_cambiadas:
+                        m_cfg = next((m for m in MESAS_CONFIG if m["nombre"] == m_nombre), None)
+                        if m_cfg:
+                            archs = archivos_de_la_mesa(m_cfg)
+                            if archs:
+                                tiempos_mod[m_nombre] = max(os.path.getmtime(fp) for fp, _ in archs)
                     escribir_heartbeat("SYNCED")
 
                 contador_heartbeat += 1
