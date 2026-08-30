@@ -12,7 +12,7 @@
 # ============================================================
 param([switch]$Auto, [switch]$Quitar)
 
-$VERSION = "v6"
+$VERSION = "v7"
 $ini = "' ===== VP3 LECTURA EN VIVO $VERSION INICIO ====="
 $fin = "' ===== VP3 LECTURA EN VIVO $VERSION FIN ====="
 $llamada = "    On Error Resume Next : VP3EnVivo : On Error Goto 0"
@@ -42,25 +42,28 @@ function Quitar-Enganche($texto) {
 $codigo = @"
 
 $ini
-' VP3 - Lectura en vivo sin lag (v6)
-' Detecta cuando se guardan las iniciales/records durante el juego y vuelca a VP3_LIVE
+' VP3 - Lectura en vivo sin lag (v7)
+' Vuelca la memoria NVRAM a VP3_LIVE apenas hay cambios
 Dim vp3rom, vp3ult, vp3reloj, vp3fso
 
 Sub VP3EnVivo()
     On Error Resume Next
     Dim t
     t = Timer
-    If vp3reloj <> 0 And (t - vp3reloj < 1.5) And (t >= vp3reloj) Then Exit Sub
+    If vp3reloj <> 0 And (t - vp3reloj < 1.0) And (t >= vp3reloj) Then Exit Sub
     vp3reloj = t
 
     If IsEmpty(Controller) Or Controller Is Nothing Then Exit Sub
-    If Not Controller.Running Then Exit Sub
 
     Dim nv
     nv = Controller.NVRAM
-    If IsEmpty(nv) Or IsNull(nv) Then Exit Sub
+    If Err.Number <> 0 Or IsEmpty(nv) Or IsNull(nv) Then
+        Err.Clear
+        Exit Sub
+    End If
 
     Dim i, ub, hexArr()
+    ub = -1
     ub = UBound(nv)
     If Err.Number <> 0 Or ub < 0 Then
         Err.Clear
@@ -82,6 +85,11 @@ Sub VP3EnVivo()
         If Err.Number <> 0 Or vp3rom = "" Then
             Err.Clear
             vp3rom = Controller.GameName
+            If Err.Number <> 0 Then vp3rom = ""
+        End If
+        If vp3rom = "" Then
+            Err.Clear
+            vp3rom = Controller.ROMName
             If Err.Number <> 0 Then vp3rom = ""
         End If
         If vp3rom = "" Then vp3rom = "desconocido"
@@ -156,6 +164,7 @@ if ($yaEsta) {
 }
 
 $patronUpdate = "(?m)^([ \t]*Public[ \t]+Sub[ \t]+Update[ \t]*)(\r?\n)"
+$patronFast = "(?m)^([ \t]*Public[ \t]+Sub[ \t]+FastUpdate[ \t]*)(\r?\n)"
 $patronPinMAME = "(?m)^([ \t]*Sub[ \t]+PinMAMETimer_Timer[ \t]*)(\r?\n)"
 
 New-Item -ItemType Directory -Force -Path $carpetaLive | Out-Null
@@ -164,6 +173,9 @@ New-Item -ItemType Directory -Force -Path $carpetaLive | Out-Null
 $texto = Quitar-Enganche $texto
 if ($texto -match $patronUpdate) {
     $texto = $texto -replace $patronUpdate, "`$1`$2$llamada`n"
+}
+if ($texto -match $patronFast) {
+    $texto = $texto -replace $patronFast, "`$1`$2$llamada`n"
 }
 if ($texto -match $patronPinMAME) {
     $texto = $texto -replace $patronPinMAME, "`$1`$2$llamada`n"
