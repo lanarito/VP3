@@ -90,23 +90,50 @@ TELEGRAM_CHAT_ID = _cfg.get("telegram", "chat_id", fallback="")
 
 def mandar_whatsapp(mensaje):
     """
-    Envia alertas de récords. Redirigido a Telegram para ser gratis e ilimitado de por vida.
+    Envia alertas de records a Telegram por HTTP POST con JSON (UTF-8).
+    Devuelve True si el mensaje se envio correctamente, False si hubo error.
     """
-    print(f"📢 Enviando alerta a Telegram: {mensaje}")
     if not TELEGRAM_TOKEN or TELEGRAM_TOKEN == "PONDRE_EL_TOKEN_AQUI" or not TELEGRAM_CHAT_ID or TELEGRAM_CHAT_ID == "PONDRE_EL_CHAT_ID_AQUI":
-        print("⚠️ Telegram no configurado. Rellena las variables TELEGRAM_TOKEN y TELEGRAM_CHAT_ID al inicio de subir_puntajes.py")
-        return
+        try:
+            print("⚠️ Telegram no configurado. Rellena las variables TELEGRAM_TOKEN y TELEGRAM_CHAT_ID en config.ini")
+        except Exception:
+            pass
+        return False
         
     try:
-        # Codificar el texto para la URL
-        texto_codificado = urllib.parse.quote(mensaje)
-        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage?chat_id={TELEGRAM_CHAT_ID}&text={texto_codificado}&parse_mode=Markdown"
+        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+        payload = json.dumps({
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": mensaje,
+            "parse_mode": "Markdown"
+        }).encode("utf-8")
         
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        req = urllib.request.Request(
+            url,
+            data=payload,
+            headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}
+        )
         with urllib.request.urlopen(req, timeout=15) as response:
-            print("💬 Alerta enviada correctamente a Telegram.")
+            res_body = response.read().decode("utf-8", errors="replace")
+            res_json = json.loads(res_body)
+            if res_json.get("ok"):
+                try:
+                    print("💬 Alerta enviada correctamente a Telegram.")
+                except Exception:
+                    pass
+                return True
+            else:
+                try:
+                    print(f"⚠️ Telegram devolvio error: {res_body}")
+                except Exception:
+                    pass
+                return False
     except Exception as e:
-        print(f"⚠️ Error enviando alerta a Telegram: {e}")
+        try:
+            print(f"⚠️ Error enviando alerta a Telegram: {e}")
+        except Exception:
+            pass
+        return False
 
 # ============================================================
 # ALIAS DE ROMS (VPMAlias.txt) - "origen,destino" por linea.
@@ -860,9 +887,9 @@ def avisar_records_nuevos(nuevos, es_primera_carga, total_filas):
                    + "🏅 Posición: *" + pos + "*" + salto
                    + "👤 Jugador: *" + r["Jugador"] + "*" + salto
                    + "💥 Puntaje: *" + pf + "*")
-        mandar_whatsapp(mensaje)
-        ya.append(r["ID_Record"])
-        conocidos.add(r["ID_Record"])
+        if mandar_whatsapp(mensaje):
+            ya.append(r["ID_Record"])
+            conocidos.add(r["ID_Record"])
 
     try:
         with open(ARCHIVO_AVISOS, "w", encoding="utf-8") as f:
