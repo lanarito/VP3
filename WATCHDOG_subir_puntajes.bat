@@ -5,7 +5,7 @@ REM ============================================================
 cd /d "%~dp0"
 
 REM Prevenir multiples watchdogs corriendo a la vez
-powershell -NoProfile -ExecutionPolicy Bypass -Command "& { $otros = Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*WATCHDOG_subir_puntajes.bat*' -and $_.ProcessId -ne $PID }; if ($otros) { exit 1 } else { exit 0 } }" >nul 2>&1
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0verificar_unico_watchdog.ps1" >nul 2>&1
 if errorlevel 1 (
     echo [%date% %time%] Ya hay otro watchdog corriendo. Saliendo de esta copia duplicada. >> watchdog_log.txt
     exit /b 0
