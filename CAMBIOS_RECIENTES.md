@@ -1,6 +1,55 @@
 # 📋 CAMBIOS RECIENTES - VP3
 
-**Última sesión: 27 de agosto 2026**
+**Última sesión: 31 de agosto 2026**
+
+---
+
+## 🔴 SE ARREGLÓ EL QUILOMBO QUE DEJÓ GEMINI (lag, cierres reiterados)
+
+### Lo que pasó:
+Mientras no estuve disponible, Luis probó con Gemini resolver lo mismo (subida
+instantánea al grabar iniciales). Gemini reescribió `activar_lectura_en_vivo.ps1`
+y `subir_puntajes.py` con dos problemas:
+
+1. **El enganche en `core.vbs` quedó pegado en 9 lugares distintos** del archivo
+   (en vez de uno solo), por un `-replace` que no estaba bien anclado y matcheaba
+   de más en las ~2500 líneas compartidas por las 37 mesas.
+2. **`subir_puntajes.py` escaneaba TODA la memoria RAM del proceso de Visual
+   Pinball desde afuera** (hasta 2 GB de espacio de direcciones, con
+   `VirtualQueryEx`/`ReadProcessMemory`), repitiendo el escaneo completo cada 4
+   segundos mientras no encontraba la mesa, más una lectura de memoria cada 1
+   segundo mientras se jugaba. Eso competía por CPU con la mesa en vivo, en la
+   misma máquina — la causa real de que "se pusiera lenta la máquina y se
+   tildara", exactamente lo que Luis reportó.
+
+### Lo que se arregló:
+- Se sacó el escaneo de RAM de `subir_puntajes.py` por completo (y el archivo
+  huérfano `lector_memoria_vpx.py` que nadie llamaba). Se volvió al enganche
+  nativo y liviano de `core.vbs` (v9): un solo punto de enganche, usa el motor
+  `UseNVRAM`/`NVRAMCallback` que VPinMAME ya trae de fábrica, y solo aplica el
+  delta que llega (`ChangedNVRAM`), nunca vuelve a leer la memoria entera.
+- Se reescribió `activar_lectura_en_vivo.ps1` (v9) con un solo punto de
+  enganche, probado a fondo: activar → desactivar deja `core.vbs` **byte por
+  byte idéntico** al original (antes había un bug de regex — la función
+  `VP3EnVivo` tiene un "3" y el patrón de desactivación no aceptaba dígitos, así
+  que nunca revertía bien). Probado también con un motor VBScript real
+  (`cscript`) simulando un `Controller` falso: baseline se lee una sola vez,
+  los deltas se aplican bien, no reescribe el archivo si no cambió nada de
+  verdad.
+- Se restauró el `core.vbs` real de la máquina desde el backup limpio y se le
+  aplicó el enganche correcto.
+- Se mantuvo lo bueno que sí trajo Gemini: **mutex de instancia única** en
+  `subir_puntajes.exe` (si ya hay una copia corriendo, la nueva se cierra sola
+  en vez de duplicarse) y el watchdog v5 con chequeo anti-duplicados
+  (`verificar_unico_watchdog.ps1`). Confirmado en la máquina real: un solo
+  watchdog, un solo `subir_puntajes.exe` (el par proceso padre/hijo de
+  PyInstaller es normal, no es un duplicado).
+- Se sacaron `INICIAR_VP3.bat` y `DETENER_VP3.bat`: archivos sueltos que
+  Gemini agregó fuera de `ACTUALIZAR_VP3.bat`, contra la filosofía del
+  proyecto (todo pasa por el único botón).
+
+### Para los chicos: nada nuevo
+Se actualiza solo con `ACTUALIZAR_VP3.bat`, doble click de siempre.
 
 ---
 
