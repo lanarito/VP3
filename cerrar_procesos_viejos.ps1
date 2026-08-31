@@ -7,19 +7,24 @@
 # quedaba corriendo PARA SIEMPRE, y cada actualizacion sumaba una copia mas
 # del sistema entero: varias vigilando la NVRAM y mandando Telegram a la vez.
 #
-# BUG ENCONTRADO 31-ago-2026: aun matando TODO, quedaba una carrera de
-# verdad. WATCHDOG_subir_puntajes.bat tiene su propio bucle: si nota que
-# su subir_puntajes.exe murio, lo reinicia solo a los 5-10 segundos. Si
-# esta rutina mata primero el .exe y todavia no llega a matar el .bat que
-# lo vigila, ese .bat alcanza a levantar un subir_puntajes.exe NUEVO antes
-# de que le toque el turno -- y justo en ese hueco arranca tambien el
-# watchdog NUEVO (paso 10 del actualizador). Resultado: dos copias enteras
-# del sistema corriendo a la vez. Confirmado en la maquina real: dos pares
-# de subir_puntajes.exe, "Cambio detectado" repetido en el mismo segundo,
-# Telegram duplicado, y el enganche en vivo compitiendo consigo mismo.
+# BUG ENCONTRADO 31-ago-2026 (y arreglado dos veces): aun matando TODO,
+# quedaba una carrera de verdad. Primero: WATCHDOG_subir_puntajes.bat
+# reiniciaba su subir_puntajes.exe solo si lo mataban primero a el sin
+# llegar a tiempo a matar el .bat que lo vigila. Se arreglo con el
+# _DETENER_VP3_ de aca abajo. Despues aparecio una carrera mas de fondo,
+# en la maquina de Her: PinUP Popper tiene SU PROPIO arranque automatico
+# (configurado en su base de datos, StartupBatch) que lanza el watchdog
+# cada vez que arranca Popper -- un tercer camino ademas de
+# ACTUALIZAR_VP3.bat, totalmente fuera de este script. El watchdog ahora
+# (v6) usa un MUTEX real de Windows para que sea imposible que dos
+# copias corran juntas sin importar quien las dispare (ver
+# WATCHDOG_supervisor.ps1), asi que ese problema de fondo ya no depende
+# de este script para evitarse. Este script sigue sirviendo para la
+# limpieza ANTES de actualizar: mata cualquier watchdog/exe que haya
+# quedado de antes para que la copia nueva arranque de cero.
 #
-# Arreglo: escribir el archivo _DETENER_VP3_ ANTES de matar nada.
-# WATCHDOG_subir_puntajes.bat v5 YA sabe mirar ese archivo en cada vuelta
+# Arreglo del _DETENER_VP3_: se escribe ANTES de matar nada.
+# WATCHDOG_subir_puntajes.bat ya sabe mirar ese archivo en cada vuelta
 # de su bucle (antes Y despues de lanzar el exe): si lo encuentra, se
 # apaga solo en vez de reiniciar. Asi, aunque un watchdog viejo sobreviva
 # un instante a la primera tanda de kills, en su proximo chequeo se apaga
@@ -33,6 +38,7 @@ $sentinel = Join-Path $PSScriptRoot "_DETENER_VP3_"
 function Buscar-Viejos {
     Get-CimInstance Win32_Process | Where-Object {
         $_.CommandLine -like '*WATCHDOG_subir_puntajes*' -or
+        $_.CommandLine -like '*WATCHDOG_supervisor*' -or
         $_.CommandLine -like '*WATCHDOG_invisible*' -or
         $_.Name -eq 'subir_puntajes.exe' -or
         $_.CommandLine -like '*subir_puntajes.exe*'
