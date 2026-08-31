@@ -54,6 +54,28 @@ function Buscar-Core {
     return $null
 }
 
+# BUG ENCONTRADO 31-ago-2026: GetTextFile("core.vbs") -- la funcion nativa
+# de VPX que carga el script -- busca primero en la carpeta de la mesa
+# (Tables\core.vbs) y SOLO si no esta ahi cae a la carpeta compartida
+# (Scripts\core.vbs). En esta maquina hay una copia vieja de core.vbs dentro
+# de Tables\, y CADA mesa cargaba ESA (con el enganche viejo o directamente
+# sin enganche), sin importar lo que se cambiara en Scripts\core.vbs.
+# Confirmado con un diagnostico puesto adentro del propio core.vbs mientras
+# se jugaba de verdad: cero enganche disparaba hasta sincronizar las dos
+# copias. Por eso esta funcion, ademas de tocar $archivo (el que encuentre
+# primero Buscar-Core), replica el resultado final a CUALQUIER otra copia
+# de core.vbs que exista al lado (incluida la vieja de Tables\), para que
+# no vuelva a pasar esto de nuevo silenciosamente.
+function Copias-Hermanas($archivoPrincipal) {
+    $hermanas = @()
+    $raiz = Split-Path (Split-Path $archivoPrincipal -Parent) -Parent
+    foreach ($sub in @("Scripts", "Tables")) {
+        $candidata = Join-Path $raiz "$sub\core.vbs"
+        if ((Test-Path $candidata) -and ($candidata -ne $archivoPrincipal)) { $hermanas += $candidata }
+    }
+    return $hermanas
+}
+
 # Saca CUALQUIER version del enganche (bloque marcado Y la linea que
 # fuerza UseNVRAM/NVRAMCallback), para poder reemplazarla limpio.
 # Version-agnostico: saca v4, v8, v9, la que sea.
@@ -188,6 +210,9 @@ if (-not (Test-Path $backup)) { Copy-Item $archivo $backup -Force }
 if ($Quitar) {
     $limpio = Quitar-Enganche $texto
     Set-Content $archivo $limpio -Encoding Default -NoNewline
+    foreach ($hermana in (Copias-Hermanas $archivo)) {
+        Set-Content $hermana $limpio -Encoding Default -NoNewline
+    }
     if (-not $Auto) {
         Write-Host ""; Write-Host " DESACTIVADA. core.vbs quedo como estaba." -ForegroundColor Green
         Read-Host " Enter para cerrar"
@@ -196,6 +221,14 @@ if ($Quitar) {
 }
 
 if ($yaEsta) {
+    # Igual hay que revisar las copias hermanas: puede que $archivo ya
+    # estuviera activado de una vuelta anterior pero una copia al lado
+    # (Tables\core.vbs) haya quedado vieja o distinta (el bug de fondo
+    # que causaba que el enganche nunca disparara, ver nota arriba).
+    foreach ($hermana in (Copias-Hermanas $archivo)) {
+        $textoHermana = Get-Content $hermana -Raw -ErrorAction SilentlyContinue
+        if ($textoHermana -ne $texto) { Set-Content $hermana $texto -Encoding Default -NoNewline }
+    }
     if (-not $Auto) { Write-Host ""; Write-Host " Ya estaba activada ($VERSION)." -ForegroundColor Yellow; Read-Host " Enter" }
     else { Write-Host "      OK (ya estaba activada)" }
     exit 0
@@ -220,7 +253,11 @@ if ($texto -notmatch $patronCableado) {
 }
 $texto = $texto -replace $patronCableado, $nuevoCableado
 
-Set-Content $archivo ($texto + $codigo) -Encoding Default -NoNewline
+$textoFinal = $texto + $codigo
+Set-Content $archivo $textoFinal -Encoding Default -NoNewline
+foreach ($hermana in (Copias-Hermanas $archivo)) {
+    Set-Content $hermana $textoFinal -Encoding Default -NoNewline
+}
 
 if ($Auto) {
     Write-Host "      OK"
