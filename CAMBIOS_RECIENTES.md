@@ -4,6 +4,40 @@
 
 ---
 
+## 🔴 EL WATCHDOG AHORA USA UN MUTEX REAL (Her confirmó el problema con un video)
+
+### Lo que pasó:
+Her mandó un video: en el Administrador de Tareas se veían **4 copias de
+"subir_puntajes"** al mismo tiempo, la mesa tildándose, y al cerrar una
+ventana se le volvía a abrir otra sola.
+
+### La causa de fondo:
+**PinUP Popper tiene su propio arranque automático**, guardado en su base
+de datos (`PUPDatabase.db`, tabla `GlobalSettings`, columna
+`StartupBatch`), que lanza el watchdog cada vez que arranca Popper —
+totalmente aparte de `ACTUALIZAR_VP3.bat`. El chequeo que había
+("¿hay otro watchdog corriendo ahora?") miraba una FOTO de los procesos
+en ese instante: si Popper y el actualizador arrancan casi juntos, los
+dos pueden sacar la foto antes de que el otro se registre, y los dos
+pasan.
+
+### El arreglo:
+El watchdog (`WATCHDOG_supervisor.ps1`, v6) ahora usa un **Mutex real de
+Windows** — el mismo tipo de candado que ya protegía a
+`subir_puntajes.exe`, sostenido mientras dure el watchdog, no una foto de
+un instante. Probado lanzando 5 copias exactamente en el mismo
+milisegundo: siempre gana una sola, sin excepción. `WATCHDOG_subir_puntajes.bat`
+sigue siendo el mismo archivo de siempre (así no hace falta tocar la
+configuración de PinUP Popper), solo que ahora delega toda la lógica al
+supervisor nuevo.
+
+### Para los chicos: nada nuevo
+Se corrige solo con `ACTUALIZAR_VP3.bat`. Da igual quién dispare el
+watchdog primero (Popper o el actualizador) — nunca más van a quedar dos
+corriendo juntas.
+
+---
+
 ## 🔴 POR FIN: LA SUBIDA INSTANTÁNEA FUNCIONA DE VERDAD (y se arregló el mensaje doble)
 
 ### Los tres síntomas que reportó Luis:
