@@ -4,6 +4,47 @@
 
 ---
 
+## 🔴 POR FIN: LA SUBIDA INSTANTÁNEA FUNCIONA DE VERDAD (y se arregló el mensaje doble)
+
+### Los tres síntomas que reportó Luis:
+1. Hizo un record y el mensaje de Telegram llegó recién al SALIR de la mesa, no al cargar las iniciales.
+2. El mensaje llegó DOBLE.
+3. Pidió revisar qué procesos había corriendo.
+
+### Causa del mensaje doble (confirmada y arreglada):
+Había **dos copias de `subir_puntajes.exe` corriendo a la vez** en la
+máquina real (se vio en el Administrador de Tareas y en el log: "Cambio
+detectado" aparecía dos veces, 1 segundo de diferencia). El motivo: el
+watchdog viejo se reinicia solo si nota que su `.exe` murió, y si eso pasa
+justo cuando arranca el watchdog nuevo (al actualizar), quedan dos sistemas
+enteros corriendo, cada uno mandando su propio Telegram. Se arregló
+`cerrar_procesos_viejos.ps1` para que escriba un archivo `_DETENER_VP3_`
+ANTES de matar nada — el watchdog viejo ya sabe respetarlo y se apaga solo
+en vez de revivir. Probado contra el desorden real que había: quedó en una
+sola copia.
+
+### Causa de "solo sube al salir de la mesa" (la más difícil de encontrar):
+El enganche instantáneo vive en `core.vbs`. Se probó en vivo (lanzando
+Teenage Mutant Ninja Turtles con diagnósticos puestos a mano DENTRO del
+script mientras la mesa corría de verdad) y se confirmó: **Visual Pinball no
+estaba leyendo el `core.vbs` que se venía arreglando** — leía una copia
+vieja y separada que vivía directo en la carpeta de las mesas
+(`Tables\core.vbs`), desincronizada desde antes de esta sesión. La función
+nativa de VPX que carga el script (`GetTextFile`) prioriza la copia que está
+al lado de la mesa por sobre la compartida, y nada lo avisaba.
+
+Se arregló `activar_lectura_en_vivo.ps1` para que, de ahora en más, sincronice
+SIEMPRE cualquier copia de `core.vbs` que encuentre al lado de la principal —
+tanto al activar como al desactivar la lectura en vivo, y también si una
+copia se desincroniza después. Confirmado en la máquina real: TMNT generó su
+archivo de lectura en vivo apenas se cargó la mesa, sin necesidad de terminar
+la partida.
+
+### Para los chicos: nada nuevo
+Se corrige solo con `ACTUALIZAR_VP3.bat`, doble click de siempre.
+
+---
+
 ## 🔴 SE ARREGLÓ EL QUILOMBO QUE DEJÓ GEMINI (lag, cierres reiterados)
 
 ### Lo que pasó:
