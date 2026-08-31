@@ -226,19 +226,144 @@ def obtener_workspace_alias():
         return None
 
 # ============================================================
-# LECTURA EN VIVO
-# El enganche puesto en core.vbs deja la memoria de la mesa en LIVE_PATH
-# mientras se juega, en texto hexadecimal (escribir binario desde VBScript
-# es fragil). Aca se pasa a un .nv de verdad que PINemHi sabe leer.
+# LECTOR DE MEMORIA RAM EN VIVO (VPX ENGINE SCANNER)
+# Lee la memoria NVRAM directamente desde la RAM del proceso
+# Visual Pinball (vpinballx.exe) mientras el usuario juega,
+# permitiendo enviar el Telegram al instante al poner iniciales.
 # ============================================================
-def identificar_mesa_por_contenido(crudo):
-    """Averigua de que mesa es un volcado SIN depender de que la mesa nos diga
-    su nombre (con B2S y otras configuraciones no siempre se puede saber).
+import ctypes
+from ctypes import wintypes
 
-    Compara el volcado contra los .nv reales de la NVRAM: el de la misma mesa
-    comparte casi todos los bytes, el de otra mesa no se parece en nada.
-    Devuelve el nombre de archivo (ej "mb_106b.nv") o None si no hay match claro.
+PROCESS_VM_READ = 0x0010
+PROCESS_QUERY_INFORMATION = 0x0400
+
+_kernel32 = ctypes.windll.kernel32 if os.name == 'nt' else None
+
+class _MBI(ctypes.Structure):
+    _fields_ = [
+        ("BaseAddress", wintypes.LPVOID),
+        ("AllocationBase", wintypes.LPVOID),
+        ("AllocationProtect", wintypes.DWORD),
+        ("RegionSize", ctypes.c_size_t),
+        ("State", wintypes.DWORD),
+        ("Protect", wintypes.DWORD),
+        ("Type", wintypes.DWORD),
+    ]
+
+_MEM_COMMIT = 0x1000
+_PAGE_READWRITE = 0x04
+_PAGE_WRITECOPY = 0x08
+_PAGE_EXECUTE_READWRITE = 0x40
+
+def encontrar_proceso_vpx():
+    """Devuelve (pid, nombre) de Visual Pinball si esta activo."""
+    if os.name != 'nt': return None, None
+    try:
+        cmd = 'tasklist /FO CSV /NH /FI "IMAGENAME eq VPinball*"'
+        out = subprocess.check_output(cmd, shell=True, text=True, errors='ignore')
+        for linea in out.strip().splitlines():
+            partes = [p.strip('"') for p in linea.split('","')]
+            if len(partes) >= 2 and partes[0].lower().startswith("vpinball"):
+                try:
+                    return int(partes[1]), partes[0]
+                except ValueError:
+                    pass
+    except Exception:
+        pass
+    return None, None
+
+def escanear_nvram_en_ram(pid):
     """
+    Busca en la memoria del proceso VPX la NVRAM de la mesa actualmente en juego.
+    Compara contra las mesas en MESAS_CONFIG y devuelve dict con informacion del buffer.
+    """
+    if not _kernel32: return {}
+    h_process = _kernel32.OpenProcess(PROCESS_VM_READ | PROCESS_QUERY_INFORMATION, False, pid)
+    if not h_process:
+        return {}
+
+    referencias = {}
+    for m in MESAS_CONFIG:
+        for fp, _ in archivos_de_la_mesa(m):
+            if not fp.endswith(".nv"): continue
+            rom = os.path.splitext(os.path.basename(fp))[0].lower()
+            if rom in referencias: continue
+            try:
+                with open(fp, "rb") as f:
+                    data = f.read()
+                if len(data) >= 512:
+                    referencias[rom] = {
+                        "rom": rom,
+                        "mesa_nombre": m["nombre"],
+                        "data": data,
+                        "len": len(data),
+                        "header": data[:32]
+                    }
+            except Exception:
+                continue
+
+    if not referencias:
+        _kernel32.CloseHandle(h_process)
+        return {}
+
+    mbi = _MBI()
+    address = 0
+    max_address = 0x7FFFFFFF
+    encontrados = {}
+
+    while address < max_address:
+        res = _kernel32.VirtualQueryEx(h_process, ctypes.c_void_p(address), ctypes.byref(mbi), ctypes.sizeof(mbi))
+        if not res:
+            break
+
+        is_readable = mbi.State == _MEM_COMMIT and (mbi.Protect & (_PAGE_READWRITE | _PAGE_WRITECOPY | _PAGE_EXECUTE_READWRITE))
+        size = mbi.RegionSize
+
+        if is_readable and size >= 512 and size < 32 * 1024 * 1024:
+            buf = (ctypes.c_char * size)()
+            bytes_read = ctypes.c_size_t()
+            if _kernel32.ReadProcessMemory(h_process, ctypes.c_void_p(address), buf, size, ctypes.byref(bytes_read)):
+                chunk = bytes(buf[:bytes_read.value])
+                for rom, info in referencias.items():
+                    if rom in encontrados:
+                        continue
+                    pos = chunk.find(info["header"])
+                    if pos != -1:
+                        target_len = info["len"]
+                        cand = chunk[pos : pos + target_len]
+                        if len(cand) == target_len:
+                            matches = sum(1 for a, b in zip(cand, info["data"]) if a == b)
+                            ratio = matches / float(target_len)
+                            if ratio >= 0.70:
+                                encontrados[rom] = {
+                                    "address": address + pos,
+                                    "len": target_len,
+                                    "last_bytes": cand,
+                                    "rom": rom,
+                                    "mesa_nombre": info["mesa_nombre"]
+                                }
+
+        address += mbi.RegionSize
+
+    _kernel32.CloseHandle(h_process)
+    return encontrados
+
+def leer_bytes_ram(pid, address, size):
+    """Lee memoria de proceso en menos de 0.1 milisegundos."""
+    if not _kernel32: return None
+    h_process = _kernel32.OpenProcess(PROCESS_VM_READ, False, pid)
+    if not h_process:
+        return None
+    buf = (ctypes.c_char * size)()
+    bytes_read = ctypes.c_size_t()
+    ok = _kernel32.ReadProcessMemory(h_process, ctypes.c_void_p(address), buf, size, ctypes.byref(bytes_read))
+    _kernel32.CloseHandle(h_process)
+    if ok and bytes_read.value == size:
+        return bytes(buf[:size])
+    return None
+
+def identificar_mesa_por_contenido(crudo):
+    """Averigua de que mesa es un volcado comparando contra los .nv reales."""
     try:
         mejor, mejor_pct = None, 0.0
         for ruta in glob.glob(os.path.join(NVRAM_PATH, "*.nv")):
@@ -253,8 +378,6 @@ def identificar_mesa_por_contenido(crudo):
                     mejor, mejor_pct = os.path.basename(ruta), pct
             except Exception:
                 continue
-        # 60% de bytes iguales ya es muchisimo: dos mesas distintas del mismo
-        # tamano coinciden en torno al 1%, y la misma mesa arriba del 90%.
         if mejor and mejor_pct >= 0.60:
             return mejor
     except Exception as e:
@@ -991,17 +1114,54 @@ if __name__ == "__main__":
         # Sincronizacion forzada cada 10 minutos como red de seguridad
         contador_sync_periodico = 0
 
-        # Cada cuanto se mira la NVRAM. Antes eran 10 segundos: si el jugador
-        # salia de la mesa y apagaba enseguida, el record no llegaba a subir y
-        # recien aparecia al reiniciar. Con 2 segundos la ventana es minima.
-        INTERVALO = 2
-        CICLOS_HEARTBEAT = 150      # 5 minutos
-        CICLOS_SYNC_COMPLETO = 300  # 10 minutos
+        INTERVALO = 1
+        CICLOS_HEARTBEAT = 300      # 5 minutos (a razon de 1 tick por segundo)
+        CICLOS_SYNC_COMPLETO = 600  # 10 minutos
+
+        pid_vpx_actual = None
+        mapa_ram_activo = {}
+        ultimo_escaneo_ram = 0
 
         while True:
             try:
-                # Primero pasar a .nv lo que la mesa haya volcado en vivo
+                ahora = time.time()
+
+                # --- 1. LECTURA EN VIVO DIRECTA DE MEMORIA RAM (TIEMPO REAL) ---
+                pid_vpx, nombre_vpx = encontrar_proceso_vpx()
+                if pid_vpx:
+                    if pid_vpx != pid_vpx_actual or (not mapa_ram_activo and (ahora - ultimo_escaneo_ram > 4)):
+                        pid_vpx_actual = pid_vpx
+                        mapa_ram_activo = escanear_nvram_en_ram(pid_vpx)
+                        ultimo_escaneo_ram = ahora
+                        if mapa_ram_activo:
+                            print(f"🎮 Mesa detectada en RAM ({list(mapa_ram_activo.keys())}). Monitoreando récord en caliente...")
+                            log_evento(f"Mesa detectada en RAM: {list(mapa_ram_activo.keys())}")
+
+                    if mapa_ram_activo:
+                        for rom, inf in list(mapa_ram_activo.items()):
+                            live_bytes = leer_bytes_ram(pid_vpx, inf["address"], inf["len"])
+                            if live_bytes and live_bytes != inf["last_bytes"]:
+                                # ¡CAMBIO DETECTADO EN CALIENTE MIENTRAS EL JUGADOR ESTA EN LA MESA!
+                                inf["last_bytes"] = live_bytes
+                                print(f"⚡ ¡CAMBIO EN CALIENTE EN RAM! Mesa: {inf['mesa_nombre']}")
+                                log_evento(f"Cambio en vivo en RAM: {inf['mesa_nombre']}")
+                                if not os.path.exists(LIVE_PATH):
+                                    os.makedirs(LIVE_PATH, exist_ok=True)
+                                ruta_live = os.path.join(LIVE_PATH, f"{rom}.nv")
+                                with open(ruta_live, "wb") as f:
+                                    f.write(live_bytes)
+                                # Sincronizar inmediatamente y avisar por Telegram
+                                procesar_y_subir(solo_mesas=[inf["mesa_nombre"]])
+                                escribir_heartbeat("LIVE_RAM_SYNC_OK")
+                else:
+                    if pid_vpx_actual is not None:
+                        pid_vpx_actual = None
+                        mapa_ram_activo = {}
+
+                # --- 2. LECTURA POR VOLCADOS HEX (core.vbs / RESPALDO) ---
                 convertir_volcados_en_vivo()
+
+                # --- 3. LECTURA POR ARCHIVOS EN DISCO (SALIDA DE MESA / APAGADO) ---
                 mesas_cambiadas = []
                 for m in MESAS_CONFIG:
                     archivos = archivos_de_la_mesa(m)
@@ -1012,12 +1172,10 @@ if __name__ == "__main__":
                             tiempos_mod[m["nombre"]] = t
 
                 if mesas_cambiadas:
-                    print("Cambio detectado en NVRAM. Sincronizando...")
-                    log_evento("Cambio detectado: " + ", ".join(mesas_cambiadas))
-                    # Esperar a que VPinMAME termine de escribir el .nv
-                    time.sleep(2)
+                    print("Cambio detectado en NVRAM de disco. Sincronizando...")
+                    log_evento("Cambio detectado en disco: " + ", ".join(mesas_cambiadas))
+                    time.sleep(1)
                     procesar_y_subir(solo_mesas=mesas_cambiadas)
-                    # Actualizar tiempos_mod DESPUES del procesado para absorber escrituras rezagadas
                     for m_nombre in mesas_cambiadas:
                         m_cfg = next((m for m in MESAS_CONFIG if m["nombre"] == m_nombre), None)
                         if m_cfg:
