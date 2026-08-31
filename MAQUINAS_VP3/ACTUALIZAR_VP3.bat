@@ -12,13 +12,50 @@ REM - Registra una sincronizacion final justo antes de apagar la PC
 REM - Arranca el watchdog
 REM ============================================================
 
-REM Verificar si esta corriendo como admin
+REM Verificar si esta corriendo como admin.
+REM Sin parentesis: un bloque if (...) largo con pause adentro ya se probo
+REM que cuelga cmd.exe de forma imprevisible (ver el chequeo de copia mas
+REM abajo). goto con comparacion simple es el patron confiable en todo
+REM este archivo.
 net session >nul 2>&1
-if errorlevel 1 (
-    REM No es admin - relanzarse con permisos elevados
-    powershell -Command "Start-Process '%~f0' -Verb RunAs"
-    exit /b 0
-)
+if not errorlevel 1 goto ya_es_admin
+
+REM No es admin - relanzarse con permisos elevados.
+REM OJO: si el que hace doble click le dice que NO al cartel de Windows
+REM (o lo cierra sin contestar), antes esta ventana se cerraba sola y SIN
+REM AVISAR NADA: parecia que habia actualizado, pero no se toco ni un
+REM archivo. Eso paso de verdad (HER y ARI creian que actualizaban y
+REM quedaban atrasados hasta que alguien lo forzaba con click derecho >
+REM Ejecutar como administrador). Ahora, si cancelan el permiso, se avisa
+REM clarito y la ventana se queda quieta hasta que la cierren.
+powershell -Command "try { Start-Process '%~f0' -Verb RunAs -ErrorAction Stop } catch { exit 1 }"
+if errorlevel 1 goto elevacion_cancelada
+exit /b 0
+
+:elevacion_cancelada
+color 0C
+cls
+echo.
+echo    ===============================================
+echo       NO SE ACTUALIZO NADA
+echo    ===============================================
+echo.
+echo    Windows te pidio permiso para actualizar y no
+echo    se acepto ^(le dijiste que NO, o se cerro el
+echo    cartel sin contestar^).
+echo.
+echo    Sin ese permiso, VP3 NO SE ACTUALIZA. Ningun
+echo    archivo se toco todavia.
+echo.
+echo    QUE HACER: volve a hacer doble click en
+echo    "Actualizar VP3", y cuando aparezca el cartel
+echo    azul o gris de Windows preguntando permiso,
+echo    apreta "SI".
+echo.
+pause
+exit /b 1
+
+:ya_es_admin
 
 REM ============================================================
 REM Relanzarse desde una carpeta TEMPORAL, fuera de la carpeta que se va
