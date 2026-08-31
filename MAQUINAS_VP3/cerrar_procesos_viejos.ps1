@@ -10,9 +10,10 @@
 
 function Buscar-Viejos {
     Get-CimInstance Win32_Process | Where-Object {
-        $_.CommandLine -like '*WATCHDOG_subir_puntajes.bat*' -or
-        $_.CommandLine -like '*WATCHDOG_invisible.vbs*' -or
-        $_.Name -eq 'subir_puntajes.exe'
+        $_.CommandLine -like '*WATCHDOG_subir_puntajes*' -or
+        $_.CommandLine -like '*WATCHDOG_invisible*' -or
+        $_.Name -eq 'subir_puntajes.exe' -or
+        $_.CommandLine -like '*subir_puntajes.exe*'
     }
 }
 
@@ -22,6 +23,7 @@ do {
     if (-not $vivos) { break }
     foreach ($p in $vivos) {
         Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
+        & taskkill /F /PID $p.ProcessId /T >$null 2>&1
     }
     Start-Sleep -Milliseconds 700
     $intentos++
