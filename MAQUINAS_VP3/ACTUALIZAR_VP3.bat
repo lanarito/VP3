@@ -200,9 +200,20 @@ echo       OK
 echo.
 
 echo [%date% %time%] llegue a 6/10 >> "%TEMP%\vp3_debug.log"
-echo [7/10] Configurando Windows Error Reporting para subir_puntajes.exe...
+echo [7/10] Configurando Windows Error Reporting y exclusiones del antivirus...
 REM Suprimir errores especificos del .exe
 reg add "HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting" /v "Disabled" /t REG_DWORD /d 1 /f >nul 2>&1
+REM Exclusion de Windows Defender para subir_puntajes.exe. Encontrado
+REM 1-sep-2026: el .exe se cerraba solo (codigo 1) sin dejar NINGUN
+REM rastro en el registro de errores nuevo (asi que no era una excepcion
+REM de Python) -- y quedaban decenas de carpetas _MEI sin limpiar en
+REM Temp (asi termina un PyInstaller onefile cuando lo matan de golpe en
+REM vez de cerrarse solo). Es un problema conocido de los .exe hechos
+REM con PyInstaller onefile: el antivirus escanea la carpeta temporal
+REM que se auto-extrae en CADA arranque y puede interferir. Se excluye
+REM tanto la carpeta real como el proceso, para cubrir los dos casos.
+powershell -NoProfile -Command "try { Add-MpPreference -ExclusionPath '%VP3_DESTINO%' -ErrorAction Stop } catch {}" >nul 2>&1
+powershell -NoProfile -Command "try { Add-MpPreference -ExclusionProcess 'subir_puntajes.exe' -ErrorAction Stop } catch {}" >nul 2>&1
 echo       OK
 echo.
 
