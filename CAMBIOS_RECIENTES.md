@@ -63,6 +63,37 @@ Luis jugó Walking Dead de nuevo: "mejoró muchísimo... un diez". De paso prob�
 
 ---
 
+## 🔴 14. Encontrada la causa del lag en la máquina de Her — no era `core.vbs` (1 septiembre 2026)
+
+### Lo que pasó:
+Her actualizó, jugó Tortugas y notó micro-cortes; jugó Walking Dead y notó "un lagazo cada 10 segundos". Esto llamó la atención porque en la máquina de Luis, con la misma versión, ya había quedado fluido — así que mandó el diagnóstico para comparar con datos reales en vez de asumir que era lo mismo.
+
+### El diagnóstico mostró algo distinto:
+El log del sistema mostraba `"Cambio detectado en disco: Teenage Mutant Ninja Turtles"` **repetido cada 5-6 segundos, sin parar, durante los más de 2 minutos que duró la sesión**. Eso encendió una alarma: no puede ser que alguien haga un puntaje nuevo cada 5 segundos.
+
+### La causa real (del lado del `.exe`, no de `core.vbs`):
+La memoria de una mesa mientras se juega cambia todo el tiempo por cosas que **no son puntajes** — bolas jugadas, auditorías internas del ROM, contadores. El enganche en vivo (correcto) guarda esos cambios en un archivo. El problema estaba en `subir_puntajes.exe`: **trataba CUALQUIER cambio de ese archivo, aunque no tuviera nada que ver con un puntaje, como motivo para correr `PINemHi` (un programa aparte) y avisarle a Supabase (internet)**. Resultado: esos dos pasos pesados se repetían cada 5-6 segundos sin parar mientras alguien jugaba — el peso real detrás del "lagazo" que sintió Her.
+
+Esto es un problema DISTINTO del que se venía afinando en `core.vbs` (fluidez de la mesa en sí) — está del lado del programa que sube los puntajes, y explica por qué en la máquina de Luis podía sentirse distinto según qué tan seguido cambiara la memoria de cada mesa en particular.
+
+### Arreglo:
+Ahora `subir_puntajes.exe` distingue dos tipos de cambio:
+- Si cambió el archivo REAL de la NVRAM (la mesa se cerró de verdad) → sincroniza siempre al toque, como siempre. Es raro, y ahí sí importa no perder tiempo.
+- Si solo cambió el volcado en vivo (mientras se juega) → respeta un mínimo de 5 segundos entre una sincronización y la siguiente. Si hay cambios de sobra en el medio, no se pierden — se juntan y se sincronizan apenas se puede, nunca se descartan.
+
+Sigue siendo instantáneo para lo que importa (ver el puntaje al toque de poner las iniciales), pero deja de correr `PINemHi` y de golpear a Supabase varias veces por segundo mientras alguien está jugando sin haber hecho ningún record todavía.
+
+### Probado antes de publicar:
+Test aislado (sin tocar la Supabase real) simulando: varios cambios seguidos del volcado en vivo dentro de la ventana de 5 segundos (ninguno dispara de más), el cambio pendiente se sincroniza apenas pasa el enfriamiento, y un cambio del archivo REAL siempre sincroniza al toque sin importar el enfriamiento.
+
+### Para los chicos: nada nuevo
+Se corrige con `ACTUALIZAR_VP3.bat` de siempre — esta vez SÍ hace falta correrlo de nuevo (toca el `.exe`, no solo `core.vbs`, así que no alcanza con lo que ya está aplicado en la mesa).
+
+### Pendiente de confirmar:
+Falta que Her actualice de nuevo y confirme si el lagazo desapareció.
+
+---
+
 ---
 
 ## 🔴 PISTA FUERTE: EL ANTIVIRUS PUEDE ESTAR MATANDO EL PROGRAMA (sin confirmar aún)

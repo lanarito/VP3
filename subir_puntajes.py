@@ -395,6 +395,20 @@ def archivos_de_la_mesa(mesa):
     return pares
 
 
+def tiempos_mesa(archivos):
+    """Separa el mtime mas reciente de una mesa en real / en vivo / total.
+    Se usa para poder tratar distinto un cambio del .nv REAL (la mesa se
+    cerro, evento raro, sincronizar siempre al toque) de un cambio que
+    viene SOLO del volcado en vivo (ver COOLDOWN_VIVO en el loop principal)."""
+    reales = [fp for fp, origen in archivos if origen is None]
+    vivos = [fp for fp, origen in archivos if origen is not None]
+    t_real = max((os.path.getmtime(fp) for fp in reales), default=None)
+    t_vivo = max((os.path.getmtime(fp) for fp in vivos), default=None)
+    candidatos = [t for t in (t_real, t_vivo) if t is not None]
+    t_total = max(candidatos) if candidatos else None
+    return t_real, t_vivo, t_total
+
+
 # ============================================================
 # MOTOR UNICO: PINemHi (El Salvador)
 # ============================================================
@@ -1076,6 +1090,8 @@ if __name__ == "__main__":
     try:
         copiar_vp_alias_automatico()
         tiempos_mod = {}
+        tiempos_reales = {}
+        vivo_ultimo_sync = {}
 
         # Sincronizacion inicial (procesar TODO al arrancar)
         log_evento("Sincronizacion inicial")
@@ -1088,7 +1104,10 @@ if __name__ == "__main__":
             if archivos:
                 # Se guarda el mtime mas reciente entre TODOS los .nv de la mesa
                 # (puede haber varias versiones de ROM instaladas, y el volcado en vivo)
-                tiempos_mod[m["nombre"]] = max(os.path.getmtime(fp) for fp, _ in archivos)
+                t_real, _, t_total = tiempos_mesa(archivos)
+                tiempos_mod[m["nombre"]] = t_total
+                if t_real is not None:
+                    tiempos_reales[m["nombre"]] = t_real
 
         print("👀 Monitoreando cambios en NVRAM... (Ctrl+C para salir)")
         log_evento("Entrando en modo monitoreo")
@@ -1106,6 +1125,26 @@ if __name__ == "__main__":
         CICLOS_HEARTBEAT = 150      # 5 minutos
         CICLOS_SYNC_COMPLETO = 300  # 10 minutos
 
+        # ENCONTRADO 1-sep-2026 con un diagnostico real de Her: mientras se
+        # juega, la NVRAM de la mesa cambia todo el tiempo por cosas que NO
+        # son records (bolas jugadas, auditorias, contadores internos del
+        # ROM) -- no solo cuando alguien hace un puntaje nuevo. Como el
+        # volcado en vivo (core.vbs) escribe cada vez que cambia CUALQUIER
+        # byte, y este loop antes trataba CUALQUIER cambio del volcado en
+        # vivo como motivo para correr PINemHi + Supabase, terminaba
+        # sincronizando cada 5-6 segundos SIN PARAR mientras se jugaba
+        # (confirmado en el log real: "Cambio detectado en disco" repetido
+        # cada 5-6s durante minutos seguidos). Eso es peso real -- un
+        # proceso externo (PINemHi) mas una llamada de red (Supabase) cada
+        # pocos segundos -- y es lo mas probable detras del "lagazo"
+        # periodico que reporto Her jugando Tortugas y Walking Dead.
+        #
+        # El cambio del .nv REAL (la mesa se cierra, VPinMAME escribe a
+        # disco) sigue sincronizando SIEMPRE al toque -- es raro y es
+        # cuando mas importa no perder tiempo. Solo el volcado EN VIVO
+        # respeta un enfriamiento minimo entre sincronizaciones.
+        COOLDOWN_VIVO = 5  # segundos minimos entre 2 sincronizaciones seguidas disparadas SOLO por el volcado en vivo
+
         while True:
             try:
                 # --- 1. LECTURA EN VIVO (enganche nativo de core.vbs) ---
@@ -1113,13 +1152,30 @@ if __name__ == "__main__":
 
                 # --- 2. LECTURA POR ARCHIVOS EN DISCO (SALIDA DE MESA / APAGADO) ---
                 mesas_cambiadas = []
+                ahora = time.time()
                 for m in MESAS_CONFIG:
                     archivos = archivos_de_la_mesa(m)
-                    if archivos:
-                        t = max(os.path.getmtime(fp) for fp, _ in archivos)
-                        if tiempos_mod.get(m["nombre"]) != t:
-                            mesas_cambiadas.append(m["nombre"])
-                            tiempos_mod[m["nombre"]] = t
+                    if not archivos:
+                        continue
+                    t_real, _, t_total = tiempos_mesa(archivos)
+                    if tiempos_mod.get(m["nombre"]) == t_total:
+                        continue  # nada nuevo en esta mesa
+
+                    cambio_real = (t_real is not None) and (tiempos_reales.get(m["nombre"]) != t_real)
+                    if not cambio_real:
+                        # Solo cambio el volcado en vivo: respeta el enfriamiento.
+                        # Si todavia no paso, no se actualiza tiempos_mod a
+                        # proposito -- asi se vuelve a intentar en el proximo
+                        # ciclo (no se pierde el cambio, solo se demora un poco).
+                        ultimo = vivo_ultimo_sync.get(m["nombre"], 0)
+                        if (ahora - ultimo) < COOLDOWN_VIVO:
+                            continue
+
+                    mesas_cambiadas.append(m["nombre"])
+                    tiempos_mod[m["nombre"]] = t_total
+                    if t_real is not None:
+                        tiempos_reales[m["nombre"]] = t_real
+                    vivo_ultimo_sync[m["nombre"]] = ahora
 
                 if mesas_cambiadas:
                     print("Cambio detectado en NVRAM de disco. Sincronizando...")
@@ -1131,7 +1187,8 @@ if __name__ == "__main__":
                         if m_cfg:
                             archs = archivos_de_la_mesa(m_cfg)
                             if archs:
-                                tiempos_mod[m_nombre] = max(os.path.getmtime(fp) for fp, _ in archs)
+                                _, _, t_total = tiempos_mesa(archs)
+                                tiempos_mod[m_nombre] = t_total
                     escribir_heartbeat("SYNCED")
 
                 contador_heartbeat += 1
