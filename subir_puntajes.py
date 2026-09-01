@@ -153,7 +153,12 @@ DEFAULT_INITIALS = {
 SIEMPRE_FABRICA = {
     "AAA", "SLL", "MAB", "CCC", "AII",
     "A", "NF", "YW", "EB", "L", "K O", "KO", "C G", "CG", "ES", "GG",
-    "MW", "P G", "PG", "R+N", "L E", "LE", "LFS", "11:", "1:", "1", "2", "3", "4", "5"
+    "MW", "P G", "PG", "R+N", "L E", "LE", "LFS", "11:", "1:", "1", "2", "3", "4", "5",
+    # TOY (Cactus Canyon) y ZAB (NBA Fastbreak) subieron el 31-ago-2026:
+    # tabla de fabrica nunca antes leida por el camino de disco, capturada
+    # primero por la lectura en vivo (que a proposito no arma linea base,
+    # ver el fix de abajo en procesar_y_subir). Ver [[project_baseline_vivo_fabrica]].
+    "TOY", "ZAB"
 }
 
 # Hasta que puesto de cada mesa se avisa por Telegram (1 = solo el Gran Campeon).
@@ -651,11 +656,28 @@ def procesar_y_subir(solo_mesas=None):
                     continue
 
                 clave_archivo = archivo_base.lower()
-                # OJO: el volcado EN VIVO nunca crea linea base. La linea base
-                # sale del .nv real. Si el volcado pudiera crearla, el primer
-                # record que hace el jugador quedaria marcado como de fabrica
-                # y no subiria nunca.
-                if carpeta_origen is None and clave_archivo not in baselined_files:
+                # BUG ENCONTRADO 1-sep-2026 (records "TOY"/"ZAB" que subieron
+                # sin ser de nadie): antes esto decia "if carpeta_origen is
+                # None" -- la linea base SOLO se establecia leyendo del .nv
+                # real, nunca desde el volcado en vivo. La idea original era
+                # buena (si el volcado en vivo pudiera armar linea base, el
+                # primer record de un jugador real quedaria blacklisteado
+                # para siempre) pero tenia un agujero: con la lectura en vivo
+                # ya andando de verdad, una mesa que NUNCA se habia leido del
+                # disco podia ser leida por PRIMERA VEZ por el camino en
+                # vivo -- y como ese camino no arma linea base, su tabla de
+                # fabrica (nombres tipo "TOY", puntajes redondos) pasaba de
+                # largo sin filtrar.
+                #
+                # Arreglo: la linea base se arma sin importar el camino
+                # (disco o vivo), pero protegiendo lo mismo que protegia
+                # antes: nunca blacklistear a JUGADORES_AUTORIZADOS (records
+                # reales de HER/ARI/LAL/AGU), Y ADEMAS nunca blacklistear un
+                # puntaje que NO sea redondo (mismo criterio ya usado mas
+                # abajo para invitados con DEFAULT_INITIALS): un numero
+                # especifico es mucho mas senal de una partida real jugada
+                # de verdad que de un valor de fabrica.
+                if clave_archivo not in baselined_files:
                     if migrando_a_por_archivo and mesa_ya_baselineada:
                         # Ya estaba cubierto por la linea base vieja (por mesa):
                         # solo lo registramos, sin volver a blacklistear nada.
@@ -669,6 +691,13 @@ def procesar_y_subir(solo_mesas=None):
                             # para evitar que la máquina clonada suba puntajes del dueño anterior.
                             if not clon_detectado:
                                 if s["jugador"] in JUGADORES_AUTORIZADOS:
+                                    continue
+                                es_puntaje_redondo = (
+                                    s['puntaje'] % 1000000 == 0 or
+                                    s['puntaje'] % 500000 == 0 or
+                                    s['puntaje'] % 100000 == 0
+                                )
+                                if not es_puntaje_redondo:
                                     continue
                             firma = f"{mesa['nombre']}-{s['jugador']}-{s['puntaje']}"
                             if firma not in base_records["signatures"]:
