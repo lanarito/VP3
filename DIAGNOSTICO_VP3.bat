@@ -57,6 +57,11 @@ echo (comparar esta hora contra la de arriba: si el .hex de VP3_LIVE es MAS TEMP
 dir /O-D "C:\vPinball\VisualPinball\VPinMAME\nvram\*.nv" >> "%SALIDA%" 2>&1
 
 echo. >> "%SALIDA%"
+echo === las 5 mesas mas recientes de cada lado, con hora EXACTA (con segundos) === >> "%SALIDA%"
+powershell -NoProfile -Command "Get-ChildItem 'C:\vPinball\VP3_LIVE\*.hex' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 5 | ForEach-Object { Write-Output ('VIVO   ' + $_.LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss.fff') + '  ' + $_.Name) }" >> "%SALIDA%" 2>&1
+powershell -NoProfile -Command "Get-ChildItem 'C:\vPinball\VisualPinball\VPinMAME\nvram\*.nv' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 5 | ForEach-Object { Write-Output ('REAL   ' + $_.LastWriteTime.ToString('yyyy-MM-dd HH:mm:ss.fff') + '  ' + $_.Name) }" >> "%SALIDA%" 2>&1
+
+echo. >> "%SALIDA%"
 echo === registro de la ultima actualizacion (ACTUALIZAR_VP3.bat) === >> "%SALIDA%"
 powershell -NoProfile -Command "Get-Content '%TEMP%\vp3_debug.log' -Tail 15 -Encoding UTF8" >> "%SALIDA%" 2>&1
 
