@@ -1,5 +1,5 @@
 # ============================================================
-# VP3 - LECTURA EN VIVO (v9 - motor nativo, un solo enganche)
+# VP3 - LECTURA EN VIVO (v10 - motor nativo, un solo enganche, parcheo real)
 #
 # El propio core.vbs de VPinMAME YA trae un punto de extension pensado
 # para exactamente esto: la variable UseNVRAM y el objeto NVRAMCallback
@@ -25,6 +25,19 @@
 # original), y la funcion usa el delta real para actualizar un buffer
 # propio (una sola lectura completa la primera vez, nada mas).
 #
+# v10 (1-sep-2026): la v9 seguia teniendo un problema, mas chico pero
+# real: aunque el BUFFER se actualizaba solo con el delta, el TEXTO en
+# hexadecimal que se escribe a disco se RECONSTRUIA ENTERO en cada
+# cambio (para armarlo y para comparar si habia cambiado algo), byte por
+# byte con Hex() -- lento en VBScript. Para una mesa con NVRAM chica no
+# se nota, pero en una con NVRAM grande (las Stern/SAM tienen unos
+# 130KB) esa vuelta entera se sentia en el juego, y peor todavia en
+# multibola (que es cuando mas bytes cambian por segundo: mas mesas
+# calculando puntaje y jackpots a la vez). v10 parchea DIRECTO los 2
+# caracteres del byte que cambio (con la sentencia Mid), sin tocar el
+# resto del texto: el costo pasa a ser proporcional a lo que cambio de
+# verdad, no al tamano total de la mesa.
+#
 #   -Auto    : activa sin preguntar nada (lo usa ACTUALIZAR_VP3.bat)
 #   -Quitar  : saca el enganche y deja core.vbs como estaba
 #   sin nada : muestra un menu
@@ -35,7 +48,7 @@
 # ============================================================
 param([switch]$Auto, [switch]$Quitar)
 
-$VERSION = "v9"
+$VERSION = "v10"
 $ini = "' ===== VP3 LECTURA EN VIVO $VERSION INICIO ====="
 $fin = "' ===== VP3 LECTURA EN VIVO $VERSION FIN ====="
 $carpetaLive = "C:\vPinball\VP3_LIVE"
@@ -111,11 +124,25 @@ Sub VP3EnVivo(aChg)
     hayCambios = False
 
     If vp3_iniciado <> True Then
-        ' Primera vez: UNA lectura completa (necesaria para tener una
-        ' imagen de referencia). De ahi en mas, solo se usan los deltas
-        ' que ya llegan por parametro: nunca mas se vuelve a leer todo.
+        ' Primera vez: UNA lectura completa y UNA conversion a hex del
+        ' buffer entero (hace falta para tener una imagen de referencia).
+        ' De ahi en mas, cada byte que cambia se parchea DIRECTO en el
+        ' texto ya armado (dos caracteres, con Mid) -- nunca mas se
+        ' recorre ni se compara el buffer entero. Antes SI se recorria
+        ' entero en cada cambio (para reconstruir el texto Y para
+        ' comparar si habia cambiado algo): para una mesa con NVRAM
+        ' chica no se nota, pero en una con NVRAM grande (Stern/SAM
+        ' anda por los 130KB) esa vuelta entera, en VBScript, se sentia
+        ' en el juego -- justo peor en multibola, que es cuando mas
+        ' bytes cambian por segundo. Confirmado el 1-sep-2026.
         vp3_nv = Controller.NVRAM
         If Err.Number <> 0 Or Not IsArray(vp3_nv) Then Err.Clear : Exit Sub
+        Dim buf()
+        ReDim buf(UBound(vp3_nv))
+        For i = 0 To UBound(vp3_nv)
+            buf(i) = Right("0" & Hex(vp3_nv(i)), 2)
+        Next
+        vp3_ult = Join(buf, "")
         vp3_iniciado = True
         hayCambios = True
     ElseIf IsArray(aChg) Then
@@ -126,8 +153,13 @@ Sub VP3EnVivo(aChg)
                 idx = aChg(i, 0)
                 val = aChg(i, 1)
                 If Err.Number = 0 And idx >= 0 And idx <= UBound(vp3_nv) Then
-                    vp3_nv(idx) = val
-                    hayCambios = True
+                    If vp3_nv(idx) <> val Then
+                        vp3_nv(idx) = val
+                        ' Parchear solo los 2 caracteres de ESTE byte
+                        ' (posicion idx*2+1, base 1), no todo el texto.
+                        Mid(vp3_ult, idx * 2 + 1, 2) = Right("0" & Hex(val), 2)
+                        hayCambios = True
+                    End If
                 End If
             Next
         End If
@@ -152,15 +184,6 @@ Sub VP3EnVivo(aChg)
         vp3_rom = LCase(vp3_rom)
     End If
 
-    Dim buf(), txt
-    ReDim buf(UBound(vp3_nv))
-    For i = 0 To UBound(vp3_nv)
-        buf(i) = Right("0" & Hex(vp3_nv(i)), 2)
-    Next
-    txt = Join(buf, "")
-    If txt = vp3_ult Then Exit Sub
-    vp3_ult = txt
-
     If vp3_fso Is Nothing Then Set vp3_fso = CreateObject("Scripting.FileSystemObject")
     If Not vp3_fso.FolderExists("$carpetaLive") Then vp3_fso.CreateFolder "$carpetaLive"
     Dim arch
@@ -168,7 +191,7 @@ Sub VP3EnVivo(aChg)
     arch.WriteLine "VP3LIVE1"
     arch.WriteLine "rom=" & vp3_rom
     arch.WriteLine "bytes=" & (UBound(vp3_nv) + 1)
-    arch.WriteLine txt
+    arch.WriteLine vp3_ult
     arch.Close
     Set arch = Nothing
     Err.Clear
