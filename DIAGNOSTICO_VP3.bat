@@ -56,6 +56,18 @@ echo === registro de la ultima actualizacion (ACTUALIZAR_VP3.bat) === >> "%SALID
 powershell -NoProfile -Command "Get-Content '%TEMP%\vp3_debug.log' -Tail 15 -Encoding UTF8" >> "%SALIDA%" 2>&1
 
 echo. >> "%SALIDA%"
+echo === fecha del subir_puntajes.exe actual === >> "%SALIDA%"
+powershell -NoProfile -Command "(Get-Item 'C:\MAQUINAS_VP3\subir_puntajes.exe').LastWriteTime" >> "%SALIDA%" 2>&1
+
+echo. >> "%SALIDA%"
+echo === registro de errores que se escaparon (vp3_crash_log.txt) === >> "%SALIDA%"
+if exist "C:\MAQUINAS_VP3\vp3_crash_log.txt" (
+    powershell -NoProfile -Command "Get-Content 'C:\MAQUINAS_VP3\vp3_crash_log.txt' -Tail 80 -Encoding UTF8" >> "%SALIDA%" 2>&1
+) else (
+    echo No existe el archivo -- no hubo ningun error de este tipo registrado. >> "%SALIDA%"
+)
+
+echo. >> "%SALIDA%"
 echo ============================================================ >> "%SALIDA%"
 echo LISTO. Se genero el archivo diagnostico_vp3.txt en el Escritorio. >> "%SALIDA%"
 echo Mandalo por WhatsApp tal cual (como texto/archivo, no como foto). >> "%SALIDA%"
