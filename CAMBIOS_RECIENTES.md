@@ -703,8 +703,8 @@ Verificado con:
 - Test de ida y vuelta (activar → desactivar) contra el `core.vbs` original, confirmando que queda byte a byte igual al de fábrica.
 - Test en vivo real: mesa recién abierta, se generó el `.hex` correcto sin tocar nada más.
 
-### Pendiente de confirmar:
-Falta la prueba real que originó todo esto — hacer un record, quedarse parado frente a la máquina (sin salir) y ver que el aviso de Telegram llegue en el momento, no al cerrar. Publicado y esperando ese test de Luis/Her.
+### ✅ CONFIRMADO (1 septiembre 2026):
+Luis jugó, hizo record, y el Telegram llegó **al poner las iniciales**, sin salir de la mesa. Cerrado de raíz.
 
 ---
 
