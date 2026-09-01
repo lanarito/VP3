@@ -58,8 +58,8 @@ Probado antes de publicar con un test funcional dedicado: confirma que una mesa 
 ### Para los chicos: nada nuevo
 Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
 
-### Pendiente de confirmar:
-Falta que Luis pruebe Walking Dead de nuevo con esta versión.
+### ✅ CONFIRMADO (1 septiembre 2026):
+Luis jugó Walking Dead de nuevo: "mejoró muchísimo... un diez". De paso probó Tortugas (TMNT), hizo record, y **subió enseguida**. Los dos frentes (subida instantánea + fluidez) quedaron cerrados con test real.
 
 ---
 
