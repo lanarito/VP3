@@ -1,57 +1,62 @@
 # ============================================================
-# VP3 - LECTURA EN VIVO (v10 - motor nativo, un solo enganche, parcheo real)
+# VP3 - LECTURA EN VIVO (v12 - sondeo directo, sin ChangedNVRAM)
 #
-# El propio core.vbs de VPinMAME YA trae un punto de extension pensado
-# para exactamente esto: la variable UseNVRAM y el objeto NVRAMCallback
-# (declarados en la linea ~37-38 del core.vbs original). Si UseNVRAM es
-# True, en CADA vuelta del timer principal VPinMAME llama solo a
-# Controller.ChangedNVRAM (los bytes que cambiaron, no la memoria
-# entera) y nos lo pasa. Es nativo, event-driven de verdad: cuando no
-# hay cambios, el costo es el de comprobar una condicion, nada mas.
+# HISTORIA (por que se llego a esta version):
 #
-# Version anterior (v8) tenia dos problemas:
-#   1. El patron de -replace para "respaldar" el enganche en otras subs
-#      (Update, PinMAMETimer_Timer) usaba -replace sin anclar bien el
-#      texto, y esos nombres se repiten varias veces en las ~2500
-#      lineas de core.vbs: termino inyectando la llamada en 9 lugares
-#      distintos del archivo compartido por las 37 mesas.
-#   2. La funcion igual hacia Controller.NVRAM (la memoria ENTERA) en
-#      cada llamada, en vez de usar el delta (aChg) que ya le llega
-#      como parametro. Es el mismo error de la v3 vieja: recorrer y
-#      convertir ~12000 bytes en cada disparo en vez de solo los pocos
-#      que cambiaron.
+# v9/v10: se enganchaban en el punto de extension nativo de VPinMAME
+# (UseNVRAM + NVRAMCallback), que en cada vuelta del timer principal
+# entrega Controller.ChangedNVRAM (los bytes que cambiaron desde el
+# ULTIMO llamado). En teoria, event-driven de verdad y gratis cuando no
+# hay cambios.
 #
-# v9: UN SOLO punto de enganche (el nativo, ya presente en el archivo
-# original), y la funcion usa el delta real para actualizar un buffer
-# propio (una sola lectura completa la primera vez, nada mas).
+# PROBADO EN LA MAQUINA REAL EL 1-sep-2026 (con un registro de actividad
+# que anotaba cada disparo con hora exacta): jugando de verdad, grabando
+# un record y esperando PARADO frente a la mesa hasta 1 minuto entero
+# sin salir, el enganche via ChangedNVRAM se quedaba MUDO todo ese
+# tiempo, y recien disparaba una rafaga de decenas de veces junto,
+# amontonada en el mismo segundo en que VPinMAME escribe el .nv real al
+# cerrar la mesa. O sea: Controller.ChangedNVRAM en la practica no avisa
+# cambios en vivo mientras se juega -- solo parece reflejar lo que
+# VPinMAME ya volco a disco, no la memoria en caliente. Para lo que
+# necesitamos (avisar ANTES de que la mesa se cierre) esa funcion nativa
+# no sirve, por mas prolija que sea la teoria.
 #
-# v10 (1-sep-2026): la v9 seguia teniendo un problema, mas chico pero
-# real: aunque el BUFFER se actualizaba solo con el delta, el TEXTO en
-# hexadecimal que se escribe a disco se RECONSTRUIA ENTERO en cada
-# cambio (para armarlo y para comparar si habia cambiado algo), byte por
-# byte con Hex() -- lento en VBScript. Para una mesa con NVRAM chica no
-# se nota, pero en una con NVRAM grande (las Stern/SAM tienen unos
-# 130KB) esa vuelta entera se sentia en el juego, y peor todavia en
-# multibola (que es cuando mas bytes cambian por segundo: mas mesas
-# calculando puntaje y jackpots a la vez). v10 parchea DIRECTO los 2
-# caracteres del byte que cambio (con la sentencia Mid), sin tocar el
-# resto del texto: el costo pasa a ser proporcional a lo que cambio de
-# verdad, no al tamano total de la mesa.
+# v12: se abandona ChangedNVRAM/NVRAMCallback por completo. En cambio,
+# se engancha UNA sola llamada dentro de Sub PinMAMETimer_Timer (el
+# timer principal que ya corre siempre, en cada vuelta) a una rutina
+# propia que:
+#   - Se AUTO-LIMITA a revisar como mucho una vez por segundo (con
+#     Timer(), el reloj de VBScript) -- no hace nada el resto de las
+#     vueltas del timer, que corre mucho mas seguido.
+#   - Cuando le toca revisar, lee Controller.NVRAM (la memoria ENTERA,
+#     pero es una lectura nativa de VPinMAME, no un bucle de VBScript:
+#     rapida) y la compara byte a byte contra la copia que tiene
+#     guardada.
+#   - Solo parchea (con Mid, igual que v10) los bytes que en verdad
+#     cambiaron, y solo escribe a disco si hubo algun cambio real.
+# Con el thottle de 1 vez por segundo, aunque la mesa tenga 130KB de
+# NVRAM (Stern/SAM), la comparacion completa tarda unos pocos
+# milisegundos y pasa UNA vez por segundo -- nada que ver con hacerlo en
+# cada vuelta del timer (60 veces por segundo), que es lo que causaba la
+# tildada de v9 en multibola.
 #
 #   -Auto    : activa sin preguntar nada (lo usa ACTUALIZAR_VP3.bat)
 #   -Quitar  : saca el enganche y deja core.vbs como estaba
 #   sin nada : muestra un menu
 #
 # Es idempotente: si ya esta puesto y es la misma version, no hace nada.
-# Si hay una version vieja (de cualquier version anterior), la reemplaza
-# por completo antes de poner la nueva.
+# Si hay una version vieja (de cualquier version anterior, incluidas las
+# que tocaban UseNVRAM/NVRAMCallback), la reemplaza por completo antes
+# de poner la nueva -- y revierte esa vieja modificacion de
+# UseNVRAM/NVRAMCallback a su valor de fabrica, porque v12 ya no la usa.
 # ============================================================
 param([switch]$Auto, [switch]$Quitar)
 
-$VERSION = "v11diag"
+$VERSION = "v12"
 $ini = "' ===== VP3 LECTURA EN VIVO $VERSION INICIO ====="
 $fin = "' ===== VP3 LECTURA EN VIVO $VERSION FIN ====="
 $carpetaLive = "C:\vPinball\VP3_LIVE"
+$marcaLlamada = "	VP3EnVivoTick ' VP3 lectura en vivo (v12)"
 
 function Buscar-Core {
     $cand = @(
@@ -73,9 +78,7 @@ function Buscar-Core {
 # (Scripts\core.vbs). En esta maquina hay una copia vieja de core.vbs dentro
 # de Tables\, y CADA mesa cargaba ESA (con el enganche viejo o directamente
 # sin enganche), sin importar lo que se cambiara en Scripts\core.vbs.
-# Confirmado con un diagnostico puesto adentro del propio core.vbs mientras
-# se jugaba de verdad: cero enganche disparaba hasta sincronizar las dos
-# copias. Por eso esta funcion, ademas de tocar $archivo (el que encuentre
+# Por eso esta funcion, ademas de tocar $archivo (el que encuentre
 # primero Buscar-Core), replica el resultado final a CUALQUIER otra copia
 # de core.vbs que exista al lado (incluida la vieja de Tables\), para que
 # no vuelva a pasar esto de nuevo silenciosamente.
@@ -89,17 +92,21 @@ function Copias-Hermanas($archivoPrincipal) {
     return $hermanas
 }
 
-# Saca CUALQUIER version del enganche (bloque marcado Y la linea que
-# fuerza UseNVRAM/NVRAMCallback), para poder reemplazarla limpio.
-# Version-agnostico: saca v4, v8, v9, la que sea.
+# Saca CUALQUIER version del enganche: el bloque marcado (cualquier
+# version), la llamada dentro de PinMAMETimer_Timer (v12), la linea de
+# UseNVRAM/NVRAMCallback forzada (v9/v10/v11diag, se revierte a fabrica
+# porque v12 no la usa), y cualquier resto viejo de v8 (Gemini, 9
+# llamadas sueltas tipo "On Error Resume Next : VPxxx : On Error Goto 0").
 function Quitar-Enganche($texto) {
     # 1) el bloque marcado con comentarios INICIO/FIN (cualquier version)
     $texto = [regex]::Replace($texto, "(?s)\r?\n?' ===== VP3 LECTURA EN VIVO.*?FIN =====", "")
-    # 2) cualquier llamada manual vieja tipo "On Error Resume Next : VP3... : On Error Goto 0"
-    #    (de la v8, que quedo pegada en 9 lugares distintos)
+    # 2) la llamada dentro de PinMAMETimer_Timer (v12)
+    $texto = [regex]::Replace($texto, [regex]::Escape($marcaLlamada) + "\r?\n", "")
+    # 3) restos viejos de v8 (Gemini): llamadas sueltas tipo
+    #    "On Error Resume Next : VPxxx Null : On Error Goto 0"
     $texto = [regex]::Replace($texto, "(?m)^[ \t]*On Error Resume Next : VP3[A-Za-z_]* [A-Za-z]*[ \t]*: On Error Goto 0[ \t]*\r?\n", "")
-    # 3) la linea de UseNVRAM/NVRAMCallback forzada (si la v8 la dejo activada)
-    #    la volvemos a su forma original de fabrica
+    # 4) la linea de UseNVRAM/NVRAMCallback forzada por v9/v10/v11diag
+    #    (v12 no la toca, asi que si aparece hay que devolverla a fabrica)
     $original = 'Dim UseNVRAM:If IsEmpty(Eval("UseVPMNVRAM"))=true Then UseNVRAM=false Else UseNVRAM = UseVPMNVRAM' + "`r`n" + 'Dim NVRAMCallback'
     $texto = [regex]::Replace($texto, '(?m)^Dim UseNVRAM:If IsEmpty\(Eval\("UseVPMNVRAM"\)\)=true Then UseNVRAM=(?:True|true|False|false) Else UseNVRAM = UseVPMNVRAM\r?\nDim NVRAMCallback(?::Set NVRAMCallback = GetRef\("[A-Za-z0-9_]*"\))?\r?\n', $original + "`r`n")
     return $texto
@@ -108,81 +115,67 @@ function Quitar-Enganche($texto) {
 $codigo = @"
 
 $ini
-' VP3 - Lectura en vivo (v$VERSION), motor nativo de VPinMAME.
-' Se engancha UNA SOLA VEZ en el punto de extension que ya trae el
-' core.vbs original (UseNVRAM + NVRAMCallback). Nada mas.
-' Se saca solo con LECTURA_EN_VIVO.bat opcion 2 / activar_lectura_en_vivo.ps1 -Quitar.
-Dim vp3_nv, vp3_iniciado, vp3_ult, vp3_rom, vp3_fso
+' VP3 - Lectura en vivo (v$VERSION). Sondeo propio de Controller.NVRAM,
+' NO usa Controller.ChangedNVRAM (comprobado que no avisa cambios en
+' vivo durante el juego, solo cuando VPinMAME ya escribio a disco).
+' Se saca solo con activar_lectura_en_vivo.ps1 -Quitar.
+Dim vp3_nv, vp3_iniciado, vp3_ult, vp3_rom, vp3_fso, vp3_ultimo_chequeo
 
-Sub VP3EnVivo(aChg)
+Sub VP3EnVivoTick
     On Error Resume Next
     Err.Clear
 
     If IsEmpty(Controller) Or Controller Is Nothing Then Exit Sub
 
-    Dim hayCambios, i, n, idx, val
-    hayCambios = False
+    ' Auto-limite: como mucho una vez por segundo. Se usa Now + DateDiff
+    ' (no la funcion Timer) para evitar cualquier choque de nombre con
+    ' objetos de la mesa -- varias mesas VPX traen elementos propios
+    ' llamados "Timer" que pueden tapar la funcion intrinseca.
+    Dim ahora, transcurrido
+    ahora = Now
+    If Not IsEmpty(vp3_ultimo_chequeo) Then
+        transcurrido = DateDiff("s", vp3_ultimo_chequeo, ahora)
+        If transcurrido < 1 And transcurrido >= 0 Then Exit Sub
+    End If
+    vp3_ultimo_chequeo = ahora
+
+    Dim nvActual
+    nvActual = Controller.NVRAM
+    If Err.Number <> 0 Or Not IsArray(nvActual) Then Err.Clear : Exit Sub
+
+    Dim hayCambios, i
 
     If vp3_iniciado <> True Then
-        ' Primera vez: UNA lectura completa y UNA conversion a hex del
-        ' buffer entero (hace falta para tener una imagen de referencia).
-        ' De ahi en mas, cada byte que cambia se parchea DIRECTO en el
-        ' texto ya armado (dos caracteres, con Mid) -- nunca mas se
-        ' recorre ni se compara el buffer entero. Antes SI se recorria
-        ' entero en cada cambio (para reconstruir el texto Y para
-        ' comparar si habia cambiado algo): para una mesa con NVRAM
-        ' chica no se nota, pero en una con NVRAM grande (Stern/SAM
-        ' anda por los 130KB) esa vuelta entera, en VBScript, se sentia
-        ' en el juego -- justo peor en multibola, que es cuando mas
-        ' bytes cambian por segundo. Confirmado el 1-sep-2026.
-        vp3_nv = Controller.NVRAM
-        If Err.Number <> 0 Or Not IsArray(vp3_nv) Then Err.Clear : Exit Sub
-        Dim buf()
-        ReDim buf(UBound(vp3_nv))
-        For i = 0 To UBound(vp3_nv)
-            buf(i) = Right("0" & Hex(vp3_nv(i)), 2)
-        Next
-        vp3_ult = Join(buf, "")
+        vp3_nv = nvActual
         vp3_iniciado = True
         hayCambios = True
-    ElseIf IsArray(aChg) Then
-        n = -1
-        n = UBound(aChg, 1)
-        If Err.Number = 0 And n >= 0 Then
-            For i = 0 To n
-                idx = aChg(i, 0)
-                val = aChg(i, 1)
-                If Err.Number = 0 And idx >= 0 And idx <= UBound(vp3_nv) Then
-                    If vp3_nv(idx) <> val Then
-                        vp3_nv(idx) = val
-                        ' Parchear solo los 2 caracteres de ESTE byte
-                        ' (posicion idx*2+1, base 1), no todo el texto.
-                        Mid(vp3_ult, idx * 2 + 1, 2) = Right("0" & Hex(val), 2)
-                        hayCambios = True
-                    End If
-                End If
-            Next
-        End If
-        Err.Clear
+    ElseIf UBound(nvActual) = UBound(vp3_nv) Then
+        ' PROBADO 1-sep-2026: VBScript NO tiene la sentencia Mid(...) =
+        ' valor para parchear un string en el lugar (eso es de VBA/VB6
+        ' nada mas). Con On Error Resume Next puesto, tirar esa linea
+        ' fallaba con 'Type mismatch' en silencio, y vp3_ult nunca se
+        ' actualizaba de verdad despues del primer volcado -- por eso
+        ' nunca se vio ningun cambio real durante el juego. Aca se
+        ' compara y se copia el array entero (barato, sin Hex ni
+        ' strings), y ABAJO se reconstruye el texto completo con Join
+        ' UNA sola vez si hizo falta -- pero como esto corre como mucho
+        ' una vez por segundo (no en cada vuelta del timer, que es lo
+        ' que tildaba en v9), el costo real es minimo.
+        hayCambios = False
+        For i = 0 To UBound(nvActual)
+            If vp3_nv(i) <> nvActual(i) Then hayCambios = True
+        Next
+        If hayCambios Then vp3_nv = nvActual
     End If
-
-    ' DIAGNOSTICO TEMPORAL (v11diag, 1-sep-2026): registrar CADA vez que
-    ' hay un cambio real, para ver si el enganche dispara durante el
-    ' juego de verdad (no solo al cargar la mesa y al salir). Se saca en
-    ' cuanto se tenga la respuesta -- no se queda para siempre.
-    On Error Resume Next
-    Dim vp3_diagfso, vp3_diagf
-    Set vp3_diagfso = CreateObject("Scripting.FileSystemObject")
-    Set vp3_diagf = vp3_diagfso.OpenTextFile("$carpetaLive\_actividad.log", 8, True)
-    If hayCambios Then
-        vp3_diagf.WriteLine Now & " | " & vp3_rom & " | disparo, hayCambios=True"
-    Else
-        vp3_diagf.WriteLine Now & " | " & vp3_rom & " | disparo, hayCambios=False (no deberia pasar, NVRAMCallback solo se llama si ChgNVRAM no esta vacio)"
-    End If
-    vp3_diagf.Close
-    Err.Clear
 
     If Not hayCambios Then Exit Sub
+
+    Dim buf()
+    ReDim buf(UBound(vp3_nv))
+    For i = 0 To UBound(vp3_nv)
+        buf(i) = Right("0" & Hex(vp3_nv(i)), 2)
+    Next
+    vp3_ult = Join(buf, "")
 
     If vp3_rom = "" Then
         vp3_rom = cGameName
@@ -262,8 +255,7 @@ if ($Quitar) {
 if ($yaEsta) {
     # Igual hay que revisar las copias hermanas: puede que $archivo ya
     # estuviera activado de una vuelta anterior pero una copia al lado
-    # (Tables\core.vbs) haya quedado vieja o distinta (el bug de fondo
-    # que causaba que el enganche nunca disparara, ver nota arriba).
+    # (Tables\core.vbs) haya quedado vieja o distinta.
     foreach ($hermana in (Copias-Hermanas $archivo)) {
         $textoHermana = Get-Content $hermana -Raw -ErrorAction SilentlyContinue
         if ($textoHermana -ne $texto) { Set-Content $hermana $texto -Encoding Default -NoNewline }
@@ -275,22 +267,24 @@ if ($yaEsta) {
 
 New-Item -ItemType Directory -Force -Path $carpetaLive | Out-Null
 
-# Limpia CUALQUIER version vieja (v4, v8, lo que sea) antes de poner v9
+# Limpia CUALQUIER version vieja (v4, v8, v9, v10, v11diag, lo que sea)
+# antes de poner v12 -- incluye revertir la linea de
+# UseNVRAM/NVRAMCallback a su valor de fabrica, porque v12 no la usa.
 $texto = Quitar-Enganche $texto
 
-# UN SOLO cambio de "cableado": forzar UseNVRAM=True y apuntar
-# NVRAMCallback a nuestra funcion. Nada mas se toca en el resto del
-# archivo (nada de respaldos en Update/PinMAMETimer_Timer: el punto
-# nativo ya se llama en cada vuelta del timer principal, siempre).
-$patronCableado = '(?m)^Dim UseNVRAM:If IsEmpty\(Eval\("UseVPMNVRAM"\)\)=true Then UseNVRAM=false Else UseNVRAM = UseVPMNVRAM\r?\nDim NVRAMCallback\r?\n'
-$nuevoCableado = 'Dim UseNVRAM:If IsEmpty(Eval("UseVPMNVRAM"))=true Then UseNVRAM=True Else UseNVRAM = UseVPMNVRAM' + "`r`n" + 'Dim NVRAMCallback:Set NVRAMCallback = GetRef("VP3EnVivo")' + "`r`n"
-
-if ($texto -notmatch $patronCableado) {
-    if ($Auto) { Write-Host "      Aviso: no encontre el punto de enganche nativo (UseNVRAM/NVRAMCallback), no se activo" }
-    else { Write-Host " No encontre el punto de enganche esperado en core.vbs. No toco nada." -ForegroundColor Red; Read-Host " Enter" }
+# Enganche v12: UNA sola llamada agregada DENTRO de Sub
+# PinMAMETimer_Timer, justo antes de su End Sub. Anclado al nombre
+# exacto de la Sub (no un patron generico como el bug de v8): busca
+# "Sub PinMAMETimer_Timer" y el PRIMER "End Sub" despues de eso -- en
+# VBScript los Sub no se anidan, asi que ese primer "End Sub" es
+# necesariamente el cierre de esta Sub y de ninguna otra.
+$patronTimer = '(?s)(Sub PinMAMETimer_Timer.*?)(\r?\nEnd Sub)'
+if ($texto -notmatch $patronTimer) {
+    if ($Auto) { Write-Host "      Aviso: no encontre Sub PinMAMETimer_Timer en core.vbs, no se activo" }
+    else { Write-Host " No encontre el punto de enganche esperado (PinMAMETimer_Timer) en core.vbs. No toco nada." -ForegroundColor Red; Read-Host " Enter" }
     exit 3
 }
-$texto = $texto -replace $patronCableado, $nuevoCableado
+$texto = [regex]::Replace($texto, $patronTimer, { param($m) $m.Groups[1].Value + "`r`n" + $marcaLlamada + $m.Groups[2].Value }, 1)
 
 $textoFinal = $texto + $codigo
 Set-Content $archivo $textoFinal -Encoding Default -NoNewline
@@ -302,8 +296,8 @@ if ($Auto) {
     Write-Host "      OK"
 } else {
     Write-Host ""
-    Write-Host " ACTIVADA ($VERSION, motor nativo)." -ForegroundColor Green
-    Write-Host " Ahora el record sube apenas grabas las iniciales, sin lag." -ForegroundColor Cyan
+    Write-Host " ACTIVADA ($VERSION, sondeo directo cada 1 segundo)." -ForegroundColor Green
+    Write-Host " Ahora el record sube unos segundos despues de grabarlo, sin lag." -ForegroundColor Cyan
     Write-Host ""
     Read-Host " Enter para cerrar"
 }

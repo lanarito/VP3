@@ -684,6 +684,30 @@ Antes solo se conseguía por el link de WhatsApp o el acceso directo del escrito
 
 ---
 
+## 🐛 10. El puntaje no se subía al momento de poner las iniciales, solo al salir de la mesa (31 agosto - 1 septiembre 2026)
+
+### Síntoma:
+Luis reportó varias veces lo mismo: se hacía un record, se ponían las iniciales, y el Telegram/la web **no se actualizaban hasta que el jugador salía de la mesa** (a veces varios minutos después). Se probó explícitamente parado frente a la máquina esperando 1 minuto sin salir — cero avisos hasta el cierre de la mesa.
+
+### Causa real (no era lo que parecía):
+La "lectura en vivo" (v9/v10) se apoyaba en `Controller.ChangedNVRAM`, el mecanismo nativo de VPinMAME que en teoría avisa "esto cambió" en tiempo real. **En la práctica no avisa nada durante el juego** — solo refleja el volcado que VPinMAME hace a disco al cerrar la mesa. Es decir, todo el enganche estaba escuchando un timbre que nunca suena hasta el final.
+
+### Bug extra encontrado al reconstruirlo:
+De paso se encontró que la v10 (el "parche" que arreglaba el cambio de a una posición para no reescribir todo el archivo) usaba `Mid(variable, posicion, largo) = valor` para modificar un string existente. **Esa instrucción no existe en VBScript** — es exclusiva de VBA/Visual Basic 6. VBScript solo tiene el `Mid` de lectura. El error quedaba tapado por `On Error Resume Next` (silencioso), así que el parche fallaba siempre sin ningún aviso, aunque el resto de la lógica (detectar que algo cambió) funcionaba bien.
+
+### Solución — v12, rediseño completo del enganche:
+Se abandonó `ChangedNVRAM` por completo. Ahora `VP3EnVivoTick` se cuelga directo del timer propio de la mesa (`PinMAMETimer_Timer`, que ya corre solo mientras la mesa está abierta) y **lee `Controller.NVRAM` directamente**, comparando byte a byte contra la última copia guardada, con un límite de 1 vez por segundo (usando `Now`/`DateDiff`, no la función `Timer` de VBScript, para evitar cualquier choque con objetos propios de algunas mesas que también se llaman "Timer"). Si hay cualquier cambio, se reescribe el archivo `.hex` completo (nunca se intenta parchear en el lugar).
+
+Verificado con:
+- Test funcional aislado (`cscript`) con los 5 casos: primera lectura, bloqueo dentro del segundo, permiso después de 1 segundo con contenido correcto, sin reescritura si no cambió nada, dos bytes cambiados a la vez.
+- Test de ida y vuelta (activar → desactivar) contra el `core.vbs` original, confirmando que queda byte a byte igual al de fábrica.
+- Test en vivo real: mesa recién abierta, se generó el `.hex` correcto sin tocar nada más.
+
+### Pendiente de confirmar:
+Falta la prueba real que originó todo esto — hacer un record, quedarse parado frente a la máquina (sin salir) y ver que el aviso de Telegram llegue en el momento, no al cerrar. Publicado y esperando ese test de Luis/Her.
+
+---
+
 ## ✅ Estado actual del sistema (25 agosto 2026)
 
 - ✅ Watchdog v4 funcionando, y ya no revive el .exe durante una actualización
