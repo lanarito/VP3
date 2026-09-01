@@ -4,6 +4,36 @@
 
 ---
 
+## 🔴 PISTA FUERTE: EL ANTIVIRUS PUEDE ESTAR MATANDO EL PROGRAMA (sin confirmar aún)
+
+### Lo que pasó:
+Con el registro de errores nuevo ya puesto en la máquina de Her, siguió
+cerrándose solo (una vez corrió limpio 26 minutos y se cayó) — pero el
+registro quedó VACÍO. Eso descarta que sea un error del programa: algo
+lo está matando desde AFUERA.
+
+### La pista:
+Docenas de carpetas temporales (`_MEIxxxxxx`) sin limpiar en Temp,
+acumuladas desde hace días. Así queda un programa como éste cuando lo
+matan de golpe en vez de cerrarse solo — es un problema conocido de los
+`.exe` como el nuestro (sin firma digital): el antivirus de Windows
+puede desconfiar y bloquear la carpeta temporal que se auto-extrae en
+cada arranque.
+
+### El arreglo (pendiente de confirmar):
+Se agregó al actualizador una exclusión de Windows Defender para
+`subir_puntajes.exe` y su carpeta. **No se pudo probar en vivo** porque
+tocar configuración de antivirus necesita el permiso explícito de
+ustedes vía el cartel de administrador — no algo que se pueda hacer
+"por atrás". Va a tomar efecto en la próxima actualización.
+
+### Para los chicos: nada nuevo
+Se corrige con `ACTUALIZAR_VP3.bat`. Después de que Her actualice de
+nuevo, mandar otro `DIAGNOSTICO_VP3.bat` para confirmar si las caídas
+pararon.
+
+---
+
 ## 🔴 DOS RECORDS DE FÁBRICA (TOY, ZAB) QUE NO ERAN DE NADIE
 
 ### Lo que pasó:
