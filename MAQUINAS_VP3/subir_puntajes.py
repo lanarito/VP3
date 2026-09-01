@@ -4,6 +4,7 @@ import urllib.parse
 import json
 import glob
 import configparser
+import traceback
 from datetime import datetime
 
 # ============================================================
@@ -29,16 +30,73 @@ except Exception:
 # INSTANCIA UNICA (MUTEX DE WINDOWS)
 # Evita que se acumulen multiples copias en segundo plano
 # que disparen mensajes repetidos a Telegram.
+#
+# BUG ENCONTRADO 1-sep-2026: el mutex se creaba con seguridad "por
+# defecto" (CreateMutexW con el segundo parametro en None). Cuando la
+# PRIMERA copia corre elevada (ej. arrancada por ACTUALIZAR_VP3.bat con
+# permisos de administrador) y despues arranca una SEGUNDA copia SIN
+# elevar (ej. PinUP Popper al iniciar, sin admin), esa segunda copia ni
+# siquiera puede ABRIR el mutex de la primera: CreateMutexW no devuelve
+# "ya existe" (codigo 183), devuelve "acceso denegado" (codigo 5) -- y
+# el chequeo viejo solo sabia reconocer el 183. Confirmado con una
+# prueba real: con una copia elevada corriendo, una copia sin elevar se
+# colaba igual, sin que el mutex la frenara.
+#
+# Arreglo: crear el mutex con un descriptor de seguridad SIN
+# restricciones (DACL nula = acceso para cualquiera, sea cual sea su
+# nivel de privilegios). Es el patron estandar de Windows para objetos
+# que se comparten entre procesos con distinta elevacion.
 # ============================================================
 _mutex_handle = None
+
+def _crear_mutex_sin_restricciones(nombre):
+    """Crea (o abre, si ya existe) un Mutex de Windows con un descriptor
+    de seguridad permisivo, para que sirva de candado entre procesos sin
+    importar el nivel de privilegios de cada uno. Devuelve (handle,
+    codigo_de_error) -- handle es 0/None si fallo por completo."""
+    import ctypes
+
+    class SECURITY_ATTRIBUTES(ctypes.Structure):
+        _fields_ = [
+            ("nLength", ctypes.c_ulong),
+            ("lpSecurityDescriptor", ctypes.c_void_p),
+            ("bInheritHandle", ctypes.c_int),
+        ]
+
+    advapi32 = ctypes.windll.advapi32
+    kernel32 = ctypes.windll.kernel32
+
+    sd = ctypes.create_string_buffer(64)  # alcanza de sobra para un SECURITY_DESCRIPTOR
+    SECURITY_DESCRIPTOR_REVISION = 1
+    if not advapi32.InitializeSecurityDescriptor(sd, SECURITY_DESCRIPTOR_REVISION):
+        return 0, kernel32.GetLastError()
+    if not advapi32.SetSecurityDescriptorDacl(sd, True, None, False):
+        return 0, kernel32.GetLastError()
+
+    sa = SECURITY_ATTRIBUTES()
+    sa.nLength = ctypes.sizeof(SECURITY_ATTRIBUTES)
+    sa.lpSecurityDescriptor = ctypes.cast(sd, ctypes.c_void_p)
+    sa.bInheritHandle = False
+
+    handle = kernel32.CreateMutexW(ctypes.byref(sa), False, nombre)
+    err = kernel32.GetLastError()
+    return handle, err
+
 def asegurar_instancia_unica():
     global _mutex_handle
     if os.name == 'nt':
         try:
             import ctypes
             mutex_name = "Global\\VP3_SubirPuntajes_SingleInstance_Mutex"
-            _mutex_handle = ctypes.windll.kernel32.CreateMutexW(None, False, mutex_name)
-            last_error = ctypes.windll.kernel32.GetLastError()
+            handle, last_error = _crear_mutex_sin_restricciones(mutex_name)
+            if not handle:
+                # No se pudo ni crear el mutex con seguridad abierta (muy
+                # raro). Mejor no bloquear el arranque del sistema por
+                # esto -- intentar el modo simple de antes como ultimo
+                # recurso, y si tampoco, seguir igual sin candado.
+                handle = ctypes.windll.kernel32.CreateMutexW(None, False, mutex_name)
+                last_error = ctypes.windll.kernel32.GetLastError()
+            _mutex_handle = handle
             if last_error == 183:  # ERROR_ALREADY_EXISTS
                 print("⚠️ Ya hay otra instancia de subir_puntajes corriendo. Saliendo para evitar duplicados.")
                 sys.exit(0)
@@ -947,6 +1005,25 @@ def log_evento(mensaje):
     except Exception:
         pass
 
+def log_crash_fatal(contexto=""):
+    """Registra el traceback COMPLETO de un crash (no solo str(e), que
+    puede quedar corto o incluso fallar al formatearse si el error trae
+    algo raro adentro). Separado de log_evento a proposito: encontramos
+    un caso real (maquina de Her, 31-ago/1-sep-2026) donde
+    subir_puntajes.exe se cerraba solo con codigo de salida 1 cada tanto
+    tiempo -- sin dejar NINGUN rastro en vp3_script_log.txt de por que --
+    justo lo que hacia perder la subida instantanea de un record real.
+    Esta funcion usa 'errors=replace' y traceback.format_exc() (siempre
+    texto plano, nunca puede fallar al convertirse a string) para que el
+    propio registro del error no pueda fallar tambien."""
+    try:
+        with open("vp3_crash_log.txt", "a", encoding="utf-8", errors="replace") as f:
+            f.write("\n===== CRASH " + datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " (" + str(contexto) + ") =====\n")
+            f.write(traceback.format_exc())
+            f.write("\n")
+    except Exception:
+        pass
+
 if __name__ == "__main__":
     if "--sync-once" in sys.argv:
         # Modo usado por el script de apagado de Windows: una sola pasada
@@ -1048,13 +1125,36 @@ if __name__ == "__main__":
                 log_evento("Detenido por usuario")
                 escribir_heartbeat("STOPPED_BY_USER")
                 break
-            except Exception as e:
-                log_evento(f"Error en bucle de monitoreo: {e}")
-                escribir_heartbeat(f"ERROR: {e}")
+            except BaseException:
+                # BaseException (no solo Exception): asi tambien queda
+                # registrado si algo raro se escapa (ver comentario en
+                # log_crash_fatal). Cada paso en su propio try/except,
+                # para que si UNO falla los demas igual se ejecuten.
+                log_crash_fatal("bucle de monitoreo")
+                try:
+                    log_evento("Error en bucle de monitoreo (ver vp3_crash_log.txt)")
+                except Exception:
+                    pass
+                try:
+                    escribir_heartbeat("ERROR")
+                except Exception:
+                    pass
                 time.sleep(10)
-    except Exception as e:
-        print(f"❌ Error fatal: {e}")
-        log_evento(f"ERROR FATAL: {e}")
-        escribir_heartbeat(f"FATAL_ERROR: {e}")
-        # No salir - dormir e intentar reiniciar
+    except BaseException:
+        log_crash_fatal("fuera del bucle (fatal)")
+        try:
+            print("❌ Error fatal (ver vp3_crash_log.txt)")
+        except Exception:
+            pass
+        try:
+            log_evento("ERROR FATAL (ver vp3_crash_log.txt)")
+        except Exception:
+            pass
+        try:
+            escribir_heartbeat("FATAL_ERROR")
+        except Exception:
+            pass
+        # No salir - dormir e intentar reiniciar (el watchdog igual
+        # relanza el programa apenas termine, esto es solo para no
+        # reintentar en un bucle demasiado apretado)
         time.sleep(30)
