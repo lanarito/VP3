@@ -52,6 +52,11 @@ echo === archivos en VP3_LIVE (lectura en vivo), con fecha === >> "%SALIDA%"
 dir /O-D "C:\vPinball\VP3_LIVE\*.hex" >> "%SALIDA%" 2>&1
 
 echo. >> "%SALIDA%"
+echo === archivos .nv REALES de la NVRAM (se escriben recien al salir de la mesa), con fecha === >> "%SALIDA%"
+echo (comparar esta hora contra la de arriba: si el .hex de VP3_LIVE es MAS TEMPRANO, el enganche en vivo llego primero de verdad) >> "%SALIDA%"
+dir /O-D "C:\vPinball\VisualPinball\VPinMAME\nvram\*.nv" >> "%SALIDA%" 2>&1
+
+echo. >> "%SALIDA%"
 echo === registro de la ultima actualizacion (ACTUALIZAR_VP3.bat) === >> "%SALIDA%"
 powershell -NoProfile -Command "Get-Content '%TEMP%\vp3_debug.log' -Tail 15 -Encoding UTF8" >> "%SALIDA%" 2>&1
 
