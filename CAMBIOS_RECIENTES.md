@@ -20,6 +20,26 @@ Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
 
 ---
 
+## 🐛 12. La tildada seguía en Walking Dead con v13 → arreglo de fondo (v14, 1 septiembre 2026)
+
+### Lo que pasó:
+Luis probó específicamente Walking Dead (mesa Stern/SAM, memoria bien más grande que el resto — unos 130.000 bytes contra los 2.000-8.000 de la mayoría) y confirmó que ahí sí se notaba la traba, ni bien con el chequeo cada 2 segundos.
+
+### Medido con un test real (no adivinado):
+Cuando algo cambia, la v13 reconstruye el texto hexadecimal COMPLETO de la mesa con `Hex()` byte por byte. En una mesa chica, gratis (0ms medidos). En una mesa como Walking Dead, esa reconstrucción completa cuesta **~55 milisegundos** — bastante para sentirse como un salto, sobre todo porque en Walking Dead casi cualquier cosa que pasa jugando (un contador, un jackpot, un puntaje) dispara ese recálculo.
+
+### Arreglo (v14) — parche real, no solo "chequear menos seguido":
+Ahora se guarda el texto hexadecimal **ya convertido** de una vuelta a la otra, y cuando algo cambia, solo se recalculan los 2 caracteres de los bytes que en verdad cambiaron (no toda la mesa). Medido: de ~55ms a prácticamente 0 para el puñado de bytes que cambian por vez. Sumado a la comparación y al armado del texto final, el peor caso medido en Walking Dead bajó de **~90ms a ~35ms**.
+
+(Esto es distinto del intento fallido de v10 — ver [[project_v10_multibola_lag]] — que usaba `Mid(...) = valor`, una sentencia que directamente no existe en VBScript. Acá se reasigna un ELEMENTO de un array, que sí existe y sí funciona.)
+
+Probado antes de publicar con un test funcional de 5 casos (primera lectura, throttle bloqueando, parche de 1 byte, sin cambios reales, 2 bytes cambiados a la vez) — todos comparados contra el cálculo manual completo, byte a byte idénticos.
+
+### Para los chicos: nada nuevo
+Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
+
+---
+
 ---
 
 ## 🔴 PISTA FUERTE: EL ANTIVIRUS PUEDE ESTAR MATANDO EL PROGRAMA (sin confirmar aún)

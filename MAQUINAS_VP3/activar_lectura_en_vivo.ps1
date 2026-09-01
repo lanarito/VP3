@@ -1,5 +1,5 @@
 # ============================================================
-# VP3 - LECTURA EN VIVO (v13 - sondeo directo, sin ChangedNVRAM)
+# VP3 - LECTURA EN VIVO (v14 - sondeo directo, sin ChangedNVRAM)
 #
 # HISTORIA (por que se llego a esta version):
 #
@@ -46,6 +46,19 @@
 # hacerlo en cada vuelta del timer (60 veces por segundo), que es lo que
 # causaba la tildada de v9 en multibola.
 #
+# v14 (1-sep-2026): la tildada de v13 SEGUIA notandose jugando Walking
+# Dead (Stern/SAM, ~130KB). Medido con un harness VBScript real: cuando
+# cambia algo, reconstruir el texto hex ENTERO con Hex()+Right() byte a
+# byte cuesta ~55ms en una mesa de ese tamaño -- suficiente para sentirse
+# como un salto, sobre todo si pasa seguido mientras se juega (cada vez
+# que cambia un puntaje o contador). Ahora se guarda el texto hex YA
+# CONVERTIDO de una vuelta a la otra (vp3_bufHex) y solo se recalculan
+# los 2 caracteres de los bytes que en verdad cambiaron -- de ~55ms a
+# practicamente 0 para el puñado de bytes que cambian por vez. Solo
+# queda el costo de Join() para juntar el texto final (~15-20ms medidos)
+# mas la comparacion byte a byte (~15ms) -- de ~90ms a ~35ms en el peor
+# caso medido, en la mesa mas grande que hay.
+#
 #   -Auto    : activa sin preguntar nada (lo usa ACTUALIZAR_VP3.bat)
 #   -Quitar  : saca el enganche y deja core.vbs como estaba
 #   sin nada : muestra un menu
@@ -54,15 +67,15 @@
 # Si hay una version vieja (de cualquier version anterior, incluidas las
 # que tocaban UseNVRAM/NVRAMCallback), la reemplaza por completo antes
 # de poner la nueva -- y revierte esa vieja modificacion de
-# UseNVRAM/NVRAMCallback a su valor de fabrica, porque v12 ya no la usa.
+# UseNVRAM/NVRAMCallback a su valor de fabrica, porque v12+ ya no la usa.
 # ============================================================
 param([switch]$Auto, [switch]$Quitar)
 
-$VERSION = "v13"
+$VERSION = "v14"
 $ini = "' ===== VP3 LECTURA EN VIVO $VERSION INICIO ====="
 $fin = "' ===== VP3 LECTURA EN VIVO $VERSION FIN ====="
 $carpetaLive = "C:\vPinball\VP3_LIVE"
-$marcaLlamada = "	VP3EnVivoTick ' VP3 lectura en vivo (v13)"
+$marcaLlamada = "	VP3EnVivoTick ' VP3 lectura en vivo (v14)"
 
 function Buscar-Core {
     $cand = @(
@@ -130,7 +143,7 @@ $ini
 ' NO usa Controller.ChangedNVRAM (comprobado que no avisa cambios en
 ' vivo durante el juego, solo cuando VPinMAME ya escribio a disco).
 ' Se saca solo con activar_lectura_en_vivo.ps1 -Quitar.
-Dim vp3_nv, vp3_iniciado, vp3_ult, vp3_rom, vp3_fso, vp3_ultimo_chequeo
+Dim vp3_nv, vp3_iniciado, vp3_ult, vp3_rom, vp3_fso, vp3_ultimo_chequeo, vp3_bufHex
 
 Sub VP3EnVivoTick
     On Error Resume Next
@@ -138,10 +151,7 @@ Sub VP3EnVivoTick
 
     If IsEmpty(Controller) Or Controller Is Nothing Then Exit Sub
 
-    ' Auto-limite: como mucho cada 2 segundos (bajado de 1s el 1-sep-2026
-    ' porque se noto una tildada suave en mesa grande -- leer Controller.NVRAM
-    ' entero y compararlo byte a byte tiene su costo, y a 1 vez por segundo en
-    ' una Stern/SAM grande se nota alguna vez). Se usa Now + DateDiff (no la
+    ' Auto-limite: como mucho cada 2 segundos. Se usa Now + DateDiff (no la
     ' funcion Timer) para evitar cualquier choque de nombre con objetos de la
     ' mesa -- varias mesas VPX traen elementos propios llamados "Timer" que
     ' pueden tapar la funcion intrinseca.
@@ -163,33 +173,40 @@ Sub VP3EnVivoTick
         vp3_nv = nvActual
         vp3_iniciado = True
         hayCambios = True
+        ' Primera lectura: arma el array de texto hex completo, una unica vez.
+        ReDim vp3_bufHex(UBound(vp3_nv))
+        For i = 0 To UBound(vp3_nv)
+            vp3_bufHex(i) = Right("0" & Hex(vp3_nv(i)), 2)
+        Next
     ElseIf UBound(nvActual) = UBound(vp3_nv) Then
         ' PROBADO 1-sep-2026: VBScript NO tiene la sentencia Mid(...) =
         ' valor para parchear un string en el lugar (eso es de VBA/VB6
         ' nada mas). Con On Error Resume Next puesto, tirar esa linea
-        ' fallaba con 'Type mismatch' en silencio, y vp3_ult nunca se
-        ' actualizaba de verdad despues del primer volcado -- por eso
-        ' nunca se vio ningun cambio real durante el juego. Aca se
-        ' compara y se copia el array entero (barato, sin Hex ni
-        ' strings), y ABAJO se reconstruye el texto completo con Join
-        ' UNA sola vez si hizo falta -- pero como esto corre como mucho
-        ' una vez por segundo (no en cada vuelta del timer, que es lo
-        ' que tildaba en v9), el costo real es minimo.
+        ' fallaba con 'Type mismatch' en silencio -- por eso nunca se vio
+        ' ningun cambio real durante el juego en la version vieja.
+        '
+        ' v14 (1-sep-2026): medido en una mesa de 130KB (tipo Walking Dead)
+        ' que reconstruir el texto hex ENTERO con Hex()+Right() cuesta unos
+        ' 55ms, notandose como tildada cuando cambia algo mientras se juega.
+        ' Ahora se guarda el texto hex YA CONVERTIDO (vp3_bufHex) de una
+        ' vuelta a la otra, y solo se recalculan los 2 caracteres de los
+        ' bytes que en verdad cambiaron -- practicamente gratis para el
+        ' puñado de bytes que cambian por vez. Reasignar UN ELEMENTO de un
+        ' array (vp3_bufHex(i) = ...) es distinto de la sentencia Mid rota:
+        ' esto si existe y funciona en VBScript.
         hayCambios = False
         For i = 0 To UBound(nvActual)
-            If vp3_nv(i) <> nvActual(i) Then hayCambios = True
+            If vp3_nv(i) <> nvActual(i) Then
+                hayCambios = True
+                vp3_nv(i) = nvActual(i)
+                vp3_bufHex(i) = Right("0" & Hex(nvActual(i)), 2)
+            End If
         Next
-        If hayCambios Then vp3_nv = nvActual
     End If
 
     If Not hayCambios Then Exit Sub
 
-    Dim buf()
-    ReDim buf(UBound(vp3_nv))
-    For i = 0 To UBound(vp3_nv)
-        buf(i) = Right("0" & Hex(vp3_nv(i)), 2)
-    Next
-    vp3_ult = Join(buf, "")
+    vp3_ult = Join(vp3_bufHex, "")
 
     If vp3_rom = "" Then
         vp3_rom = cGameName
