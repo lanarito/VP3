@@ -1,5 +1,5 @@
 # ============================================================
-# VP3 - LECTURA EN VIVO (v12 - sondeo directo, sin ChangedNVRAM)
+# VP3 - LECTURA EN VIVO (v13 - sondeo directo, sin ChangedNVRAM)
 #
 # HISTORIA (por que se llego a esta version):
 #
@@ -25,20 +25,26 @@
 # se engancha UNA sola llamada dentro de Sub PinMAMETimer_Timer (el
 # timer principal que ya corre siempre, en cada vuelta) a una rutina
 # propia que:
-#   - Se AUTO-LIMITA a revisar como mucho una vez por segundo (con
+#   - Se AUTO-LIMITA a revisar como mucho cada 2 segundos (con
 #     Timer(), el reloj de VBScript) -- no hace nada el resto de las
 #     vueltas del timer, que corre mucho mas seguido.
 #   - Cuando le toca revisar, lee Controller.NVRAM (la memoria ENTERA,
 #     pero es una lectura nativa de VPinMAME, no un bucle de VBScript:
 #     rapida) y la compara byte a byte contra la copia que tiene
 #     guardada.
-#   - Solo parchea (con Mid, igual que v10) los bytes que en verdad
-#     cambiaron, y solo escribe a disco si hubo algun cambio real.
-# Con el thottle de 1 vez por segundo, aunque la mesa tenga 130KB de
-# NVRAM (Stern/SAM), la comparacion completa tarda unos pocos
-# milisegundos y pasa UNA vez por segundo -- nada que ver con hacerlo en
-# cada vuelta del timer (60 veces por segundo), que es lo que causaba la
-# tildada de v9 en multibola.
+#   - NO usa Mid(...) = valor para parchear en el lugar -- esa sentencia
+#     NO EXISTE en VBScript (es de VBA/VB6 nada mas; probado 1-sep-2026
+#     con On Error Resume Next puesto, fallaba en silencio con 'Type
+#     mismatch' y el v10 viejo nunca patcheaba nada de verdad). Si hubo
+#     cualquier cambio, reconstruye el texto hexadecimal COMPLETO con
+#     Join una sola vez y listo.
+#   - Solo escribe a disco si hubo algun cambio real.
+# v13 (1-sep-2026): bajado el throttle de 1 a 2 segundos -- se noto una
+# tildada suave en mesa grande. Aunque la mesa tenga 130KB de NVRAM
+# (Stern/SAM), la comparacion completa tarda unos pocos milisegundos y
+# ahora pasa como mucho una vez cada 2 segundos -- nada que ver con
+# hacerlo en cada vuelta del timer (60 veces por segundo), que es lo que
+# causaba la tildada de v9 en multibola.
 #
 #   -Auto    : activa sin preguntar nada (lo usa ACTUALIZAR_VP3.bat)
 #   -Quitar  : saca el enganche y deja core.vbs como estaba
@@ -52,11 +58,11 @@
 # ============================================================
 param([switch]$Auto, [switch]$Quitar)
 
-$VERSION = "v12"
+$VERSION = "v13"
 $ini = "' ===== VP3 LECTURA EN VIVO $VERSION INICIO ====="
 $fin = "' ===== VP3 LECTURA EN VIVO $VERSION FIN ====="
 $carpetaLive = "C:\vPinball\VP3_LIVE"
-$marcaLlamada = "	VP3EnVivoTick ' VP3 lectura en vivo (v12)"
+$marcaLlamada = "	VP3EnVivoTick ' VP3 lectura en vivo (v13)"
 
 function Buscar-Core {
     $cand = @(
@@ -93,15 +99,20 @@ function Copias-Hermanas($archivoPrincipal) {
 }
 
 # Saca CUALQUIER version del enganche: el bloque marcado (cualquier
-# version), la llamada dentro de PinMAMETimer_Timer (v12), la linea de
-# UseNVRAM/NVRAMCallback forzada (v9/v10/v11diag, se revierte a fabrica
-# porque v12 no la usa), y cualquier resto viejo de v8 (Gemini, 9
-# llamadas sueltas tipo "On Error Resume Next : VPxxx : On Error Goto 0").
+# version), la llamada dentro de PinMAMETimer_Timer (v12+, cualquier
+# numero de version en el comentario -- BUG encontrado 1-sep-2026 al
+# subir v12->v13: si esto solo matcheaba el texto exacto de la version
+# ACTUAL, la llamada vieja con otro numero de version en el comentario
+# quedaba huerfana y el enganche nuevo se agregaba igual, duplicando la
+# llamada dentro del timer), la linea de UseNVRAM/NVRAMCallback forzada
+# (v9/v10/v11diag, se revierte a fabrica porque v12+ no la usa), y
+# cualquier resto viejo de v8 (Gemini, 9 llamadas sueltas tipo
+# "On Error Resume Next : VPxxx : On Error Goto 0").
 function Quitar-Enganche($texto) {
     # 1) el bloque marcado con comentarios INICIO/FIN (cualquier version)
     $texto = [regex]::Replace($texto, "(?s)\r?\n?' ===== VP3 LECTURA EN VIVO.*?FIN =====", "")
-    # 2) la llamada dentro de PinMAMETimer_Timer (v12)
-    $texto = [regex]::Replace($texto, [regex]::Escape($marcaLlamada) + "\r?\n", "")
+    # 2) la llamada dentro de PinMAMETimer_Timer, CUALQUIER version (v12, v13, ...)
+    $texto = [regex]::Replace($texto, "(?m)^[ \t]*VP3EnVivoTick ' VP3 lectura en vivo \(v[0-9]+\)[ \t]*\r?\n", "")
     # 3) restos viejos de v8 (Gemini): llamadas sueltas tipo
     #    "On Error Resume Next : VPxxx Null : On Error Goto 0"
     $texto = [regex]::Replace($texto, "(?m)^[ \t]*On Error Resume Next : VP3[A-Za-z_]* [A-Za-z]*[ \t]*: On Error Goto 0[ \t]*\r?\n", "")
@@ -127,15 +138,18 @@ Sub VP3EnVivoTick
 
     If IsEmpty(Controller) Or Controller Is Nothing Then Exit Sub
 
-    ' Auto-limite: como mucho una vez por segundo. Se usa Now + DateDiff
-    ' (no la funcion Timer) para evitar cualquier choque de nombre con
-    ' objetos de la mesa -- varias mesas VPX traen elementos propios
-    ' llamados "Timer" que pueden tapar la funcion intrinseca.
+    ' Auto-limite: como mucho cada 2 segundos (bajado de 1s el 1-sep-2026
+    ' porque se noto una tildada suave en mesa grande -- leer Controller.NVRAM
+    ' entero y compararlo byte a byte tiene su costo, y a 1 vez por segundo en
+    ' una Stern/SAM grande se nota alguna vez). Se usa Now + DateDiff (no la
+    ' funcion Timer) para evitar cualquier choque de nombre con objetos de la
+    ' mesa -- varias mesas VPX traen elementos propios llamados "Timer" que
+    ' pueden tapar la funcion intrinseca.
     Dim ahora, transcurrido
     ahora = Now
     If Not IsEmpty(vp3_ultimo_chequeo) Then
         transcurrido = DateDiff("s", vp3_ultimo_chequeo, ahora)
-        If transcurrido < 1 And transcurrido >= 0 Then Exit Sub
+        If transcurrido < 2 And transcurrido >= 0 Then Exit Sub
     End If
     vp3_ultimo_chequeo = ahora
 
@@ -296,7 +310,7 @@ if ($Auto) {
     Write-Host "      OK"
 } else {
     Write-Host ""
-    Write-Host " ACTIVADA ($VERSION, sondeo directo cada 1 segundo)." -ForegroundColor Green
+    Write-Host " ACTIVADA ($VERSION, sondeo directo cada 2 segundos)." -ForegroundColor Green
     Write-Host " Ahora el record sube unos segundos despues de grabarlo, sin lag." -ForegroundColor Cyan
     Write-Host ""
     Read-Host " Enter para cerrar"

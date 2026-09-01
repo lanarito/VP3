@@ -2,6 +2,24 @@
 
 **Última sesión: 31 de agosto / 1 de septiembre 2026**
 
+## 🐛 11. Tildada suave detectada tras confirmar la v12 (1 septiembre 2026)
+
+### Lo que pasó:
+Luis, después de confirmar que la subida instantánea ya funcionaba, notó **una sola tildada muy suave**, sin identificar cuándo ni en qué mesa.
+
+### Causa probable:
+La v12 lee la memoria ENTERA de la mesa (`Controller.NVRAM`) una vez por segundo para comparar si cambió algo. En una mesa grande (Stern/SAM, ~130.000 bytes) esa lectura + comparación completa tiene un costo chico pero real, y a 1 vez por segundo alguna vez se puede llegar a notar.
+
+### Arreglo (v13):
+Se bajó el chequeo de 1 vez por segundo a **una vez cada 2 segundos** — la mitad de lecturas de memoria, mismo mecanismo. El aviso instantáneo sigue siendo prácticamente al toque (2 segundos como mucho, en vez de 1), y baja el riesgo de notarse.
+
+De paso se corrigió un bug en el propio actualizador: al subir de v12 a v13 en una máquina que ya tenía v12 puesto, el chequeo "¿ya está activado?" no reconocía la llamada vieja (por el número de versión en el comentario) y la habría dejado duplicada dentro del timer de la mesa. Probado el caso exacto (v12 real → correr v13 encima) antes de publicar: quedó una sola llamada, limpia.
+
+### Para los chicos: nada nuevo
+Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
+
+---
+
 ---
 
 ## 🔴 PISTA FUERTE: EL ANTIVIRUS PUEDE ESTAR MATANDO EL PROGRAMA (sin confirmar aún)
