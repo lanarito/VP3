@@ -28,6 +28,18 @@
 # resetea si el programa estuvo corriendo un rato largo (30s o mas)
 # antes de cerrarse -- si se cierra rapido tres veces seguidas, se
 # frena de verdad (protege de un bucle de reinicios sin fin).
+#
+# BUG ENCONTRADO 1-sep-2026: el mutex de arriba, aunque real, se creaba
+# con seguridad "por defecto" (New-Object System.Threading.Mutex sin mas
+# parametros). Confirmado en la maquina real: cuando la PRIMERA copia
+# corre elevada (ACTUALIZAR_VP3.bat con permisos de administrador) y
+# despues arranca una SEGUNDA sin elevar (ej. PinUP Popper al iniciar,
+# normalmente sin admin), esa segunda ni siquiera puede ABRIR el mutex
+# de la primera -- exactamente el mismo problema que se encontro y
+# arreglo en subir_puntajes.py el mismo dia. Arreglado creando el mutex
+# con un MutexSecurity que da control total a "Everyone" (SID
+# WorldSid), asi da igual el nivel de privilegios de quien lo cree o lo
+# busque despues.
 # ============================================================
 
 $carpeta = $PSScriptRoot
@@ -42,7 +54,19 @@ function Log($msg) {
 }
 
 $mutexName = "Global\VP3_Watchdog_SingleInstance_Mutex"
-$mutex = New-Object System.Threading.Mutex($false, $mutexName)
+$mutex = $null
+try {
+    $seguridad = New-Object System.Security.AccessControl.MutexSecurity
+    $sidTodos = New-Object System.Security.Principal.SecurityIdentifier([System.Security.Principal.WellKnownSidType]::WorldSid, $null)
+    $regla = New-Object System.Security.AccessControl.MutexAccessRule($sidTodos, [System.Security.AccessControl.MutexRights]::FullControl, [System.Security.AccessControl.AccessControlType]::Allow)
+    $seguridad.AddAccessRule($regla)
+    $creadoNuevo = $false
+    $mutex = New-Object System.Threading.Mutex($false, $mutexName, [ref]$creadoNuevo, $seguridad)
+} catch {
+    # Si por lo que sea la version con seguridad abierta falla, caer al
+    # modo simple de antes (mejor eso que no arrancar nada).
+    $mutex = New-Object System.Threading.Mutex($false, $mutexName)
+}
 $adquirido = $false
 try {
     $adquirido = $mutex.WaitOne(0)
