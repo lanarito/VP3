@@ -4,6 +4,41 @@
 
 ---
 
+## 🔴 SE ENCONTRÓ POR QUÉ SE TILDABA LA MESA EN MULTIBOLA
+
+### Lo que reportó Luis:
+Mesas que "sacan multiball" y se traban — algo aparece de golpe en otro
+lugar, como si saltara un frame. Preguntó si tenía que ver con los
+cambios de esta sesión.
+
+### Sí, tenía que ver — encontrado y medido:
+El enganche en vivo (`core.vbs`) SÍ usaba el delta para actualizar la
+memoria en sí, pero para armar el texto que se escribe a disco volvía a
+**recorrer y convertir el buffer ENTERO de NVRAM con `Hex()`, byte por
+byte, cada vez que cambiaba algo** — lento de por sí en VBScript. En una
+mesa con NVRAM chica no se nota. En una Stern/SAM (The Walking Dead,
+X-Men — unos 130.000 bytes) esa vuelta completa tarda de verdad, y
+**multibola es justo cuando más bytes cambian por segundo** (varios
+jugadores, jackpots, contadores todos a la vez).
+
+Medido con una prueba real: simulando 200 disparos de multibola sobre
+una mesa de ese tamaño, la versión vieja tardaba **18,7 segundos en
+total** (unos 94 milisegundos por disparo — más que el tiempo entero de
+un cuadro a 60 cuadros por segundo). Con eso alcanza y sobra para
+sentirse como una tildada.
+
+### El arreglo (v10):
+Ahora se parchea DIRECTO el pedacito de texto que corresponde al byte
+que cambió, sin tocar ni recorrer el resto. Mismo resultado final
+(comprobado byte a byte, idéntico a la versión vieja), pero **23 veces
+más rápido** en la prueba de arriba. Se sube sola en la próxima
+actualización.
+
+### Para los chicos: nada nuevo
+Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
+
+---
+
 ## 🔴 EL WATCHDOG AHORA USA UN MUTEX REAL (Her confirmó el problema con un video)
 
 ### Lo que pasó:
