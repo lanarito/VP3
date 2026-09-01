@@ -1,6 +1,44 @@
 # 📋 CAMBIOS RECIENTES - VP3
 
-**Última sesión: 31 de agosto 2026**
+**Última sesión: 31 de agosto / 1 de septiembre 2026**
+
+---
+
+## 🔴 LA CAUSA DE FONDO DE LOS PROCESOS DUPLICADOS (encontrada con un diagnóstico real)
+
+### Lo que pasó:
+Her hizo un record de 1.926.680 y no subió instantáneo — volvió el
+problema. Se armó un diagnóstico de un click (`DIAGNOSTICO_VP3.bat`,
+ahora en `MAQUINAS_VP3`) para juntar toda la info de su máquina sin
+adivinar con capturas sueltas. El archivo mostró algo grave:
+`subir_puntajes.exe` se estaba **cerrando solo (código 1) cada tanto
+tiempo**, incluida una vez que corrió limpio 18 minutos y se cayó justo
+antes del horario del record.
+
+### Dos causas de fondo, encontradas y arregladas:
+
+**1. El mutex (el "candado" para que no se duplique el programa) era
+invisible entre procesos con distinto nivel de permisos.** Cuando
+`ACTUALIZAR_VP3.bat` corre con permisos de administrador (como corre
+siempre, por el cartel de Windows) y después arranca otra copia SIN esos
+permisos (como hace PinUP Popper al iniciar), esa segunda copia **ni
+siquiera podía ver** el candado de la primera — Windows le devolvía
+"acceso denegado", no "ya existe", y el chequeo no sabía reconocer esa
+respuesta. Confirmado con una prueba directa en la máquina real. Se
+arregló poniéndole al candado un permiso abierto para cualquiera, sin
+importar su nivel — tanto en `subir_puntajes.exe` como en el watchdog.
+
+**2. El programa se caía sin dejar ningún rastro de por qué.** Se agregó
+un registro (`vp3_crash_log.txt`) que guarda el detalle completo de
+cualquier error que se escape, para poder ver la próxima vez exactamente
+qué pasó, en vez de solo saber que pasó algo.
+
+### Para los chicos: nada nuevo
+Se corrige con `ACTUALIZAR_VP3.bat` de siempre — pero esta vez, para que
+tome efecto completo, hace falta que alguien lo corra CON el cartel de
+Windows aceptado (el .exe viejo, si está corriendo con permisos de
+administrador de una actualización anterior, no se puede reemplazar
+hasta que el actualizador lo mate primero).
 
 ---
 
