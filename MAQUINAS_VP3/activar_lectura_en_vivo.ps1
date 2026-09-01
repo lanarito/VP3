@@ -48,7 +48,7 @@
 # ============================================================
 param([switch]$Auto, [switch]$Quitar)
 
-$VERSION = "v10"
+$VERSION = "v11diag"
 $ini = "' ===== VP3 LECTURA EN VIVO $VERSION INICIO ====="
 $fin = "' ===== VP3 LECTURA EN VIVO $VERSION FIN ====="
 $carpetaLive = "C:\vPinball\VP3_LIVE"
@@ -165,6 +165,22 @@ Sub VP3EnVivo(aChg)
         End If
         Err.Clear
     End If
+
+    ' DIAGNOSTICO TEMPORAL (v11diag, 1-sep-2026): registrar CADA vez que
+    ' hay un cambio real, para ver si el enganche dispara durante el
+    ' juego de verdad (no solo al cargar la mesa y al salir). Se saca en
+    ' cuanto se tenga la respuesta -- no se queda para siempre.
+    On Error Resume Next
+    Dim vp3_diagfso, vp3_diagf
+    Set vp3_diagfso = CreateObject("Scripting.FileSystemObject")
+    Set vp3_diagf = vp3_diagfso.OpenTextFile("$carpetaLive\_actividad.log", 8, True)
+    If hayCambios Then
+        vp3_diagf.WriteLine Now & " | " & vp3_rom & " | disparo, hayCambios=True"
+    Else
+        vp3_diagf.WriteLine Now & " | " & vp3_rom & " | disparo, hayCambios=False (no deberia pasar, NVRAMCallback solo se llama si ChgNVRAM no esta vacio)"
+    End If
+    vp3_diagf.Close
+    Err.Clear
 
     If Not hayCambios Then Exit Sub
 

@@ -70,6 +70,14 @@ echo === fecha del subir_puntajes.exe actual === >> "%SALIDA%"
 powershell -NoProfile -Command "(Get-Item 'C:\MAQUINAS_VP3\subir_puntajes.exe').LastWriteTime" >> "%SALIDA%" 2>&1
 
 echo. >> "%SALIDA%"
+echo === actividad del enganche en vivo durante la sesion (_actividad.log) === >> "%SALIDA%"
+if exist "C:\vPinball\VP3_LIVE\_actividad.log" (
+    powershell -NoProfile -Command "Get-Content 'C:\vPinball\VP3_LIVE\_actividad.log' -Tail 60 -Encoding UTF8" >> "%SALIDA%" 2>&1
+) else (
+    echo No existe el archivo -- el enganche nunca disparo ni una vez en esta maquina. >> "%SALIDA%"
+)
+
+echo. >> "%SALIDA%"
 echo === registro de errores que se escaparon (vp3_crash_log.txt) === >> "%SALIDA%"
 if exist "C:\MAQUINAS_VP3\vp3_crash_log.txt" (
     powershell -NoProfile -Command "Get-Content 'C:\MAQUINAS_VP3\vp3_crash_log.txt' -Tail 80 -Encoding UTF8" >> "%SALIDA%" 2>&1
