@@ -1,5 +1,5 @@
 # ============================================================
-# VP3 - LECTURA EN VIVO (v14 - sondeo directo, sin ChangedNVRAM)
+# VP3 - LECTURA EN VIVO (v15 - sondeo directo, sin ChangedNVRAM)
 #
 # HISTORIA (por que se llego a esta version):
 #
@@ -59,6 +59,18 @@
 # mas la comparacion byte a byte (~15ms) -- de ~90ms a ~35ms en el peor
 # caso medido, en la mesa mas grande que hay.
 #
+# v15 (1-sep-2026): Luis confirmo jugando Walking Dead de verdad que
+# TODAVIA se notaba algo, aunque bastante menos que antes. Ese ~35ms
+# restante es el costo minimo de LEER y COMPARAR la memoria entera en una
+# mesa grande -- no se puede bajar mas sin dejar de detectar cambios. En
+# vez de espaciar el chequeo en TODAS las mesas (perdiendo velocidad de
+# aviso en la gran mayoria del catalogo, que son mesas chicas de los 90s
+# sin este problema), ahora el intervalo es adaptativo: se decide segun
+# el tamaño real de la NVRAM de la mesa, recien conocido en la primera
+# lectura. Mesas de +20KB (Stern/SAM: Walking Dead, X-Men) pasan a
+# revisar cada 5 segundos; el resto sigue en 2 segundos, que ya se probo
+# fluido.
+#
 #   -Auto    : activa sin preguntar nada (lo usa ACTUALIZAR_VP3.bat)
 #   -Quitar  : saca el enganche y deja core.vbs como estaba
 #   sin nada : muestra un menu
@@ -71,11 +83,11 @@
 # ============================================================
 param([switch]$Auto, [switch]$Quitar)
 
-$VERSION = "v14"
+$VERSION = "v15"
 $ini = "' ===== VP3 LECTURA EN VIVO $VERSION INICIO ====="
 $fin = "' ===== VP3 LECTURA EN VIVO $VERSION FIN ====="
 $carpetaLive = "C:\vPinball\VP3_LIVE"
-$marcaLlamada = "	VP3EnVivoTick ' VP3 lectura en vivo (v14)"
+$marcaLlamada = "	VP3EnVivoTick ' VP3 lectura en vivo (v15)"
 
 function Buscar-Core {
     $cand = @(
@@ -143,7 +155,7 @@ $ini
 ' NO usa Controller.ChangedNVRAM (comprobado que no avisa cambios en
 ' vivo durante el juego, solo cuando VPinMAME ya escribio a disco).
 ' Se saca solo con activar_lectura_en_vivo.ps1 -Quitar.
-Dim vp3_nv, vp3_iniciado, vp3_ult, vp3_rom, vp3_fso, vp3_ultimo_chequeo, vp3_bufHex
+Dim vp3_nv, vp3_iniciado, vp3_ult, vp3_rom, vp3_fso, vp3_ultimo_chequeo, vp3_bufHex, vp3_intervalo
 
 Sub VP3EnVivoTick
     On Error Resume Next
@@ -151,15 +163,18 @@ Sub VP3EnVivoTick
 
     If IsEmpty(Controller) Or Controller Is Nothing Then Exit Sub
 
-    ' Auto-limite: como mucho cada 2 segundos. Se usa Now + DateDiff (no la
-    ' funcion Timer) para evitar cualquier choque de nombre con objetos de la
-    ' mesa -- varias mesas VPX traen elementos propios llamados "Timer" que
-    ' pueden tapar la funcion intrinseca.
+    If IsEmpty(vp3_intervalo) Then vp3_intervalo = 2
+
+    ' Auto-limite: por defecto cada 2 segundos (ajustado abajo segun el
+    ' tamaño de la mesa, ver comentario en la primera lectura). Se usa
+    ' Now + DateDiff (no la funcion Timer) para evitar cualquier choque de
+    ' nombre con objetos de la mesa -- varias mesas VPX traen elementos
+    ' propios llamados "Timer" que pueden tapar la funcion intrinseca.
     Dim ahora, transcurrido
     ahora = Now
     If Not IsEmpty(vp3_ultimo_chequeo) Then
         transcurrido = DateDiff("s", vp3_ultimo_chequeo, ahora)
-        If transcurrido < 2 And transcurrido >= 0 Then Exit Sub
+        If transcurrido < vp3_intervalo And transcurrido >= 0 Then Exit Sub
     End If
     vp3_ultimo_chequeo = ahora
 
@@ -178,6 +193,16 @@ Sub VP3EnVivoTick
         For i = 0 To UBound(vp3_nv)
             vp3_bufHex(i) = Right("0" & Hex(vp3_nv(i)), 2)
         Next
+        ' v15 (1-sep-2026): en una mesa grande (Stern/SAM, +20KB de NVRAM --
+        ' Walking Dead, X-Men) el costo de LEER y COMPARAR la memoria entera
+        ' (aun con el parche incremental de v14, que ya evita reconvertir
+        ' todo a texto) sigue siendo mayor que en una mesa chica, y Luis
+        ' confirmo jugando que en Walking Dead todavia se notaba algo con el
+        ' chequeo cada 2 segundos. En vez de bajarle la velocidad a TODAS
+        ' las mesas, solo las grandes chequean mas espaciado (cada 5
+        ' segundos) -- las demas (la gran mayoria del catalogo, mesas
+        ' chicas de los 90s) siguen a 2 segundos, que ya se probo fluido.
+        If UBound(vp3_nv) + 1 > 20000 Then vp3_intervalo = 5
     ElseIf UBound(nvActual) = UBound(vp3_nv) Then
         ' PROBADO 1-sep-2026: VBScript NO tiene la sentencia Mid(...) =
         ' valor para parchear un string en el lugar (eso es de VBA/VB6

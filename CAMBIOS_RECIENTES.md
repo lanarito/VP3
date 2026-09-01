@@ -40,6 +40,29 @@ Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
 
 ---
 
+## 🐛 13. Todavía algo en Walking Dead → intervalo adaptativo por tamaño de mesa (v15, 1 septiembre 2026)
+
+### Lo que pasó:
+Luis probó Walking Dead de nuevo con la v14 aplicada: mejoró bastante, pero "todavía tiene una pequeña tildada... le falta fluidez". Dato honesto y concreto, no una queja vaga.
+
+### Por qué queda ese resto:
+Con la v14 ya no se reconvierte la mesa entera a texto — pero **leer y comparar** la memoria completa sigue costando algo (~35ms medidos en el peor caso), y eso no se puede evitar del todo sin dejar de detectar cambios. Ese costo depende del tamaño de la mesa: en las mesas chicas de los 90s (la gran mayoría del catálogo) es prácticamente gratis; en Walking Dead o X-Men (Stern/SAM, +20.000 bytes de NVRAM) es donde se nota.
+
+### Arreglo (v15) — intervalo adaptativo, no un cambio parejo para todas:
+En vez de bajarle la velocidad a TODO el catálogo (perdiendo la subida casi instantánea en mesas donde no hace falta), ahora el sistema mide el tamaño real de la NVRAM en la primera lectura de cada mesa y decide solo, mesa por mesa:
+- Mesa chica (menos de 20KB, la mayoría): sigue revisando cada 2 segundos, igual que antes.
+- Mesa grande (Stern/SAM, tipo Walking Dead/X-Men): pasa a revisar cada 5 segundos — menos seguido, para que el costo por chequeo se sienta menos, pero sigue siendo un aviso rapidísimo comparado con la versión vieja (que solo subía al cerrar la mesa).
+
+Probado antes de publicar con un test funcional dedicado: confirma que una mesa chica se queda en 2 segundos, que una mesa grande pasa sola a 5 segundos, que un cambio a los 3 segundos queda bloqueado por el intervalo largo, y que a los 6 segundos sí se detecta. Más el round-trip de siempre y el caso de actualizar la versión anterior sin duplicar la llamada.
+
+### Para los chicos: nada nuevo
+Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
+
+### Pendiente de confirmar:
+Falta que Luis pruebe Walking Dead de nuevo con esta versión.
+
+---
+
 ---
 
 ## 🔴 PISTA FUERTE: EL ANTIVIRUS PUEDE ESTAR MATANDO EL PROGRAMA (sin confirmar aún)
