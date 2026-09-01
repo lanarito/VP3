@@ -4,6 +4,34 @@
 
 ---
 
+## 🔴 DOS RECORDS DE FÁBRICA (TOY, ZAB) QUE NO ERAN DE NADIE
+
+### Lo que pasó:
+Subieron a la página `TOY` (Cactus Canyon, 30 millones justos) y `ZAB`
+(NBA Fastbreak, 34 puntos) — ninguno de los dos es jugador nuestro. Ya
+se borraron de la nube.
+
+### Causa:
+La lectura en vivo (recién arreglada hoy) trajo un efecto secundario: la
+"línea base" de una mesa (su tabla de puntajes de fábrica, que nunca
+debe subir) solo se armaba leyendo el archivo real del disco — nunca
+desde la lectura en vivo, a propósito, para no perder el primer record
+de un jugador real. El problema: con la lectura en vivo funcionando de
+verdad, una mesa que **nunca se había leído del disco** podía tener su
+primera lectura de todas por el camino en vivo — y ese camino no arma
+línea base, así que su tabla de fábrica pasaba sin filtrar.
+
+### Arreglo:
+La línea base ahora se arma sin importar por qué camino llegó el dato,
+protegiendo lo mismo que protegía antes (nunca bloquear a HER/ARI/LAL/AGU,
+nunca bloquear un puntaje que no sea redondo — señal de que es una
+partida real). Probado con un caso simulado antes de publicar.
+
+### Para los chicos: nada nuevo
+Se corrige con `ACTUALIZAR_VP3.bat`.
+
+---
+
 ## 🔴 LA CAUSA DE FONDO DE LOS PROCESOS DUPLICADOS (encontrada con un diagnóstico real)
 
 ### Lo que pasó:
