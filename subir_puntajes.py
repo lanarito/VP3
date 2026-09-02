@@ -589,6 +589,26 @@ MESAS_CONFIG = [
 # ruido nunca junta 2 lecturas iguales seguidas, asi que nunca se sube.
 _vivo_candidatos_previos = {}  # mesa_nombre -> set de id_unico del ciclo anterior (solo sync dirigida)
 
+# ENCONTRADO 1-sep-2026, SEGUNDA VUELTA: el filtro de estabilidad de arriba
+# no alcanzaba -- Her actualizo con ese fix puesto y el log SEGUIA diciendo
+# "SI hay algo nuevo" en el 100% de los ciclos. La razon: PINemHi relee
+# TODOS los puntajes validos de la mesa cada vez (no solo los que cambiaron
+# de verdad), asi que los puntajes REALES ya existentes en Walking Dead
+# (Top 5, Grand Champion, etc.) tambien "aparecen iguales dos veces
+# seguidas" -- siempre, para siempre, porque nunca cambian. El filtro de
+# estabilidad los confirmaba una y otra vez en cada ciclo, aunque ya
+# estuvieran subidos hace rato.
+#
+# Falta la pieza que faltaba: acordarse de LO QUE YA SE SUBIO, para no
+# volver a subirlo de nuevo solo porque PINemHi lo vuelve a leer. Ahora un
+# candidato confirmado se sube UNA sola vez por sesion del programa; una
+# vez subido queda marcado y no se vuelve a tocar la nube por el mismo
+# valor, aunque PINemHi lo siga reportando cada vez (cosa que va a seguir
+# haciendo, es como lee la memoria). Si aparece un valor GENUINAMENTE
+# distinto (record nuevo de verdad), ese si es nuevo en el set y pasa por
+# el mismo camino: confirmar 2 veces seguidas, subir, marcar.
+_vivo_ya_sincronizado = {}  # mesa_nombre -> set de id_unico ya subidos en esta sesion (solo sync dirigida)
+
 
 # ============================================================
 # LOGICA DE SINCRONIZACION PRINCIPAL
@@ -813,9 +833,13 @@ def procesar_y_subir(solo_mesas=None):
 
             if solo_mesas:
                 previos = _vivo_candidatos_previos.get(mesa["nombre"], set())
+                ya_sync = _vivo_ya_sincronizado.setdefault(mesa["nombre"], set())
                 for id_unico, dato in pendientes_mesa:
+                    if id_unico in ya_sync:
+                        continue  # ya se subio este mismo valor antes en esta sesion, no hace falta de nuevo
                     if id_unico in previos:
                         nuevos_puntajes.append(dato)
+                        ya_sync.add(id_unico)
                 _vivo_candidatos_previos[mesa["nombre"]] = candidatos_mesa
 
     if modificado_base_records:

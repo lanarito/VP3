@@ -152,8 +152,27 @@ Test aislado (con la nube bloqueada, para no arriesgar la real) con 4 casos: un 
 ### Para los chicos: nada nuevo
 Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
 
+### Resultado:
+Her actualizó con este arreglo puesto (confirmado por la fecha del `.exe`) y el log SEGUÍA diciendo "SI hay algo nuevo" en el 100% de los ciclos. El filtro de estabilidad no alcanzaba — llevó al hallazgo final, más de fondo (ver el punto siguiente).
+
+---
+
+## ✅ 18. LA CAUSA REAL, DE FONDO: faltaba acordarse de lo que YA se había subido (1 septiembre 2026)
+
+### Por qué el filtro de estabilidad no alcanzaba:
+PINemHi vuelve a leer **todos** los puntajes válidos de la mesa en cada chequeo, no solo los que cambiaron. Eso significa que los puntajes REALES que ya existen en Walking Dead (el Top 1, el Grand Champion, etc.) también "aparecen iguales dos veces seguidas" — siempre, para siempre, porque nunca cambian. El filtro de estabilidad los confirmaba una y otra vez en cada ciclo, aunque ya estuvieran subidos hace rato. Faltaba la pieza que realmente importaba: **acordarse de lo que ya se subió**, para no repetirlo.
+
+### El arreglo final:
+Ahora, además de confirmar que un puntaje aparece igual dos veces seguidas, el programa recuerda cuáles ya subió en esta sesión. Un puntaje que ya se subió una vez **no vuelve a tocar la nube nunca más**, aunque PINemHi lo siga reportando siempre igual (que lo va a seguir haciendo, es como lee la memoria). Si en algún momento aparece un valor genuinamente distinto — un record nuevo de verdad — ese sí pasa por el mismo camino de siempre: confirmar dos veces, subir, y quedar marcado para no repetirse tampoco.
+
+### Probado antes de publicar:
+Se agregó el caso exacto que estaba fallando de verdad: un puntaje ya confirmado y subido que sigue apareciendo igual, ciclo tras ciclo, para siempre — y se confirmó que ya NO dispara la nube de nuevo. Junto con todos los casos anteriores (primera aparición no sube, confirmación sube, ruido constante nunca sube, un valor genuinamente nuevo sí sube, la sincronización completa de seguridad sigue funcionando igual).
+
+### Para los chicos: nada nuevo
+Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
+
 ### Pendiente de confirmar:
-Falta que Her actualice de nuevo, juegue Walking Dead, y mande un último diagnóstico — con la instrumentación de tiempos ya puesta, esta vez el log debería mostrar mayoría de "nada nuevo, no se toca la nube" en vez de sincronizar todo el tiempo.
+Falta que Her actualice una vez más, juegue Walking Dead, y mande el diagnóstico. Con este arreglo, el log ahora sí debería mostrar mayoría de "nada nuevo, no se toca la nube" — y con eso el lagazo debería desaparecer de una vez.
 
 ---
 
