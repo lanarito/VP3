@@ -232,8 +232,18 @@ echo       OK
 echo.
 
 echo [%date% %time%] llegue a 8/10 >> "%TEMP%\vp3_debug.log"
-echo [9/10] Activando lectura en vivo (subir sin salir de la mesa)...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%VP3_DESTINO%activar_lectura_en_vivo.ps1" -Auto
+REM DESACTIVADO 2-sep-2026: la lectura en vivo (subir sin salir de la mesa)
+REM causaba micro-cortes jugando mesas grandes (Walking Dead, Stern/SAM) --
+REM confirmado tanto en la maquina de Her como en la de Luis, incluso
+REM despues de varias rondas de optimizacion (v9 a v17) y la exclusion de
+REM Windows Defender. Se prioriza la fluidez de las mesas por sobre la
+REM subida instantanea: el record vuelve a subir al salir de la mesa (o
+REM al entrar a otra), que ya de por si tarda apenas ~1 segundo desde ahi
+REM (ver "SUBIDA INMEDIATA DE RECORDS" en CAMBIOS_RECIENTES.md). Se
+REM desactiva -- no se activa -- para que quede asi en TODAS las
+REM maquinas de ahora en mas, no solo en la que se actualice primero.
+echo [9/10] Verificando fluidez de las mesas (lectura en vivo desactivada)...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%VP3_DESTINO%activar_lectura_en_vivo.ps1" -Auto -Quitar
 echo.
 
 echo [%date% %time%] llegue a 9/10 >> "%TEMP%\vp3_debug.log"

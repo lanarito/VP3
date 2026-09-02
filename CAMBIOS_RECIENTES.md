@@ -213,8 +213,28 @@ Y ahí apareció el dato clave: **la exclusión de Windows Defender que se agreg
 ### Para los chicos: nada nuevo
 Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
 
-### Pendiente de confirmar:
-Falta que Her actualice, active de nuevo la lectura en vivo (`LECTURA_EN_VIVO.bat`, opción 1 — la deja `ACTUALIZAR_VP3.bat` activada sola, así que ni hace falta tocarla a mano), juegue Walking Dead, y mande el diagnóstico. Con la exclusión nueva puesta, lo más probable es que ya no se trabe; si todavía pasa algo, el log ahora va a decir exactamente si es "lectura" o "escritura" lo que tarda.
+### Resultado — decisión final:
+Con la exclusión de Defender puesta, Luis probó Walking Dead **en su propia máquina** (la que venía "de diez" desde la v15) y esta vez sí notó micro-cortes — algo que antes no le pasaba. Lo más probable: la propia medición de tiempos que se agregó en v16/v17 (dos escrituras de log extra por cada chequeo, sumadas a la del `.hex`) le agregó peso al mecanismo en sí, justo la mesa más grande y sensible. Después de más de dos días y 8 versiones distintas (v9 a v17) afinando este mecanismo en todos los frentes posibles, la decisión fue cortar por lo sano.
+
+---
+
+## 🏁 21. DECISIÓN FINAL: se prioriza la fluidez, la lectura en vivo se desactiva (2 septiembre 2026)
+
+### La decisión:
+Luis pidió volver todo para atrás: que el puntaje suba al salir de la mesa (o al entrar a otra) — como funcionaba antes de empezar con la lectura en vivo — y dejar de perseguir los micro-cortes. La subida "al cerrar la mesa" ya de por sí es rápida (~1 segundo desde que se cierra, ver el punto "SUBIDA INMEDIATA DE RECORDS" más abajo en este documento) — se pierde solo el "mientras seguís jugando", no la velocidad real de la subida.
+
+### El cambio (para que quede así en TODAS las máquinas, no solo en la que se actualice primero):
+El paso 9 de `ACTUALIZAR_VP3.bat` **ya no activa** la lectura en vivo — ahora la **desactiva** (por si alguna máquina la tenía puesta). Así, la próxima vez que cualquiera corra el actualizador — Luis, Her, o quien sea — la mesa vuelve a quedar 100% original, sin ningún enganche. `core.vbs` termina byte a byte idéntico al de fábrica.
+
+`activar_lectura_en_vivo.ps1` y `LECTURA_EN_VIVO.bat` quedan en el sistema por si alguna vez se quiere retomar esto (por ejemplo, si en el futuro se prueba en una mesa chica donde no hay este problema) — pero ya no se activan solos.
+
+### Para los chicos: nada nuevo
+Se corrige con `ACTUALIZAR_VP3.bat` de siempre — esta vez, al revés de lo habitual, el cambio es que la próxima actualización **apaga** algo en vez de prenderlo.
+
+### Lo que queda funcionando igual que siempre:
+- El puntaje sube apenas se cierra la mesa (rápido, probado, sin cambios).
+- Las notificaciones de Telegram, la web, el desafío semanal: todo sigue igual.
+- Lo único que cambia es que ya no avisa MIENTRAS se está jugando, solo al salir.
 
 ---
 
