@@ -89,8 +89,32 @@ Test aislado (sin tocar la Supabase real) simulando: varios cambios seguidos del
 ### Para los chicos: nada nuevo
 Se corrige con `ACTUALIZAR_VP3.bat` de siempre — esta vez SÍ hace falta correrlo de nuevo (toca el `.exe`, no solo `core.vbs`, así que no alcanza con lo que ya está aplicado en la mesa).
 
+### Resultado (parcial):
+Her actualizó, probó Walking Dead de nuevo, y el lagazo cada ~10 segundos SEGUÍA ahí — casi igual que antes. El enfriamiento de 5 segundos no alcanzaba. Esto llevó a investigar más a fondo (ver el punto siguiente).
+
+---
+
+## 🔴 15. LA CAUSA DE FONDO DEL LAGAZO: se re-subía la base de datos ENTERA cada vez (1 septiembre 2026)
+
+### Lo que pasó:
+El enfriamiento de 5 segundos del punto anterior no resolvió nada de verdad — el segundo diagnóstico de Her mostró el mismo patrón, "Cambio detectado en disco" cada 6-7 segundos sin parar jugando Walking Dead. Eso significaba que la primera teoría (demasiados chequeos) estaba incompleta: el problema no era CUÁNTAS VECES se disparaba la sincronización, sino **cuánto pesaba cada una**.
+
+### La causa real, encontrada leyendo el código con lupa:
+`procesar_y_subir()` — la función que sincroniza con Supabase — tenía un defecto de diseño: **aunque no hubiera NINGÚN puntaje nuevo para subir, siempre hacía el viaje completo a la nube**: bajaba la tabla ENTERA de puntajes (todas las mesas, todos los jugadores) y la volvía a subir ENTERA, aunque no hubiera cambiado nada. Con el enganche en vivo disparando una sincronización dirigida cada pocos segundos mientras se juega — la mayoría de las veces por un contador interno del juego, no por un puntaje real — eso significaba **una ida y vuelta completa a internet cada 5-7 segundos sin parar, aunque no hubiera nada que subir**. Esto es mucho más pesado que solo correr PINemHi, y depende de qué tan buena sea la conexión a internet de cada máquina — lo que también explica por qué en la máquina de Luis no se notaba tanto como en la de Her.
+
+### Arreglo:
+Ahora, si la sincronización es "dirigida" (la dispara el enganche en vivo o el cierre de una mesa, no la pasada completa de cada 10 minutos) y no se encontró NINGÚN puntaje nuevo de verdad, **se corta ahí mismo, sin tocar internet para nada**. La pasada completa (al arrancar, cada 10 minutos, al apagar) sigue haciendo el viaje entero siempre, como red de seguridad.
+
+Esto es mucho más importante que el enfriamiento del punto anterior — mientras el enfriamiento solo bajaba cuántas veces se repetía el trabajo pesado, esto hace que la enorme mayoría de esas veces (cuando no hay nada nuevo) **no pese casi nada**.
+
+### Probado antes de publicar:
+Test aislado que bloquea cualquier llamada de red real (para no arriesgar la Supabase real) y confirma dos cosas: sin puntajes nuevos, la función NO intenta ninguna llamada de red; con un puntaje nuevo de verdad, SÍ la intenta (nada se rompió para el caso real).
+
+### Para los chicos: nada nuevo
+Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
+
 ### Pendiente de confirmar:
-Falta que Her actualice de nuevo y confirme si el lagazo desapareció.
+Falta que Her actualice de nuevo y confirme si el lagazo por fin desapareció.
 
 ---
 

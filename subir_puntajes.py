@@ -786,8 +786,32 @@ def procesar_y_subir(solo_mesas=None):
 
     if archivos_encontrados == 0:
         print("🤷‍♂️ No se encontro NINGUN archivo .nv de las mesas configuradas.")
-    elif not nuevos_puntajes: 
+    elif not nuevos_puntajes:
         print("🤷‍♂️ No hay nuevos récords detectados localmente (todos pertenecen a la linea base).")
+
+    # ENCONTRADO 1-sep-2026 con el diagnostico real de Her (lagazo cada
+    # ~10s jugando Walking Dead): esta funcion, aunque no hubiera NINGUN
+    # puntaje nuevo, SIEMPRE hacia un viaje completo a Supabase -- traia
+    # la tabla ENTERA de puntajes (GET) y la volvia a subir ENTERA
+    # (upsert), solo para terminar sin cambiar nada. Con el enganche en
+    # vivo disparando una sincronizacion dirigida (solo_mesas) cada pocos
+    # segundos mientras se juega -- la mayoria de las veces por un
+    # contador interno del ROM, no por un puntaje -- eso significaba un
+    # ida y vuelta de red completo (GET + POST de TODA la tabla) cada
+    # pocos segundos sin parar, aunque no hubiera nada que subir. Eso es
+    # lo que muy probablemente generaba el lagazo periodico, mas que
+    # cualquier cosa del lado de core.vbs.
+    #
+    # Si esto es una sincronizacion DIRIGIDA (solo_mesas, la que dispara
+    # el enganche en vivo o el cierre de una mesa) y no se encontro NINGUN
+    # puntaje nuevo localmente, no hace falta tocar la nube para nada --
+    # se corta aca. La sincronizacion COMPLETA (solo_mesas=None: al
+    # arrancar, cada 10 minutos, al apagar) sigue haciendo el viaje
+    # completo siempre, como red de seguridad (detecta records borrados a
+    # mano en la web, etc.).
+    if solo_mesas and not nuevos_puntajes:
+        print("☁️ Nada nuevo para subir -- no hace falta tocar la nube esta vez.")
+        return
 
     try:
         print("\n☁️ Conectando a Supabase...")
