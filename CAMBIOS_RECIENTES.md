@@ -189,8 +189,32 @@ Con este dato de la máquina de Her en concreto, se va a saber si el chequeo ah�
 ### Para los chicos: nada nuevo
 Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
 
+### Resultado:
+Los tiempos de Her dieron 40-60ms — bajos, muy parecidos a la máquina de referencia. No explicaban una tildada. Eso llevó a la prueba decisiva del punto siguiente.
+
+---
+
+## 🎯 20. LA PRUEBA DECISIVA: apagar todo confirma la causa, y aparece la pieza que faltaba medir (2 septiembre 2026)
+
+### La prueba:
+En vez de seguir ajustando números, se probó algo definitivo: **apagar la lectura en vivo por completo** en la máquina de Her (`LECTURA_EN_VIVO.bat`, opción 2 = desactivar) y jugar Walking Dead así, sin nada de este sistema corriendo. Resultado: **la mesa nunca se trabó**. Eso confirmó que la causa SÍ es este mecanismo — pero los 40-60ms medidos en v16 no alcanzaban para explicarlo. Faltaba algo.
+
+### Lo que faltaba medir:
+La medición de v16 solo cubría **leer y comparar** la memoria — dejaba afuera la parte de **escribir el archivo `.hex` a disco** (hasta 262.000 bytes en una mesa grande como Walking Dead). Esa es justo la parte que:
+1. Compite por el mismo archivo con `subir_puntajes.exe`, que lo está leyendo desde otro proceso al mismo tiempo.
+2. Es la más propensa a que el antivirus la frene un instante para escanearla.
+
+Y ahí apareció el dato clave: **la exclusión de Windows Defender que se agregó hace unos días nunca cubrió la carpeta `C:\vPinball\VP3_LIVE`** — solo cubría `MAQUINAS_VP3` y el `.exe`. Si Windows Defender escanea cada escritura de 262KB ahí, cada 5 segundos, mientras se juega, eso explicaría perfectamente una tildada periódica.
+
+### El arreglo (v17 + exclusión nueva):
+1. Se agregó `C:\vPinball\VP3_LIVE` a las exclusiones de Windows Defender en `ACTUALIZAR_VP3.bat` (mismo mecanismo ya probado para `MAQUINAS_VP3`).
+2. Se separó la medición en dos: "lectura" (leer + comparar, lo que ya se medía) y "escritura" (guardar el `.hex` a disco, lo que faltaba). Así el próximo diagnóstico va a mostrar EXACTAMENTE cuál de las dos partes es la lenta en la máquina de Her.
+
+### Para los chicos: nada nuevo
+Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
+
 ### Pendiente de confirmar:
-Falta que Her actualice, juegue Walking Dead un rato, y mande el diagnóstico — esta vez con los tiempos reales de su propia máquina.
+Falta que Her actualice, active de nuevo la lectura en vivo (`LECTURA_EN_VIVO.bat`, opción 1 — la deja `ACTUALIZAR_VP3.bat` activada sola, así que ni hace falta tocarla a mano), juegue Walking Dead, y mande el diagnóstico. Con la exclusión nueva puesta, lo más probable es que ya no se trabe; si todavía pasa algo, el log ahora va a decir exactamente si es "lectura" o "escritura" lo que tarda.
 
 ---
 

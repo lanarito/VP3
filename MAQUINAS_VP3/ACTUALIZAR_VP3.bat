@@ -214,6 +214,14 @@ REM que se auto-extrae en CADA arranque y puede interferir. Se excluye
 REM tanto la carpeta real como el proceso, para cubrir los dos casos.
 powershell -NoProfile -Command "try { Add-MpPreference -ExclusionPath '%VP3_DESTINO%' -ErrorAction Stop } catch {}" >nul 2>&1
 powershell -NoProfile -Command "try { Add-MpPreference -ExclusionProcess 'subir_puntajes.exe' -ErrorAction Stop } catch {}" >nul 2>&1
+REM Encontrado 2-sep-2026: la lectura en vivo (core.vbs) escribe un
+REM archivo .hex de hasta 262KB en C:\vPinball\VP3_LIVE cada pocos
+REM segundos mientras se juega una mesa grande. Confirmado con Her
+REM desactivando la lectura en vivo por completo: la tildada
+REM desaparecio del todo. Si el antivirus escanea cada escritura ahi
+REM (carpeta nunca excluida hasta ahora), eso explicaria el costo real
+REM que no aparecia en las mediciones de solo lectura+comparacion.
+powershell -NoProfile -Command "try { Add-MpPreference -ExclusionPath 'C:\vPinball\VP3_LIVE' -ErrorAction Stop } catch {}" >nul 2>&1
 echo       OK
 echo.
 

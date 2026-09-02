@@ -1,5 +1,5 @@
 # ============================================================
-# VP3 - LECTURA EN VIVO (v16 - sondeo directo, sin ChangedNVRAM)
+# VP3 - LECTURA EN VIVO (v17 - sondeo directo, sin ChangedNVRAM)
 #
 # HISTORIA (por que se llego a esta version):
 #
@@ -80,6 +80,20 @@
 # SU maquina si el costo esta aca (y cuanto es) en vez de seguir
 # ajustando el intervalo a ciegas.
 #
+# v17 (2-sep-2026): la v16 midio 40-60ms en la maquina de Her -- bajo,
+# no explica una tildada. PRUEBA DECISIVA: Her desactivo la lectura en
+# vivo por completo (LECTURA_EN_VIVO.bat, opcion 2) y jugo Walking Dead
+# sin nada de esto corriendo -- la mesa NUNCA se traba. Confirma que el
+# mecanismo SI es la causa, pero el numero medido en v16 no explica por
+# que: la v16 media solo lectura+comparacion, dejando AFUERA la
+# escritura del .hex a disco (hasta 262KB en una mesa grande) -- la
+# parte que compite con subir_puntajes.exe leyendo ese mismo archivo, y
+# la mas probable de chocar con un antivirus escaneando cada escritura
+# (la exclusion de Windows Defender de ACTUALIZAR_VP3.bat nunca cubrio
+# la carpeta VP3_LIVE, solo MAQUINAS_VP3 y el .exe -- se agrega ahora).
+# v17 mide lectura y escritura por separado para confirmar donde esta
+# el costo real con datos, no adivinando de nuevo.
+#
 #   -Auto    : activa sin preguntar nada (lo usa ACTUALIZAR_VP3.bat)
 #   -Quitar  : saca el enganche y deja core.vbs como estaba
 #   sin nada : muestra un menu
@@ -92,11 +106,11 @@
 # ============================================================
 param([switch]$Auto, [switch]$Quitar)
 
-$VERSION = "v16"
+$VERSION = "v17"
 $ini = "' ===== VP3 LECTURA EN VIVO $VERSION INICIO ====="
 $fin = "' ===== VP3 LECTURA EN VIVO $VERSION FIN ====="
 $carpetaLive = "C:\vPinball\VP3_LIVE"
-$marcaLlamada = "	VP3EnVivoTick ' VP3 lectura en vivo (v16)"
+$marcaLlamada = "	VP3EnVivoTick ' VP3 lectura en vivo (v17)"
 
 function Buscar-Core {
     $cand = @(
@@ -267,17 +281,24 @@ Sub VP3EnVivoTick
         vp3_rom = LCase(vp3_rom)
     End If
 
-    ' Log de tiempos: una linea por chequeo real (no por cada vuelta del
-    ' timer, ya filtrado por el auto-limite de arriba), asi se puede ver en
-    ' DIAGNOSTICO_VP3.bat cuanto tarda ESTE chequeo puntual en la maquina
-    ' real donde se este jugando.
+    ' Log de tiempos, primera parte: solo lectura+comparacion (sin la
+    ' escritura del .hex todavia). En v16 esto media 40-60ms en Walking
+    ' Dead en la maquina de Her -- pero DESACTIVANDO la lectura en vivo
+    ' del todo, Her confirmo que la mesa dejaba de trabarse por completo.
+    ' Esa prueba demuestra que el costo real esta en ALGO de este
+    ' mecanismo -- pero el numero de aca (lectura+comparacion) es bajo,
+    ' asi que sospecha fuerte de que el problema esta en la parte que
+    ' faltaba medir: la ESCRITURA del archivo .hex (262KB en una mesa de
+    ' este tamaño), que puede chocar con subir_puntajes.exe leyendo ese
+    ' mismo archivo al mismo tiempo desde otro proceso. v17 mide las dos
+    ' partes por separado para confirmar donde esta el costo real.
     Dim vp3_ms
     vp3_ms = (Timer - vp3_t0) * 1000
     If vp3_fso Is Nothing Then Set vp3_fso = CreateObject("Scripting.FileSystemObject")
     If Not vp3_fso.FolderExists("$carpetaLive") Then vp3_fso.CreateFolder "$carpetaLive"
     Dim archT
     Set archT = vp3_fso.OpenTextFile("$carpetaLive\_tiempos.log", 8, True)
-    archT.WriteLine Now & " | " & vp3_rom & " | " & FormatNumber(vp3_ms, 1) & "ms | hayCambios=" & hayCambios & " | bytes=" & (UBound(vp3_nv) + 1)
+    archT.WriteLine Now & " | " & vp3_rom & " | lectura=" & FormatNumber(vp3_ms, 1) & "ms | hayCambios=" & hayCambios & " | bytes=" & (UBound(vp3_nv) + 1)
     archT.Close
     Set archT = Nothing
     Err.Clear
@@ -285,6 +306,9 @@ Sub VP3EnVivoTick
     If Not hayCambios Then Exit Sub
 
     vp3_ult = Join(vp3_bufHex, "")
+
+    Dim vp3_t1
+    vp3_t1 = Timer
 
     If vp3_fso Is Nothing Then Set vp3_fso = CreateObject("Scripting.FileSystemObject")
     If Not vp3_fso.FolderExists("$carpetaLive") Then vp3_fso.CreateFolder "$carpetaLive"
@@ -296,6 +320,17 @@ Sub VP3EnVivoTick
     arch.WriteLine vp3_ult
     arch.Close
     Set arch = Nothing
+    Err.Clear
+
+    ' Log de tiempos, segunda parte: SOLO la escritura del .hex a disco
+    ' (Join ya se conto arriba en "lectura", separado a proposito para
+    ' aislar el costo de la escritura en si de todo lo demas).
+    Dim vp3_ms2
+    vp3_ms2 = (Timer - vp3_t1) * 1000
+    Set archT = vp3_fso.OpenTextFile("$carpetaLive\_tiempos.log", 8, True)
+    archT.WriteLine Now & " | " & vp3_rom & " | escritura=" & FormatNumber(vp3_ms2, 1) & "ms (" & (Len(vp3_ult) + 40) & " bytes en disco)"
+    archT.Close
+    Set archT = Nothing
     Err.Clear
 End Sub
 $fin
