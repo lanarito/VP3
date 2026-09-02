@@ -171,8 +171,26 @@ Se agregó el caso exacto que estaba fallando de verdad: un puntaje ya confirmad
 ### Para los chicos: nada nuevo
 Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
 
+### Resultado — ¡LA GRAN NOTICIA!:
+Her actualizó, jugó Walking Dead, y el log mostró exactamente lo esperado: cada ciclo bajó de ~1.3-1.5 segundos a **~0.27 segundos**, y ahora dice "nada nuevo, NO se tocó la nube" en la enorme mayoría de los casos. El lado del `.exe` quedó confirmado liviano.
+
+Pero Her **todavía sintió la tildada jugando**. Eso apunta ahora al otro lado: el chequeo que hace la mesa (`core.vbs`) leyendo su propia memoria. En la máquina de referencia ese chequeo cuesta muy poco (~35ms), pero la de Her podría ser más lenta para ese mismo trabajo — sin poder medir en su máquina en persona, hace falta el mismo tipo de dato real que resolvió el lado del `.exe`.
+
+---
+
+## 📊 19. Medición real del lado de la mesa (v16, 2 septiembre 2026)
+
+### Lo que se agregó:
+Igual que se hizo con `subir_puntajes.exe` (medir en vez de adivinar), ahora `core.vbs` también anota cuánto tarda su propio chequeo — en un archivo nuevo, `VP3_LIVE\_tiempos.log`, con una línea por chequeo real: mesa, milisegundos, si hubo cambio, y tamaño de la memoria. `DIAGNOSTICO_VP3.bat` ya lo muestra (reemplazó a la sección vieja de `_actividad.log`, que ya no se usa desde hace varias versiones).
+
+### Para qué sirve:
+Con este dato de la máquina de Her en concreto, se va a saber si el chequeo ahí tarda parecido a lo medido en la máquina de referencia (y entonces el problema es otra cosa, no `core.vbs`) o si tarda bastante más (y entonces hay que ajustar el intervalo específicamente para máquinas más lentas, con el número real en la mano en vez de adivinar).
+
+### Para los chicos: nada nuevo
+Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
+
 ### Pendiente de confirmar:
-Falta que Her actualice una vez más, juegue Walking Dead, y mande el diagnóstico. Con este arreglo, el log ahora sí debería mostrar mayoría de "nada nuevo, no se toca la nube" — y con eso el lagazo debería desaparecer de una vez.
+Falta que Her actualice, juegue Walking Dead un rato, y mande el diagnóstico — esta vez con los tiempos reales de su propia máquina.
 
 ---
 

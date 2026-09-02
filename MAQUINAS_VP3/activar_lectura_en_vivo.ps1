@@ -1,5 +1,5 @@
 # ============================================================
-# VP3 - LECTURA EN VIVO (v15 - sondeo directo, sin ChangedNVRAM)
+# VP3 - LECTURA EN VIVO (v16 - sondeo directo, sin ChangedNVRAM)
 #
 # HISTORIA (por que se llego a esta version):
 #
@@ -71,6 +71,15 @@
 # revisar cada 5 segundos; el resto sigue en 2 segundos, que ya se probo
 # fluido.
 #
+# v16 (2-sep-2026): en la maquina de Her, con el lado del .exe ya
+# confirmado liviano (medido: 0.27s, sin tocar internet), TODAVIA se
+# sentia una tildada jugando Walking Dead. Sin poder medir directo en su
+# maquina, se agrega la misma tecnica que funciono del lado del .exe:
+# medicion real de tiempo, escrita a un log (VP3_LIVE\_tiempos.log) que
+# DIAGNOSTICO_VP3.bat ya puede mostrar. Asi se sabe con datos reales de
+# SU maquina si el costo esta aca (y cuanto es) en vez de seguir
+# ajustando el intervalo a ciegas.
+#
 #   -Auto    : activa sin preguntar nada (lo usa ACTUALIZAR_VP3.bat)
 #   -Quitar  : saca el enganche y deja core.vbs como estaba
 #   sin nada : muestra un menu
@@ -83,11 +92,11 @@
 # ============================================================
 param([switch]$Auto, [switch]$Quitar)
 
-$VERSION = "v15"
+$VERSION = "v16"
 $ini = "' ===== VP3 LECTURA EN VIVO $VERSION INICIO ====="
 $fin = "' ===== VP3 LECTURA EN VIVO $VERSION FIN ====="
 $carpetaLive = "C:\vPinball\VP3_LIVE"
-$marcaLlamada = "	VP3EnVivoTick ' VP3 lectura en vivo (v15)"
+$marcaLlamada = "	VP3EnVivoTick ' VP3 lectura en vivo (v16)"
 
 function Buscar-Core {
     $cand = @(
@@ -178,6 +187,19 @@ Sub VP3EnVivoTick
     End If
     vp3_ultimo_chequeo = ahora
 
+    ' v16 (2-sep-2026): medicion real del costo de ESTE chequeo puntual, para
+    ' saber en la maquina de Her (donde el .exe ya se confirmo liviano, pero
+    ' seguia sintiendose una tildada) si el costo real esta aca -- en vez de
+    ' seguir ajustando el intervalo a ciegas. Timer() da milisegundos (a
+    ' diferencia de Now/DateDiff, que solo tiene resolucion de 1 segundo);
+    ' se usa SOLO aca, para una medicion puntual, no como el gatillo del
+    ' auto-limite (ese sigue en Now/DateDiff por la razon de siempre: evitar
+    ' choques de nombre con un objeto "Timer" propio de la mesa). Si algo
+    ' sale mal midiendo, On Error Resume Next ya esta puesto: como mucho no
+    ' se logea nada, nunca rompe la deteccion real.
+    Dim vp3_t0
+    vp3_t0 = Timer
+
     Dim nvActual
     nvActual = Controller.NVRAM
     If Err.Number <> 0 Or Not IsArray(nvActual) Then Err.Clear : Exit Sub
@@ -229,10 +251,6 @@ Sub VP3EnVivoTick
         Next
     End If
 
-    If Not hayCambios Then Exit Sub
-
-    vp3_ult = Join(vp3_bufHex, "")
-
     If vp3_rom = "" Then
         vp3_rom = cGameName
         If Err.Number <> 0 Or vp3_rom = "" Then
@@ -248,6 +266,25 @@ Sub VP3EnVivoTick
         If vp3_rom = "" Then vp3_rom = "desconocido"
         vp3_rom = LCase(vp3_rom)
     End If
+
+    ' Log de tiempos: una linea por chequeo real (no por cada vuelta del
+    ' timer, ya filtrado por el auto-limite de arriba), asi se puede ver en
+    ' DIAGNOSTICO_VP3.bat cuanto tarda ESTE chequeo puntual en la maquina
+    ' real donde se este jugando.
+    Dim vp3_ms
+    vp3_ms = (Timer - vp3_t0) * 1000
+    If vp3_fso Is Nothing Then Set vp3_fso = CreateObject("Scripting.FileSystemObject")
+    If Not vp3_fso.FolderExists("$carpetaLive") Then vp3_fso.CreateFolder "$carpetaLive"
+    Dim archT
+    Set archT = vp3_fso.OpenTextFile("$carpetaLive\_tiempos.log", 8, True)
+    archT.WriteLine Now & " | " & vp3_rom & " | " & FormatNumber(vp3_ms, 1) & "ms | hayCambios=" & hayCambios & " | bytes=" & (UBound(vp3_nv) + 1)
+    archT.Close
+    Set archT = Nothing
+    Err.Clear
+
+    If Not hayCambios Then Exit Sub
+
+    vp3_ult = Join(vp3_bufHex, "")
 
     If vp3_fso Is Nothing Then Set vp3_fso = CreateObject("Scripting.FileSystemObject")
     If Not vp3_fso.FolderExists("$carpetaLive") Then vp3_fso.CreateFolder "$carpetaLive"
