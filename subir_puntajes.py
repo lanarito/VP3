@@ -567,6 +567,29 @@ MESAS_CONFIG = [
     {"prefijo": "cycln_",  "nombre": "Cyclone"},
 ]
 
+# ENCONTRADO 1-sep-2026 con la instrumentacion de tiempos: en Walking Dead,
+# la sincronizacion dirigida SIEMPRE encontraba "algo nuevo" -- el fix
+# anterior de "no tocar la nube si no hay nada nuevo" nunca se activaba ahi,
+# el log decia "SI hay algo nuevo" en el 100% de los ciclos, uno atras del
+# otro, cada 6-7 segundos, siempre. Eso no puede ser 100% puntajes de verdad
+# -- lo mas probable es que PINemHi este leyendo, ademas de la tabla de high
+# scores real, algun campo que refleja el puntaje EN CURSO de la partida (o
+# alguna zona de la NVRAM que en esta mesa en particular cambia todo el
+# tiempo por otro motivo) -- cambia solo, sin que nadie termine una partida
+# ni grabe iniciales.
+#
+# Fix: en vez de tratar de adivinar CUAL campo especifico es (requeriria
+# meterse en la definicion interna de PINemHi para esta rom puntual), se
+# agrega un filtro de estabilidad generico: en una sincronizacion DIRIGIDA
+# (solo_mesas), un puntaje candidato solo se sube si aparecio IGUAL dos
+# veces seguidas (este ciclo y el anterior). Un puntaje real de verdad, una
+# vez grabado, se queda quieto en la NVRAM -- va a aparecer igual la
+# proxima vez sin problema, solo se demora un enfriamiento mas (~5-7s) en
+# confirmarse. Un valor que cambia solo porque es "puntaje en curso" o
+# ruido nunca junta 2 lecturas iguales seguidas, asi que nunca se sube.
+_vivo_candidatos_previos = {}  # mesa_nombre -> set de id_unico del ciclo anterior (solo sync dirigida)
+
+
 # ============================================================
 # LOGICA DE SINCRONIZACION PRINCIPAL
 # ============================================================
@@ -730,6 +753,13 @@ def procesar_y_subir(solo_mesas=None):
                 base_records["baselined_tables"].append(mesa["nombre"])
                 modificado_base_records = True
 
+            # Filtro de estabilidad (ver comentario grande antes de la funcion):
+            # solo aplica en sync dirigida. Se junta el candidato en vez de
+            # subirlo directo, y se confirma solo si ya habia aparecido igual
+            # en el ciclo dirigido anterior de esta misma mesa.
+            candidatos_mesa = set()
+            pendientes_mesa = []
+
             for s in scores:
 
                 # FILTRO 1: Lista negra dinamica (records de fabrica ya identificados)
@@ -771,10 +801,22 @@ def procesar_y_subir(solo_mesas=None):
 
                 siglas = "".join([p[0].upper() for p in mesa["nombre"].split()][:2])
                 id_unico = f"{siglas}-{s['jugador']}-{s['puntaje']}"
-                nuevos_puntajes.append({
+                candidatos_mesa.add(id_unico)
+                dato = {
                     "ID_Record": id_unico, "Mesa": mesa["nombre"],
                     "Jugador": s["jugador"], "Puntaje": s["puntaje"], "Fecha": datetime.now().strftime("%Y-%m-%d")
-                })
+                }
+                if solo_mesas:
+                    pendientes_mesa.append((id_unico, dato))
+                else:
+                    nuevos_puntajes.append(dato)
+
+            if solo_mesas:
+                previos = _vivo_candidatos_previos.get(mesa["nombre"], set())
+                for id_unico, dato in pendientes_mesa:
+                    if id_unico in previos:
+                        nuevos_puntajes.append(dato)
+                _vivo_candidatos_previos[mesa["nombre"]] = candidatos_mesa
 
     if modificado_base_records:
         try:

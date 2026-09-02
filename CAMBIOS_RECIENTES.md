@@ -130,8 +130,30 @@ Con esto, el próximo diagnóstico va a mostrar la respuesta sin adivinar:
 ### Para los chicos: nada nuevo
 Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
 
-### Pendiente:
-Her prueba Walking Dead de nuevo y manda un `DIAGNOSTICO_VP3.bat` — con esto ya se sabe con certeza dónde mirar después.
+### Resultado — LA RESPUESTA DEFINITIVA:
+Her actualizó, probó Walking Dead, mandó el diagnóstico con los tiempos. Y ahí quedó clarísimo: **cada uno de los ciclos, uno atrás del otro sin excepción, decía "SI hay algo nuevo, sincronizando con Supabase"**. El arreglo de "no tocar la nube si no hay nada nuevo" nunca se activaba en esta mesa — porque el programa creía que SIEMPRE había un puntaje nuevo. Eso llevó al hallazgo real (ver el punto siguiente).
+
+---
+
+## 🎯 17. LA RESPUESTA: en Walking Dead, algo en la memoria "parece un puntaje nuevo" todo el tiempo sin serlo (1 septiembre 2026)
+
+### El dato que lo destapó:
+El log con tiempos mostró que en Walking Dead, CADA sincronización dirigida (una cada 6-7 segundos, sin parar) encontraba "algo nuevo" — nunca ni una sola vez decía "nada nuevo". Eso no puede ser gente terminando una partida cada 6 segundos. Tiene que haber algo en la memoria de esa mesa en particular que **parece** un puntaje distinto cada vez que se lee, sin serlo de verdad — lo más probable, algún valor "en vivo" de la partida en curso (no un record final grabado) que la herramienta que lee la memoria (PINemHi) también reporta como si fuera un puntaje de tabla.
+
+### Por qué es difícil de resolver "mirando directo" el campo:
+Meterse a averiguar EXACTAMENTE qué campo de la memoria de Walking Dead es el que hace esto requeriría estudiar la definición interna de esa mesa puntual en PINemHi — muy específico de esa ROM, frágil, y no se sabe si otras mesas grandes (X-Men, por ejemplo) tienen el mismo problema con otro campo distinto.
+
+### La solución (más robusta, sirve para cualquier mesa con este problema):
+Se agregó un filtro de estabilidad: un puntaje candidato **solo se sube si aparece igual dos veces seguidas** en la sincronización mientras se juega. Un puntaje real, una vez grabado en la memoria, se queda quieto — la segunda vez que se lee sigue siendo el mismo, así que se confirma y sube (con una demora extra de unos 5-7 segundos, nada grave). Un valor que cambia solo porque refleja la partida en curso nunca logra aparecer igual dos veces seguidas, así que nunca llega a subir ni a tocar la nube — se filtra solo, sin necesidad de saber qué campo puntual es.
+
+### Probado antes de publicar:
+Test aislado (con la nube bloqueada, para no arriesgar la real) con 4 casos: un valor nuevo no sube en su primera aparición, sube recién en la segunda aparición igual, un valor que cambia todo el tiempo nunca llega a subir (reproduce el problema real), y la sincronización completa de seguridad (arranque / cada 10 min / apagado) sigue subiendo directo sin esta demora, como siempre.
+
+### Para los chicos: nada nuevo
+Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
+
+### Pendiente de confirmar:
+Falta que Her actualice de nuevo, juegue Walking Dead, y mande un último diagnóstico — con la instrumentación de tiempos ya puesta, esta vez el log debería mostrar mayoría de "nada nuevo, no se toca la nube" en vez de sincronizar todo el tiempo.
 
 ---
 
