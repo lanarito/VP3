@@ -113,8 +113,25 @@ Test aislado que bloquea cualquier llamada de red real (para no arriesgar la Sup
 ### Para los chicos: nada nuevo
 Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
 
-### Pendiente de confirmar:
-Falta que Her actualice de nuevo y confirme si el lagazo por fin desapareció.
+### Resultado:
+Her actualizó (confirmado: `.exe` con este arreglo puesto) y probó Walking Dead de nuevo. **Seguía trabándose.** Con este segundo intento tampoco alcanzó — señal de que hay que dejar de adivinar y medir directamente qué está pasando en su máquina en concreto.
+
+---
+
+## 🔍 16. Instrumentación de tiempos reales (1 septiembre 2026) — dejar de adivinar
+
+### Lo que pasó:
+Dos arreglos seguidos del lado del `.exe` (enfriamiento de 5s, y no tocar la nube si no hay nada nuevo) y Her seguía sintiendo el lagazo en Walking Dead. En vez de seguir probando teorías a ciegas, se agregó una medición directa al programa: ahora **cada vez que se sincroniza, el log dice cuánto tardó realmente** (en segundos) y si tocó o no la nube.
+
+Con esto, el próximo diagnóstico va a mostrar la respuesta sin adivinar:
+- Si el ciclo tarda poco (medio segundo o menos) y dice "no se tocó la nube" → el problema ya NO está en `subir_puntajes.exe`, y hay que mirar del lado de `core.vbs` (posible que la máquina de Her sea más lenta que la de Luis, y el mismo costo que ahí no se nota, en la de Her sí).
+- Si el ciclo sigue tardando varios segundos → el problema sigue estando acá, y ahora se sabe si es PINemHi el que tarda o si la nube se sigue tocando de más.
+
+### Para los chicos: nada nuevo
+Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
+
+### Pendiente:
+Her prueba Walking Dead de nuevo y manda un `DIAGNOSTICO_VP3.bat` — con esto ya se sabe con certeza dónde mirar después.
 
 ---
 

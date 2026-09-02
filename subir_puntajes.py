@@ -811,7 +811,11 @@ def procesar_y_subir(solo_mesas=None):
     # mano en la web, etc.).
     if solo_mesas and not nuevos_puntajes:
         print("☁️ Nada nuevo para subir -- no hace falta tocar la nube esta vez.")
+        log_evento("  -> nada nuevo, NO se toco la nube (solo PINemHi local)")
         return
+
+    if solo_mesas:
+        log_evento("  -> SI hay algo nuevo, sincronizando con Supabase (GET + upsert)")
 
     try:
         print("\n☁️ Conectando a Supabase...")
@@ -1203,9 +1207,15 @@ if __name__ == "__main__":
 
                 if mesas_cambiadas:
                     print("Cambio detectado en NVRAM de disco. Sincronizando...")
-                    log_evento("Cambio detectado en disco: " + ", ".join(mesas_cambiadas))
                     time.sleep(1)
+                    # MEDIDO 1-sep-2026: se agrega el tiempo que tardo el ciclo
+                    # completo al log, para saber de una vez si el peso real
+                    # sigue estando aca (PINemHi + posible red) o si es otra
+                    # cosa -- en vez de seguir adivinando con cada diagnostico.
+                    t0 = time.time()
                     procesar_y_subir(solo_mesas=mesas_cambiadas)
+                    duracion = time.time() - t0
+                    log_evento(f"Cambio detectado en disco: {', '.join(mesas_cambiadas)} (tardo {duracion:.2f}s)")
                     for m_nombre in mesas_cambiadas:
                         m_cfg = next((m for m in MESAS_CONFIG if m["nombre"] == m_nombre), None)
                         if m_cfg:
