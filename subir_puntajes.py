@@ -565,6 +565,7 @@ MESAS_CONFIG = [
     {"prefijo": "xmn_",   "nombre": "X-Men"},
     {"prefijo": "gw_",    "nombre": "The Getaway: High Speed II"},
     {"prefijo": "cycln_",  "nombre": "Cyclone"},
+    {"prefijo": "acd_",   "nombre": "AC/DC"},
 ]
 
 # QUITADO 2-sep-2026: hubo un filtro de estabilidad aca (confirmar un

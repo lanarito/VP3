@@ -265,6 +265,28 @@ Her actualizó y probó a fondo. El log mostró la subida en un solo intento, si
 
 ---
 
+## 🎰 23. Funhouse afuera, AC/DC adentro — y un hallazgo grande: hay 313 mesas instaladas, solo 38 se trackean (3 septiembre 2026)
+
+### Lo que se pidió:
+Cambiar la mesa del desafío semanal de esta semana (Funhouse, semana 18) — no gustó — por una que no se haya jugado todavía. Empieza hoy, corta el miércoles como siempre.
+
+### El hallazgo:
+Al revisar qué mesas quedaban "sin usar" en el rango 90s/2000s/2010s/2020s, aparecieron **cero** — las 37 mesas que trackea el sistema ya se usaron todas en el desafío. Pero revisando la carpeta real de mesas (`Tables\`), aparecieron **313 archivos `.vpx` instalados** — casi 10 veces más de lo que el sistema conoce. Cruzando con los archivos `.nv` reales (que solo existen si esa mesa se cargó alguna vez), se confirmaron varias mesas de 2000s/2010s jugables y ya probadas que nunca se agregaron al sistema de puntajes.
+
+### La mesa elegida: AC/DC (Stern 2013)
+Reemplaza a Funhouse en la semana 18. Se agregó de punta a punta:
+- `subir_puntajes.py`: nueva entrada en `MESAS_CONFIG` (prefijo `acd_`, cubre las 4 versiones de ROM que hay instaladas).
+- `index.html`: reemplazo en `CHALLENGE_TABLES` (semana 18), agregada a `ALL_TABLES` y `TABLE_YEARS`.
+- Probado antes de publicar: se corrió `pinemhi.exe` directo contra los 4 archivos `.nv` de AC/DC — lee la memoria correctamente.
+
+### Para los chicos: nada nuevo
+Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
+
+### 💡 Oportunidad para más adelante:
+Quedan potencialmente decenas de mesas más de 2000s/2010s/2020s instaladas y nunca agregadas al sistema (Iron Man, Avengers, Metallica, Tron Legacy, Star Trek, Spider-Man, entre otras que tienen `.nv` real, o sea que ya se jugaron alguna vez). Si en algún momento se quiere ampliar el desafío semanal más allá de las 38 mesas actuales, hay mucho margen — avisar cuando se quiera encarar.
+
+---
+
 ---
 
 ## 🔴 PISTA FUERTE: EL ANTIVIRUS PUEDE ESTAR MATANDO EL PROGRAMA (sin confirmar aún)
