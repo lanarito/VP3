@@ -238,6 +238,30 @@ Se corrige con `ACTUALIZAR_VP3.bat` de siempre — esta vez, al revés de lo hab
 
 ---
 
+## 🔴 22. BUG CRÍTICO ENCONTRADO Y ARREGLADO: no subía ni al salir de la mesa (2 septiembre 2026)
+
+### Lo que pasó:
+Con el desafío semanal en Funhouse, Her jugó y el record **no subió ni al salir de la mesa** — algo que llevaba semanas funcionando bien y que además era el requisito mínimo que se había pedido explícitamente. Además la máquina seguía sin andar fluida, como si la lectura en vivo (que ya se había desactivado) siguiera corriendo.
+
+### La causa (encontrada revisando el código, sin necesitar más diagnósticos):
+El filtro que se agregó para tolerar el ruido de Walking Dead (confirmar un puntaje 2 veces seguidas + acordarse de lo ya subido, ver puntos 17 y 18 más arriba) tenía un defecto: se aplicaba a **cualquier sincronización dirigida**, sin distinguir si el disparo venía de un cierre de mesa real o del volcado en vivo. Un puntaje real, grabado una sola vez al cerrar la mesa, nunca llegaba a "confirmarse" (necesitaba aparecer igual una SEGUNDA vez, algo que nunca pasa después de cerrar una mesa) — quedaba esperando hasta la próxima sincronización completa de seguridad, que recién pasa **cada 10 minutos**. Si nadie más tocaba esa mesa en ese rato, el aviso de Telegram directamente no llegaba en un tiempo razonable.
+
+Como la lectura en vivo ya se había desactivado del todo (punto 21), ese filtro ya no protegía nada — solo quedaba el defecto, sin ningún beneficio.
+
+### El arreglo:
+Se sacó por completo el filtro de estabilidad y todo lo relacionado (el enfriamiento de 5 segundos, la memoria de "ya subido"). `subir_puntajes.py` volvió a la lógica simple y ya probada de antes de todo este trabajo: cualquier cambio real detectado en el `.nv` sube directo, sin esperar confirmaciones de ningún tipo.
+
+### Probado antes de publicar:
+Test aislado que reproduce el caso exacto que fallaba — un puntaje que aparece una sola vez, como al cerrar la mesa — confirmando que ahora sube en la primera sincronización, sin quedar esperando una segunda vuelta que nunca llega.
+
+### Sobre la falta de fluidez que reportó Luis:
+Lo más probable es que la máquina de Her todavía no haya corrido `ACTUALIZAR_VP3.bat` después de la decisión final del punto 21 — hasta que lo haga, sigue con la lectura en vivo vieja puesta y corriendo. Hace falta que actualice para que se desactive de verdad.
+
+### Para los chicos: nada nuevo
+Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
+
+---
+
 ---
 
 ## 🔴 PISTA FUERTE: EL ANTIVIRUS PUEDE ESTAR MATANDO EL PROGRAMA (sin confirmar aún)

@@ -567,47 +567,20 @@ MESAS_CONFIG = [
     {"prefijo": "cycln_",  "nombre": "Cyclone"},
 ]
 
-# ENCONTRADO 1-sep-2026 con la instrumentacion de tiempos: en Walking Dead,
-# la sincronizacion dirigida SIEMPRE encontraba "algo nuevo" -- el fix
-# anterior de "no tocar la nube si no hay nada nuevo" nunca se activaba ahi,
-# el log decia "SI hay algo nuevo" en el 100% de los ciclos, uno atras del
-# otro, cada 6-7 segundos, siempre. Eso no puede ser 100% puntajes de verdad
-# -- lo mas probable es que PINemHi este leyendo, ademas de la tabla de high
-# scores real, algun campo que refleja el puntaje EN CURSO de la partida (o
-# alguna zona de la NVRAM que en esta mesa en particular cambia todo el
-# tiempo por otro motivo) -- cambia solo, sin que nadie termine una partida
-# ni grabe iniciales.
-#
-# Fix: en vez de tratar de adivinar CUAL campo especifico es (requeriria
-# meterse en la definicion interna de PINemHi para esta rom puntual), se
-# agrega un filtro de estabilidad generico: en una sincronizacion DIRIGIDA
-# (solo_mesas), un puntaje candidato solo se sube si aparecio IGUAL dos
-# veces seguidas (este ciclo y el anterior). Un puntaje real de verdad, una
-# vez grabado, se queda quieto en la NVRAM -- va a aparecer igual la
-# proxima vez sin problema, solo se demora un enfriamiento mas (~5-7s) en
-# confirmarse. Un valor que cambia solo porque es "puntaje en curso" o
-# ruido nunca junta 2 lecturas iguales seguidas, asi que nunca se sube.
-_vivo_candidatos_previos = {}  # mesa_nombre -> set de id_unico del ciclo anterior (solo sync dirigida)
-
-# ENCONTRADO 1-sep-2026, SEGUNDA VUELTA: el filtro de estabilidad de arriba
-# no alcanzaba -- Her actualizo con ese fix puesto y el log SEGUIA diciendo
-# "SI hay algo nuevo" en el 100% de los ciclos. La razon: PINemHi relee
-# TODOS los puntajes validos de la mesa cada vez (no solo los que cambiaron
-# de verdad), asi que los puntajes REALES ya existentes en Walking Dead
-# (Top 5, Grand Champion, etc.) tambien "aparecen iguales dos veces
-# seguidas" -- siempre, para siempre, porque nunca cambian. El filtro de
-# estabilidad los confirmaba una y otra vez en cada ciclo, aunque ya
-# estuvieran subidos hace rato.
-#
-# Falta la pieza que faltaba: acordarse de LO QUE YA SE SUBIO, para no
-# volver a subirlo de nuevo solo porque PINemHi lo vuelve a leer. Ahora un
-# candidato confirmado se sube UNA sola vez por sesion del programa; una
-# vez subido queda marcado y no se vuelve a tocar la nube por el mismo
-# valor, aunque PINemHi lo siga reportando cada vez (cosa que va a seguir
-# haciendo, es como lee la memoria). Si aparece un valor GENUINAMENTE
-# distinto (record nuevo de verdad), ese si es nuevo en el set y pasa por
-# el mismo camino: confirmar 2 veces seguidas, subir, marcar.
-_vivo_ya_sincronizado = {}  # mesa_nombre -> set de id_unico ya subidos en esta sesion (solo sync dirigida)
+# QUITADO 2-sep-2026: hubo un filtro de estabilidad aca (confirmar un
+# puntaje 2 veces seguidas antes de subirlo, mas una memoria de "ya
+# subido") para tolerar el ruido de la lectura en vivo en Walking Dead
+# (ver CAMBIOS_RECIENTES.md, "el ruido en Walking Dead" y "faltaba
+# acordarse de lo que YA se habia subido"). La lectura en vivo se
+# desactivo por completo (decision final: se prioriza la fluidez de las
+# mesas), asi que ese ruido ya no existe -- y el filtro se saco porque
+# tenia un bug real: se aplicaba a CUALQUIER sync dirigida (solo_mesas),
+# incluida la del cierre normal de una mesa, retrasando records genuinos
+# hasta 10 minutos (la proxima sincronizacion periodica, que no tiene
+# este filtro) en vez de subirlos al toque como corresponde. Sin la
+# lectura en vivo generando ruido, no hace falta ningun filtro: una
+# sincronizacion dirigida vuelve a subir lo que encuentra, directo,
+# como siempre funciono antes de todo esto.
 
 
 # ============================================================
@@ -773,13 +746,6 @@ def procesar_y_subir(solo_mesas=None):
                 base_records["baselined_tables"].append(mesa["nombre"])
                 modificado_base_records = True
 
-            # Filtro de estabilidad (ver comentario grande antes de la funcion):
-            # solo aplica en sync dirigida. Se junta el candidato en vez de
-            # subirlo directo, y se confirma solo si ya habia aparecido igual
-            # en el ciclo dirigido anterior de esta misma mesa.
-            candidatos_mesa = set()
-            pendientes_mesa = []
-
             for s in scores:
 
                 # FILTRO 1: Lista negra dinamica (records de fabrica ya identificados)
@@ -821,26 +787,10 @@ def procesar_y_subir(solo_mesas=None):
 
                 siglas = "".join([p[0].upper() for p in mesa["nombre"].split()][:2])
                 id_unico = f"{siglas}-{s['jugador']}-{s['puntaje']}"
-                candidatos_mesa.add(id_unico)
-                dato = {
+                nuevos_puntajes.append({
                     "ID_Record": id_unico, "Mesa": mesa["nombre"],
                     "Jugador": s["jugador"], "Puntaje": s["puntaje"], "Fecha": datetime.now().strftime("%Y-%m-%d")
-                }
-                if solo_mesas:
-                    pendientes_mesa.append((id_unico, dato))
-                else:
-                    nuevos_puntajes.append(dato)
-
-            if solo_mesas:
-                previos = _vivo_candidatos_previos.get(mesa["nombre"], set())
-                ya_sync = _vivo_ya_sincronizado.setdefault(mesa["nombre"], set())
-                for id_unico, dato in pendientes_mesa:
-                    if id_unico in ya_sync:
-                        continue  # ya se subio este mismo valor antes en esta sesion, no hace falta de nuevo
-                    if id_unico in previos:
-                        nuevos_puntajes.append(dato)
-                        ya_sync.add(id_unico)
-                _vivo_candidatos_previos[mesa["nombre"]] = candidatos_mesa
+                })
 
     if modificado_base_records:
         try:
@@ -1184,8 +1134,6 @@ if __name__ == "__main__":
     try:
         copiar_vp_alias_automatico()
         tiempos_mod = {}
-        tiempos_reales = {}
-        vivo_ultimo_sync = {}
 
         # Sincronizacion inicial (procesar TODO al arrancar)
         log_evento("Sincronizacion inicial")
@@ -1197,11 +1145,9 @@ if __name__ == "__main__":
             archivos = archivos_de_la_mesa(m)
             if archivos:
                 # Se guarda el mtime mas reciente entre TODOS los .nv de la mesa
-                # (puede haber varias versiones de ROM instaladas, y el volcado en vivo)
-                t_real, _, t_total = tiempos_mesa(archivos)
+                # (puede haber varias versiones de ROM instaladas)
+                _, _, t_total = tiempos_mesa(archivos)
                 tiempos_mod[m["nombre"]] = t_total
-                if t_real is not None:
-                    tiempos_reales[m["nombre"]] = t_real
 
         print("👀 Monitoreando cambios en NVRAM... (Ctrl+C para salir)")
         log_evento("Entrando en modo monitoreo")
@@ -1211,84 +1157,38 @@ if __name__ == "__main__":
         # Sincronizacion forzada cada 10 minutos como red de seguridad
         contador_sync_periodico = 0
 
-        # Cada cuanto se mira la NVRAM. El enganche nativo en core.vbs ya
-        # empuja el cambio apenas se guardan las iniciales (instantaneo, sin
-        # esperar este ciclo); este intervalo es solo la red de respaldo por
-        # si la mesa no tiene el enganche activo o el jugador sale/apaga.
+        # Cada cuanto se mira la NVRAM en busca de un cierre de mesa
+        # (VPinMAME escribe el .nv real recien ahi). Con este intervalo,
+        # el record llega a la nube en 1-2 segundos desde que se cierra.
         INTERVALO = 2
         CICLOS_HEARTBEAT = 150      # 5 minutos
         CICLOS_SYNC_COMPLETO = 300  # 10 minutos
 
-        # ENCONTRADO 1-sep-2026 con un diagnostico real de Her: mientras se
-        # juega, la NVRAM de la mesa cambia todo el tiempo por cosas que NO
-        # son records (bolas jugadas, auditorias, contadores internos del
-        # ROM) -- no solo cuando alguien hace un puntaje nuevo. Como el
-        # volcado en vivo (core.vbs) escribe cada vez que cambia CUALQUIER
-        # byte, y este loop antes trataba CUALQUIER cambio del volcado en
-        # vivo como motivo para correr PINemHi + Supabase, terminaba
-        # sincronizando cada 5-6 segundos SIN PARAR mientras se jugaba
-        # (confirmado en el log real: "Cambio detectado en disco" repetido
-        # cada 5-6s durante minutos seguidos). Eso es peso real -- un
-        # proceso externo (PINemHi) mas una llamada de red (Supabase) cada
-        # pocos segundos -- y es lo mas probable detras del "lagazo"
-        # periodico que reporto Her jugando Tortugas y Walking Dead.
-        #
-        # El cambio del .nv REAL (la mesa se cierra, VPinMAME escribe a
-        # disco) sigue sincronizando SIEMPRE al toque -- es raro y es
-        # cuando mas importa no perder tiempo. Solo el volcado EN VIVO
-        # respeta un enfriamiento minimo entre sincronizaciones.
-        COOLDOWN_VIVO = 5  # segundos minimos entre 2 sincronizaciones seguidas disparadas SOLO por el volcado en vivo
-
+        # QUITADO 2-sep-2026: habia un enfriamiento (COOLDOWN_VIVO) y un
+        # seguimiento aparte de tiempos_reales/vivo_ultimo_sync para tolerar
+        # el ruido de la lectura en vivo mientras se jugaba. Con la lectura
+        # en vivo desactivada (decision final: se prioriza la fluidez), ya
+        # no hay ruido que tolerar -- cualquier cambio detectado es un
+        # cierre de mesa real, y vuelve a sincronizar al toque, como
+        # funcionaba antes de todo esto.
         while True:
             try:
-                # --- 1. LECTURA EN VIVO (enganche nativo de core.vbs) ---
+                # --- LECTURA POR ARCHIVOS EN DISCO (SALIDA DE MESA / APAGADO) ---
                 convertir_volcados_en_vivo()
-
-                # --- 2. LECTURA POR ARCHIVOS EN DISCO (SALIDA DE MESA / APAGADO) ---
                 mesas_cambiadas = []
-                ahora = time.time()
                 for m in MESAS_CONFIG:
                     archivos = archivos_de_la_mesa(m)
-                    if not archivos:
-                        continue
-                    t_real, _, t_total = tiempos_mesa(archivos)
-                    if tiempos_mod.get(m["nombre"]) == t_total:
-                        continue  # nada nuevo en esta mesa
-
-                    cambio_real = (t_real is not None) and (tiempos_reales.get(m["nombre"]) != t_real)
-                    if not cambio_real:
-                        # Solo cambio el volcado en vivo: respeta el enfriamiento.
-                        # Si todavia no paso, no se actualiza tiempos_mod a
-                        # proposito -- asi se vuelve a intentar en el proximo
-                        # ciclo (no se pierde el cambio, solo se demora un poco).
-                        ultimo = vivo_ultimo_sync.get(m["nombre"], 0)
-                        if (ahora - ultimo) < COOLDOWN_VIVO:
-                            continue
-
-                    mesas_cambiadas.append(m["nombre"])
-                    tiempos_mod[m["nombre"]] = t_total
-                    if t_real is not None:
-                        tiempos_reales[m["nombre"]] = t_real
-                    vivo_ultimo_sync[m["nombre"]] = ahora
+                    if archivos:
+                        _, _, t_total = tiempos_mesa(archivos)
+                        if tiempos_mod.get(m["nombre"]) != t_total:
+                            mesas_cambiadas.append(m["nombre"])
+                            tiempos_mod[m["nombre"]] = t_total
 
                 if mesas_cambiadas:
                     print("Cambio detectado en NVRAM de disco. Sincronizando...")
+                    log_evento("Cambio detectado en disco: " + ", ".join(mesas_cambiadas))
                     time.sleep(1)
-                    # MEDIDO 1-sep-2026: se agrega el tiempo que tardo el ciclo
-                    # completo al log, para saber de una vez si el peso real
-                    # sigue estando aca (PINemHi + posible red) o si es otra
-                    # cosa -- en vez de seguir adivinando con cada diagnostico.
-                    t0 = time.time()
                     procesar_y_subir(solo_mesas=mesas_cambiadas)
-                    duracion = time.time() - t0
-                    log_evento(f"Cambio detectado en disco: {', '.join(mesas_cambiadas)} (tardo {duracion:.2f}s)")
-                    for m_nombre in mesas_cambiadas:
-                        m_cfg = next((m for m in MESAS_CONFIG if m["nombre"] == m_nombre), None)
-                        if m_cfg:
-                            archs = archivos_de_la_mesa(m_cfg)
-                            if archs:
-                                _, _, t_total = tiempos_mesa(archs)
-                                tiempos_mod[m_nombre] = t_total
                     escribir_heartbeat("SYNCED")
 
                 contador_heartbeat += 1
