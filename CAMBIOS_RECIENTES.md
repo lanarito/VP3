@@ -260,6 +260,9 @@ Lo más probable es que la máquina de Her todavía no haya corrido `ACTUALIZAR_
 ### Para los chicos: nada nuevo
 Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
 
+### ✅ CONFIRMADO (3 septiembre 2026):
+Her actualizó y probó a fondo. El log mostró la subida en un solo intento, sin demoras — Telegram llegó "enseguida" al salir de la mesa, tanto en Tortugas Ninjas como en Walking Dead (la mesa que más se trababa antes). Fluidez y aviso inmediato, los dos objetivos, confirmados con test real. **"Quedó todo de 1000."**
+
 ---
 
 ---
