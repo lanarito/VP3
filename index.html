@@ -618,7 +618,23 @@ const ALL_TABLES = [
   "Phantom of the Opera", "Teenage Mutant Ninja Turtles", "Funhouse", "Police Force",
   "Rescue 911", "Tom & Jerry", "Mousin'",
   "Fish Tales", "Terminator 2", "The Walking Dead", "X-Men",
-  "The Getaway: High Speed II", "Cyclone", "AC/DC"
+  "The Getaway: High Speed II", "Cyclone", "AC/DC",
+  // === Agregadas 3-sep-2026 (313 .vpx instalados vs 38 trackeados, ver CAMBIOS_RECIENTES.md) ===
+  "Diner", "Radical!", "Whirlwind", "Batman (Data East)",
+  "Gilligan's Island", "Hurricane", "Surf 'N Safari", "Cue Ball Wizard",
+  "Super Mario Bros", "Gladiators", "Judge Dredd", "Street Fighter II",
+  "Star Trek: The Next Generation", "Rocky and Bullwinkle", "Corvette", "Demolition Man",
+  "Freddy: A Nightmare on Elm Street", "Maverick", "Popeye Saves the Earth", "WWF Royal Rumble",
+  "Apollo 13", "Baywatch", "Big Hurt", "No Fear",
+  "Shaq Attaq", "WaterWorld", "Barb Wire", "Big Bang Bar",
+  "Independence Day", "Tales of the Arabian Nights", "Twister", "Medieval Madness",
+  "X-Files", "Champion Pub", "Godzilla", "Lost in Space",
+  "Viper Night Drivin'", "Sharkey's Shootout", "Striker Xtreme", "Austin Powers",
+  "High Roller Casino", "Monopoly", "Rollercoaster Tycoon", "Lord of the Rings",
+  "Elvis", "Grand Prix", "NASCAR", "The Sopranos",
+  "Pirates of the Caribbean", "Spider-Man", "Wheel of Fortune", "Batman: The Dark Knight",
+  "CSI", "Shrek", "NBA", "The Rolling Stones",
+  "Tron Legacy", "Avengers", "Star Trek"
 ];
 
 // Mesas del DESAFIO SEMANAL - sin repeticiones para maximo variedad
@@ -665,6 +681,68 @@ const CHALLENGE_TABLES = [
   // Despues del ciclo completo (semana 35) vuelve a X-Men y Walking Dead
   "X-Men",                             // Semana 36 (2012)
   "The Walking Dead",                  // Semana 37 (2014)
+  // === Agregadas 3-sep-2026: 313 .vpx instalados vs 38 trackeados hasta ===
+  // === entonces, verificadas con pinemhi.exe antes de agregar. Orden ===
+  // === cronologico para que la rotacion siga variando por epoca. ===
+  "Diner",                             // Semana 38 (1990)
+  "Radical!",                          // Semana 39 (1990)
+  "Whirlwind",                         // Semana 40 (1990)
+  "Batman (Data East)",                // Semana 41 (1991)
+  "Gilligan's Island",                 // Semana 42 (1991)
+  "Hurricane",                         // Semana 43 (1991)
+  "Surf 'N Safari",                    // Semana 44 (1991)
+  "Cue Ball Wizard",                   // Semana 45 (1992)
+  "Super Mario Bros",                  // Semana 46 (1992)
+  "Gladiators",                        // Semana 47 (1993)
+  "Judge Dredd",                       // Semana 48 (1993)
+  "Street Fighter II",                 // Semana 49 (1993)
+  "Star Trek: The Next Generation",    // Semana 50 (1993)
+  "Rocky and Bullwinkle",              // Semana 51 (1993)
+  "Corvette",                          // Semana 52 (1994)
+  "Demolition Man",                    // Semana 53 (1994)
+  "Freddy: A Nightmare on Elm Street", // Semana 54 (1994)
+  "Maverick",                          // Semana 55 (1994)
+  "Popeye Saves the Earth",            // Semana 56 (1994)
+  "WWF Royal Rumble",                  // Semana 57 (1994)
+  "Apollo 13",                         // Semana 58 (1995)
+  "Baywatch",                          // Semana 59 (1995)
+  "Big Hurt",                          // Semana 60 (1995)
+  "No Fear",                           // Semana 61 (1995)
+  "Shaq Attaq",                        // Semana 62 (1995)
+  "WaterWorld",                        // Semana 63 (1995)
+  "Barb Wire",                         // Semana 64 (1996)
+  "Big Bang Bar",                      // Semana 65 (1996)
+  "Independence Day",                  // Semana 66 (1996)
+  "Tales of the Arabian Nights",       // Semana 67 (1996)
+  "Twister",                           // Semana 68 (1996)
+  "Medieval Madness",                  // Semana 69 (1997)
+  "X-Files",                           // Semana 70 (1997)
+  "Champion Pub",                      // Semana 71 (1998)
+  "Godzilla",                          // Semana 72 (1998)
+  "Lost in Space",                     // Semana 73 (1998)
+  "Viper Night Drivin'",               // Semana 74 (1998)
+  "Sharkey's Shootout",                // Semana 75 (2000)
+  "Striker Xtreme",                    // Semana 76 (2000)
+  "Austin Powers",                     // Semana 77 (2001)
+  "High Roller Casino",                // Semana 78 (2001)
+  "Monopoly",                          // Semana 79 (2001)
+  "Rollercoaster Tycoon",              // Semana 80 (2002)
+  "Lord of the Rings",                 // Semana 81 (2003)
+  "Elvis",                             // Semana 82 (2004)
+  "Grand Prix",                        // Semana 83 (2005)
+  "NASCAR",                            // Semana 84 (2005)
+  "The Sopranos",                      // Semana 85 (2005)
+  "Pirates of the Caribbean",          // Semana 86 (2006)
+  "Spider-Man",                        // Semana 87 (2007)
+  "Wheel of Fortune",                  // Semana 88 (2007)
+  "Batman: The Dark Knight",           // Semana 89 (2008)
+  "CSI",                               // Semana 90 (2008)
+  "Shrek",                             // Semana 91 (2008)
+  "NBA",                               // Semana 92 (2009)
+  "The Rolling Stones",                // Semana 93 (2011)
+  "Tron Legacy",                       // Semana 94 (2011)
+  "Avengers",                          // Semana 95 (2012)
+  "Star Trek",                         // Semana 96 (2013)
 ];
 
 const TABLE_YEARS = {
@@ -705,7 +783,66 @@ const TABLE_YEARS = {
   "The Walking Dead": "2014",
   "X-Men": "2012",
   "The Getaway: High Speed II": "1992",
-  "Cyclone": "1988"
+  "Cyclone": "1988",
+  "Diner": "1990",
+  "Radical!": "1990",
+  "Whirlwind": "1990",
+  "Batman (Data East)": "1991",
+  "Gilligan's Island": "1991",
+  "Hurricane": "1991",
+  "Surf 'N Safari": "1991",
+  "Cue Ball Wizard": "1992",
+  "Super Mario Bros": "1992",
+  "Gladiators": "1993",
+  "Judge Dredd": "1993",
+  "Street Fighter II": "1993",
+  "Star Trek: The Next Generation": "1993",
+  "Rocky and Bullwinkle": "1993",
+  "Corvette": "1994",
+  "Demolition Man": "1994",
+  "Freddy: A Nightmare on Elm Street": "1994",
+  "Maverick": "1994",
+  "Popeye Saves the Earth": "1994",
+  "WWF Royal Rumble": "1994",
+  "Apollo 13": "1995",
+  "Baywatch": "1995",
+  "Big Hurt": "1995",
+  "No Fear": "1995",
+  "Shaq Attaq": "1995",
+  "WaterWorld": "1995",
+  "Barb Wire": "1996",
+  "Big Bang Bar": "1996",
+  "Independence Day": "1996",
+  "Tales of the Arabian Nights": "1996",
+  "Twister": "1996",
+  "Medieval Madness": "1997",
+  "X-Files": "1997",
+  "Champion Pub": "1998",
+  "Godzilla": "1998",
+  "Lost in Space": "1998",
+  "Viper Night Drivin'": "1998",
+  "Sharkey's Shootout": "2000",
+  "Striker Xtreme": "2000",
+  "Austin Powers": "2001",
+  "High Roller Casino": "2001",
+  "Monopoly": "2001",
+  "Rollercoaster Tycoon": "2002",
+  "Lord of the Rings": "2003",
+  "Elvis": "2004",
+  "Grand Prix": "2005",
+  "NASCAR": "2005",
+  "The Sopranos": "2005",
+  "Pirates of the Caribbean": "2006",
+  "Spider-Man": "2007",
+  "Wheel of Fortune": "2007",
+  "Batman: The Dark Knight": "2008",
+  "CSI": "2008",
+  "Shrek": "2008",
+  "NBA": "2009",
+  "The Rolling Stones": "2011",
+  "Tron Legacy": "2011",
+  "Avengers": "2012",
+  "Star Trek": "2013"
 };
 
 function getTableDisplayName(table) {

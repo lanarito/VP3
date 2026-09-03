@@ -287,6 +287,31 @@ Quedan potencialmente decenas de mesas más de 2000s/2010s/2020s instaladas y nu
 
 ---
 
+## 🎉 24. LA GRAN AMPLIACIÓN: de 38 a 97 mesas trackeadas (3 septiembre 2026)
+
+### Lo que se pidió:
+"Sacá del menú de VPX (organizado por año: 90s, 2000s, 2010s, 2020s) las mesas que nos faltan y agregalas."
+
+### Cómo se hizo:
+1. Se filtraron las 313 mesas `.vpx` instaladas a las que son de 1990 en adelante y todavía no estaban trackeadas: **112 candidatas**.
+2. De esas, se identificaron **63 con nombre de ROM de PinMAME conocido con confianza** (comparando contra los archivos `.nv` reales que ya existían — señal de que esa mesa se cargó alguna vez).
+3. **Se corrió `pinemhi.exe` directo contra cada una de las 63**, antes de agregar nada, para confirmar que devolviera puntajes con sentido:
+   - **59 pasaron** — puntajes reales, con formato correcto.
+   - **4 se descartaron:** Tales from the Crypt, Iron Man y Metallica (PINemHi dice "rom no soportada" — no se puede leer esa versión puntual del ROM) y Avatar (el archivo devolvió datos corruptos/basura, no una tabla de puntajes real).
+4. Se agregaron las 59 mesas confirmadas a los tres lugares que hacen falta: `MESAS_CONFIG` (`subir_puntajes.py`, para que se lean y suban los puntajes), y `ALL_TABLES` + `TABLE_YEARS` + `CHALLENGE_TABLES` (`index.html`, para que aparezcan en la web y en semanas futuras del desafío).
+5. Chequeo extra antes de publicar: se verificó que ningún prefijo nuevo "pise" sin querer archivos de una mesa ya configurada — cero conflictos entre los 97 prefijos y los archivos `.nv` reales.
+
+### Resultado:
+El sistema pasó de trackear **38 mesas a 97**. El desafío semanal, que se había quedado sin mesas nuevas para usar, ahora tiene **59 semanas futuras más** cargadas (semana 38 a la 96 — más de un año de variedad), en orden cronológico para que la rotación siga variando bien por época.
+
+### Cuidado con "Batman":
+Hay dos mesas distintas con Batman en el nombre (Data East 1991 y la de Stern "Dark Knight" 2008) — se nombraron `"Batman (Data East)"` y `"Batman: The Dark Knight"` para que no se mezclen sus puntajes en la web (dos mesas con el mismo nombre exacto habrían compartido registros por error).
+
+### Para los chicos: nada nuevo
+Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
+
+---
+
 ---
 
 ## 🔴 PISTA FUERTE: EL ANTIVIRUS PUEDE ESTAR MATANDO EL PROGRAMA (sin confirmar aún)
