@@ -44,7 +44,18 @@ _cfg = configparser.ConfigParser()
 _cfg.read(os.path.join(carpeta, "config.ini"), encoding="utf-8")
 SUPABASE_URL = _cfg.get("supabase", "url", fallback="").rstrip("/")
 SUPABASE_KEY = _cfg.get("supabase", "key", fallback="")
-TABLA = SUPABASE_URL + "/rest/v1/puntajes"
+
+# OJO: en config.ini la "url" YA es la direccion completa de la tabla
+# (termina en /rest/v1/puntajes), igual que la usa subir_puntajes.py. La
+# primera version de este programa le pegaba "/rest/v1/puntajes" otra vez
+# y quedaba una direccion invalida: todas las consultas fallaban, la lista
+# de pendientes quedaba vacia y el programa avisaba "ya estaban borrados"
+# sin haber borrado nada. Por las dudas se contempla que alguna vez la url
+# venga solo con el dominio.
+if "/rest/v1/" in SUPABASE_URL:
+    TABLA = SUPABASE_URL
+else:
+    TABLA = SUPABASE_URL + "/rest/v1/puntajes"
 
 A_BORRAR = [
     {
@@ -350,8 +361,19 @@ for x in A_BORRAR:
         sin_revisar.append((x, e))
 
 if not pendientes:
+    # Distinguir "ya estaba limpio" de "no pude ni consultar". Antes las dos
+    # cosas mostraban el mismo mensaje tranquilizador, y una corrida que
+    # fallo entera parecia exitosa.
+    if sin_revisar:
+        print("ERROR: no pude consultar la nube (" + str(len(sin_revisar)) + " de " + str(len(A_BORRAR)) + " consultas fallaron).")
+        print("Motivo del primero: " + str(sin_revisar[0][1]))
+        print("No se borro nada. Se vuelve a intentar en la proxima actualizacion.")
+        cerrar(1)
     print("Los records fantasma ya estaban borrados, no hay nada que hacer.")
     cerrar(0)
+
+if sin_revisar:
+    print("Aviso: " + str(len(sin_revisar)) + " consultas fallaron, esos quedan para la proxima.")
 
 if not AUTO:
     print("Se van a borrar " + str(len(pendientes)) + " records que no son de nadie:")

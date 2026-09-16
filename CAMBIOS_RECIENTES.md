@@ -399,7 +399,14 @@ Ahora `LIMPIAR_FANTASMAS.exe --auto` es el **paso 11 de 12** de `ACTUALIZAR_VP3.
 
 Es idempotente: primero se fija cuáles siguen estando en la nube, y si ya no hay ninguno (porque otra máquina actualizó antes) no hace nada. Guarda un respaldo con fecha de todo lo que saca. La lista de los 43 está escrita adentro, revisada uno por uno — no decide nada por su cuenta y no toca ningún récord de HER/ARI/LAL/AGU/MIK.
 
-### Bug encontrado al probarlo (gracias a la captura de Luis):
+### Segundo bug, encontrado al verificar que hubiera quedado todo bien:
+El actualizador corrió completo (llegó a 12/12 LISTO en el log), el paso de limpieza se ejecutó… y no borró nada, sin dar error. Causa: en `config.ini`, la `url` de Supabase **ya es la dirección completa de la tabla** (termina en `/rest/v1/puntajes`), como la usa `subir_puntajes.py`. Esta herramienta le pegaba `/rest/v1/puntajes` otra vez, y quedaba una dirección inválida. Todas las consultas fallaban, la lista de pendientes quedaba vacía y el programa avisaba *"los records fantasma ya estaban borrados"* — **un mensaje tranquilizador para una corrida que había fallado entera**.
+
+Se arregló lo uno y lo otro: la dirección, y el mensaje (ahora distingue "ya estaba limpio" de "no pude ni consultar", y en ese caso avisa el motivo y devuelve error). Verificado contra la nube real: **encuentra los 43** (antes encontraba 0).
+
+**Lección:** un camino de error que termina en un mensaje de éxito es peor que un error ruidoso. Si el resultado "no había nada que hacer" y el resultado "no pude hacer nada" se ven iguales, la falla queda invisible.
+
+### Primer bug, encontrado al probarlo (gracias a la captura de Luis):
 La primera versión tiraba *"ERROR: no pude leer config.ini"*. Causa: usaba `os.path.dirname(__file__)` para saber dónde estaba parada, pero en un `.exe` compilado con PyInstaller `__file__` apunta a una carpeta temporal (`_MEI...`), **no** a donde está el `.exe`. Hay que usar `sys.executable` cuando corre congelado — el mismo criterio que ya usaba `subir_puntajes.py` para su `application_path`. Verificado compilando una prueba y corriéndola desde `C:\MAQUINAS_VP3`: ahora detecta bien la carpeta y lee el `config.ini`.
 
 ---
