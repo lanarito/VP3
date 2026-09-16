@@ -171,7 +171,31 @@ SIEMPRE_FABRICA = {
     "ABC", "CGB", "DGH", "KEF", "ION", "TO", "J K",            # varias
     "JCD", "JCD -", "CIN", "CIN -", "LFS -",                   # con guion de relleno
     "0:", "22,", "=",                                          # basura de lectura
+    # Confirmadas por Luis el 16-sep-2026: partidas que existieron de
+    # verdad, pero con las iniciales mal grabadas (nadie sabe de quien
+    # eran). Se bloquean para que no vuelvan a subir despues de borrarlas.
+    "ASI", "AC",
 }
+
+
+def iniciales_ilegibles(jugador):
+    """True si las iniciales tienen caracteres que ninguna mesa deja
+    escribir de verdad (#, /, ;, _, :, coma, igual...). Aparecen cuando se
+    graban mal con los botones o cuando se lee basura de la memoria.
+
+    ENCONTRADO 16-sep-2026: la pagina tenia 45 jugadores, y entre los
+    colados habia cosas como "E//", "K;;", "#4", "A__", "0:", "22,", "=".
+    Algunos eran partidas reales con las iniciales arruinadas -- Luis
+    decidio que no aparezcan igual, porque ensucian la lista de jugadores
+    y no se puede saber de quien eran.
+
+    Se permiten letras, numeros, espacio, punto y apostrofe: con eso
+    alcanza para cualquier inicial de verdad, incluidas las de dos letras
+    separadas tipo "G S"."""
+    if not jugador:
+        return True
+    permitidos = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .'")
+    return any(c not in permitidos for c in jugador)
 
 # Valores que NO son puntajes sino basura de memoria (centinelas). El caso
 # real: AC/DC subio un "record" de 4.294.967.295 el 4-sep-2026, que es
@@ -916,6 +940,12 @@ def procesar_y_subir(solo_mesas=None):
                 # (ver PUNTAJES_BASURA). Va primero porque no depende de las
                 # iniciales: sea quien sea, 0xFFFFFFFF no es una partida.
                 if s['puntaje'] in PUNTAJES_BASURA:
+                    continue
+
+                # FILTRO 0.5: iniciales que ninguna mesa deja escribir de
+                # verdad (ver iniciales_ilegibles). Los jugadores de siempre
+                # quedan exentos por las dudas, aunque no deberian caer aca.
+                if s['jugador'] not in JUGADORES_AUTORIZADOS and iniciales_ilegibles(s['jugador']):
                     continue
 
                 # FILTRO 1: Lista negra dinamica (records de fabrica ya identificados)

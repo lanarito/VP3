@@ -387,7 +387,13 @@ Todo esto corre **solo la primera vez que se lee una mesa**, y nunca para HER/AR
 25 chequeos con los datos reales de los colados: los 15 casos que se habían escapado ahora quedan filtrados, los récords de los 4 jugadores reales siguen pasando (incluso uno redondo de 100.000.000), y un invitado real con puntaje específico sigue entrando sin problema.
 
 ### Ojo — no todos eran de fábrica:
-De los 43 registros sospechosos, **7 son partidas REALES con las iniciales mal grabadas**. Se confirmó leyendo la memoria de la mesa: en Guns N' Roses, `K;;` con 636.229.200 está en el puesto #6 de la tabla real, abajo de cinco de LAL. Esos quedaron pendientes de decisión de Luis, no se tocaron.
+De los 43 registros sospechosos, **7 eran partidas REALES con las iniciales mal grabadas**. Se confirmó leyendo la memoria de la mesa: en Guns N' Roses, `K;;` con 636.229.200 está en el puesto #6 de la tabla real, abajo de cinco de LAL. **Luis decidió borrarlas igual**, porque no se puede saber de quién eran y ensucian la lista de jugadores.
+
+### Filtro extra por iniciales ilegibles:
+Como esas iniciales (`E//`, `K;;`, `#4`, `A__`, `0:`, `22,`, `=`) siguen estando en la memoria de las mesas, borrarlas de la nube no alcanzaba: la próxima sincronización las volvía a subir. Se agregó un filtro que descarta iniciales con caracteres que ninguna mesa deja escribir de verdad (se permiten letras, números, espacio, punto y apóstrofe — alcanza para cualquier inicial real, incluidas las de dos letras separadas tipo "G S").
+
+### Herramienta de limpieza (`LIMPIAR_FANTASMAS.exe`):
+El borrado en sí no lo pude hacer yo (el sistema de permisos no me deja borrar de la base compartida), así que quedó como una herramienta de **un solo uso** que corre Luis con doble click. Tiene la lista de los 43 escrita adentro, revisada uno por uno: no decide nada por su cuenta. Antes de borrar muestra todo, pide escribir "SI", y guarda una copia de respaldo con fecha de todo lo que saca.
 
 ---
 
