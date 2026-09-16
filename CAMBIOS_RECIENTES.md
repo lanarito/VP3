@@ -265,6 +265,31 @@ Her actualizó y probó a fondo. El log mostró la subida en un solo intento, si
 
 ---
 
+## 📵 25. El Telegram se perdía para siempre si fallaba una sola vez (16 septiembre 2026)
+
+### Lo que pasó:
+Luis reportó que varios récords suyos de Guns N' Roses (el desafío de la semana anterior) subieron bien — se veían en la nube — pero el Telegram nunca llegó. Confirmado con datos reales: en la nube estaban sus puntajes de 4to, 8vo y 9no puesto, pero en el registro local de avisos enviados de su máquina, solo el de 4to puesto figuraba como avisado.
+
+### La causa:
+`mandar_whatsapp()` (la función que manda el Telegram) no tenía reintento — si fallaba UNA sola vez (corte de wifi, Telegram caído un instante, límite de mensajes por minuto), se perdía. Y no era un problema menor: como el puntaje YA había quedado guardado en Supabase antes de este paso (son dos pasos separados), en la próxima sincronización ese mismo puntaje ya no era "nuevo en la nube" — así que el sistema nunca lo volvía a intentar avisar. El aviso se perdía **para siempre**, aunque el puntaje estuviera perfecto en la web.
+
+### Una solución que se evaluó y se descartó por peligrosa:
+La primera idea fue cambiar la condición de "avisar" para que se base en si YA se avisó de verdad (en vez de si es nuevo en la nube) — así, un fallo se reintentaría solo en la próxima sincronización. Pero **hay varias máquinas** (la de Luis, la de Her, la de Ariel) corriendo este mismo programa a la vez contra la misma nube compartida, cada una con su propio registro local de avisos. Con ese cambio, la máquina de una persona podría no saber que OTRA máquina ya avisó un récord — y reenviarlo duplicado. Peor: la primera vez que se activara este cambio en cada máquina, se reavisaría TODO el historial de records del top 10 de las 97 mesas que esa máquina en particular nunca había avisado ella misma — una inundación de mensajes viejos en el grupo. Se descartó.
+
+### El arreglo real:
+Se deja intacta la lógica que evita duplicados entre máquinas, y se ataca el problema en el lugar correcto: **`mandar_whatsapp()` ahora reintenta sola, hasta 3 veces, ante fallas que son pasajeras** (corte de red, Telegram con error temporal, límite de mensajes esperando lo que corresponda) — así la mayoría de los cortes cortos se resuelven solos, en el momento, sin necesitar ningún cambio de lógica más arriba. Ante errores permanentes (token mal puesto, mensaje mal armado) no insiste — ahí reintentar no soluciona nada. También se agregó un registro de la causa real de cada fallo (antes no quedaba rastro de por qué fallaba un envío) y una pequeña pausa entre avisos distintos cuando llegan varios juntos, para no pegarle al límite de mensajes por minuto del grupo.
+
+### Probado antes de publicar:
+Test aislado con 4 escenarios simulados (sin tocar Telegram real): corte de red que se resuelve al 3er intento, error del lado de Telegram que agota los 3 intentos, error permanente que NO reintenta, y límite de mensajes que espera y reintenta bien. Todos dieron el resultado esperado.
+
+### Para los chicos: nada nuevo
+Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
+
+### Pendiente:
+Como esto es sobre un fallo pasajero, no hay forma de "probarlo" a propósito sin simularlo — queda funcionando de fondo. Si en el futuro vuelve a pasar que un puntaje sube pero el Telegram no llega, ahora el log va a decir la causa real del fallo.
+
+---
+
 ## 🎰 23. Funhouse afuera, AC/DC adentro — y un hallazgo grande: hay 313 mesas instaladas, solo 38 se trackean (3 septiembre 2026)
 
 ### Lo que se pidió:

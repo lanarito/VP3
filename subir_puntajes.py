@@ -1,6 +1,7 @@
 import os, sys, subprocess, time, re
 import urllib.request
 import urllib.parse
+import urllib.error
 import json
 import glob
 import configparser
@@ -171,10 +172,24 @@ TOPE_AVISO = 10
 TELEGRAM_TOKEN   = _cfg.get("telegram", "token",   fallback="")
 TELEGRAM_CHAT_ID = _cfg.get("telegram", "chat_id", fallback="")
 
-def mandar_whatsapp(mensaje):
+def mandar_whatsapp(mensaje, intentos=3):
     """
     Envia alertas de records a Telegram por HTTP POST con JSON (UTF-8).
     Devuelve True si el mensaje se envio correctamente, False si hubo error.
+
+    ENCONTRADO 16-sep-2026 (records de Guns N' Roses de Luis: subieron bien
+    a Supabase, el Telegram nunca llego): un solo fallo transitorio (wifi,
+    Telegram caido un instante) perdia el aviso PARA SIEMPRE, porque quien
+    decide si avisar es "es nuevo en la nube" -- y el puntaje ya habia
+    quedado guardado antes de este paso. Se evaluo reintentar en otro lado
+    (marcar "ya avisado" solo cuando de verdad se avisa) pero es peligroso
+    con varias maquinas compartiendo la misma nube -- ver el comentario
+    grande en procesar_y_subir(). El arreglo real va ACA: reintentar unas
+    pocas veces ANTE FALLAS TRANSITORIAS, dentro de la misma llamada, para
+    que la mayoria de los cortes cortos se resuelvan solos sin tocar nada
+    mas. NO reintenta errores permanentes (400/401/403, mensaje mal
+    formado) -- ahi insistir no arregla nada, solo demora el resto de los
+    avisos pendientes en la misma corrida.
     """
     if not TELEGRAM_TOKEN or TELEGRAM_TOKEN == "PONDRE_EL_TOKEN_AQUI" or not TELEGRAM_CHAT_ID or TELEGRAM_CHAT_ID == "PONDRE_EL_CHAT_ID_AQUI":
         try:
@@ -182,41 +197,79 @@ def mandar_whatsapp(mensaje):
         except Exception:
             pass
         return False
-        
-    try:
-        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-        payload = json.dumps({
-            "chat_id": TELEGRAM_CHAT_ID,
-            "text": mensaje,
-            "parse_mode": "Markdown"
-        }).encode("utf-8")
-        
-        req = urllib.request.Request(
-            url,
-            data=payload,
-            headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}
-        )
-        with urllib.request.urlopen(req, timeout=15) as response:
-            res_body = response.read().decode("utf-8", errors="replace")
-            res_json = json.loads(res_body)
-            if res_json.get("ok"):
+
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = json.dumps({
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": mensaje,
+        "parse_mode": "Markdown"
+    }).encode("utf-8")
+
+    for intento in range(1, intentos + 1):
+        try:
+            req = urllib.request.Request(
+                url,
+                data=payload,
+                headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}
+            )
+            with urllib.request.urlopen(req, timeout=10) as response:
+                res_body = response.read().decode("utf-8", errors="replace")
+                res_json = json.loads(res_body)
+                if res_json.get("ok"):
+                    try:
+                        print("💬 Alerta enviada correctamente a Telegram.")
+                    except Exception:
+                        pass
+                    return True
+                else:
+                    # Respuesta valida pero "ok": false -- no es una falla
+                    # transitoria de red, es un rechazo real. No reintentar.
+                    print(f"⚠️ Telegram devolvio error: {res_body}")
+                    log_evento(f"Telegram devolvio error (sin excepcion): {res_body}")
+                    return False
+        except urllib.error.HTTPError as e:
+            cuerpo = ""
+            try:
+                cuerpo = e.read().decode("utf-8", errors="replace")
+            except Exception:
+                pass
+            log_evento(f"Telegram HTTP {e.code} (intento {intento}/{intentos}): {cuerpo}")
+            if e.code == 429:
+                # Rate limit del grupo: respeta Retry-After si es corto.
+                espera = 3
                 try:
-                    print("💬 Alerta enviada correctamente a Telegram.")
+                    espera = int(e.headers.get("Retry-After", "3"))
                 except Exception:
                     pass
-                return True
-            else:
+                if espera > 10 or intento == intentos:
+                    print(f"⚠️ Telegram rate limit (429), no se reintenta mas")
+                    return False
+                time.sleep(espera)
+                continue
+            if 500 <= e.code < 600:
+                # Error del lado de Telegram: transitorio, vale reintentar.
+                if intento == intentos:
+                    print(f"⚠️ Telegram error {e.code} tras {intentos} intentos")
+                    return False
+                time.sleep(2 * intento)
+                continue
+            # 400/401/403/etc: error permanente (token malo, mensaje mal
+            # formado para Markdown, chat_id invalido). Reintentar no arregla nada.
+            print(f"⚠️ Telegram devolvio error {e.code} (no se reintenta): {cuerpo}")
+            return False
+        except Exception as e:
+            # Error de red (timeout, DNS, conexion caida): transitorio.
+            log_evento(f"Error de red enviando a Telegram (intento {intento}/{intentos}): {e}")
+            if intento == intentos:
                 try:
-                    print(f"⚠️ Telegram devolvio error: {res_body}")
+                    print(f"⚠️ Error enviando alerta a Telegram tras {intentos} intentos: {e}")
                 except Exception:
                     pass
                 return False
-    except Exception as e:
-        try:
-            print(f"⚠️ Error enviando alerta a Telegram: {e}")
-        except Exception:
-            pass
-        return False
+            time.sleep(2 * intento)
+            continue
+
+    return False
 
 # ============================================================
 # ALIAS DE ROMS (VPMAlias.txt) - "origen,destino" por linea.
@@ -1022,6 +1075,35 @@ def procesar_y_subir(solo_mesas=None):
                 # Mas abajo igual se sube y se ve en la pagina, pero no se
                 # anuncia: si no, cualquier partida floja llena el grupo.
                 # No importa quien sea el jugador (autorizados e invitados).
+                #
+                # ENCONTRADO 16-sep-2026: si mandar_whatsapp() falla (wifi,
+                # Telegram caido, rate limit), el puntaje YA quedo guardado
+                # en Supabase (paso separado y anterior) pero el aviso se
+                # perdia para siempre -- en la proxima sincronizacion el
+                # mismo record ya no es "nuevo en la nube", asi que nunca se
+                # volvia a intentar avisar. Le paso a Luis con Guns N' Roses.
+                #
+                # Se probo agregar una mesa "cola de reintento" separada
+                # basada en si YA SE AVISO de verdad (en vez de si es nuevo
+                # en la nube) -- pero eso es PELIGROSO: hay varias maquinas
+                # (Luis, Her, Ariel) corriendo esta misma sincronizacion en
+                # paralelo contra la MISMA nube compartida, cada una con su
+                # propio avisos_enviados.json LOCAL. Si la maquina A avisa un
+                # record de la maquina B, el archivo local de A nunca se
+                # entera -- la proxima vez que A revise esa mesa (sync
+                # periodica cada 10 min, TODAS las mesas) reenviaria el
+                # mismo aviso de nuevo, duplicado. Y peor: la primera vez que
+                # se activara este cambio en cada maquina, se re-avisaria TODO
+                # el historial de top-10 de las 97 mesas que esa maquina en
+                # particular nunca habia avisado ella misma -- inundacion.
+                #
+                # Se mantiene el gatillo original (nuevo en la nube = unico
+                # que no depende de que maquina lo procese, evita duplicados
+                # entre maquinas). El arreglo real va del lado de
+                # mandar_whatsapp(): reintento acotado ante fallas
+                # transitorias (ver esa funcion), asi la mayoria de los
+                # casos como el de Luis se resuelven solos, sin tocar este
+                # gatillo ni arriesgar duplicados cruzados entre maquinas.
                 if i < TOPE_AVISO and r["ID_Record"] not in ids_nube:
                     nuevos_top5.append((r, pos))
         
@@ -1106,7 +1188,7 @@ def avisar_records_nuevos(nuevos, es_primera_carga, total_filas):
         return
 
     enviados_ahora = []
-    for r, pos in nuevos:
+    for idx, (r, pos) in enumerate(nuevos):
         id_rec = r["ID_Record"]
         if id_rec in AVISOS_ENVIADOS_MEMORIA:
             print("Ya se habia avisado " + id_rec + ", no lo repito.")
@@ -1126,6 +1208,13 @@ def avisar_records_nuevos(nuevos, es_primera_carga, total_filas):
         else:
             # Si fallo el envio, permitir reintento
             AVISOS_ENVIADOS_MEMORIA.discard(id_rec)
+
+        # Pequeña pausa entre avisos DISTINTOS (no entre reintentos, eso ya
+        # lo maneja mandar_whatsapp solo) -- si una racha de sincronizacion
+        # junta varios records nuevos de golpe, evita pegarle al limite de
+        # mensajes por minuto que tiene un grupo de Telegram.
+        if idx < len(nuevos) - 1:
+            time.sleep(1.5)
 
     if enviados_ahora:
         try:
