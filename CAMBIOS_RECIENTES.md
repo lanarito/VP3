@@ -337,6 +337,33 @@ Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
 
 ---
 
+## 🦖 26. Cartel de error en The Flintstones + arreglador automático de mesas (16 septiembre 2026)
+
+### Lo que pasó:
+Luis mandó una foto de un cartel de error de VBScript en "The Flintstones" (mencionaba `PinCab_Blades`, línea 536) y preguntó si era de la mesa.
+
+### Causa:
+Es un bug de la mesa, no del sistema VP3. Su script interno prende y apaga unas "luces de cabinet" (`PinCab_Blades`) sin fijarse antes si ese objeto existe — la mayoría de los gabinetes (incluidos los nuestros) no tienen ese hardware extra, así que explota apenas se activa esa función.
+
+### Arreglo:
+En vez de reemplazar el archivo `.vpx` entero (pesa cientos de MB, no tiene sentido bajarlo por el actualizador), se creó una herramienta nueva — `arreglar_mesas.exe` — que abre el archivo de la mesa con las mismas APIs de Windows que usa Visual Pinball, busca el pedacito exacto de código que falla y le agrega un manejo de error alrededor (así, si el objeto no existe, lo ignora en vez de tirar el cartel). No toca nada del juego en sí.
+
+Es **segura por diseño**:
+- Si la mesa no está instalada en una máquina, no hace nada.
+- Si el arreglo ya está aplicado, no lo repite.
+- Si el código de la mesa no es exactamente el que se esperaba (otra versión), no toca nada — nunca fuerza un cambio a ciegas.
+- Antes de tocar el archivo real, guarda una copia de respaldo con fecha.
+
+Probado primero en una copia, y confirmado en el archivo real de la máquina de Luis (el script pasó de 101874 a 101964 bytes, el resto del archivo quedó intacto).
+
+### Se integró al actualizador:
+`ACTUALIZAR_VP3.bat` ahora tiene un paso nuevo (9 de 11) que corre `arreglar_mesas.exe` automáticamente. Está pensado para ir sumando más arreglos de este tipo a futuro sin tener que redistribuir mesas enteras — cada vez que aparezca un cartel de error de una mesa puntual, se agrega un parche más a la lista.
+
+### Para los chicos:
+Nada nuevo — la próxima vez que Her y Ariel corran `ACTUALIZAR_VP3.bat`, si tienen "The Flintstones" instalada, se les arregla sola.
+
+---
+
 ---
 
 ## 🔴 PISTA FUERTE: EL ANTIVIRUS PUEDE ESTAR MATANDO EL PROGRAMA (sin confirmar aún)
