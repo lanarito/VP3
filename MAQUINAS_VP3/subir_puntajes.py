@@ -1,6 +1,7 @@
 import os, sys, subprocess, time, re
 import urllib.request
 import urllib.parse
+import urllib.error
 import json
 import glob
 import configparser
@@ -171,10 +172,24 @@ TOPE_AVISO = 10
 TELEGRAM_TOKEN   = _cfg.get("telegram", "token",   fallback="")
 TELEGRAM_CHAT_ID = _cfg.get("telegram", "chat_id", fallback="")
 
-def mandar_whatsapp(mensaje):
+def mandar_whatsapp(mensaje, intentos=3):
     """
     Envia alertas de records a Telegram por HTTP POST con JSON (UTF-8).
     Devuelve True si el mensaje se envio correctamente, False si hubo error.
+
+    ENCONTRADO 16-sep-2026 (records de Guns N' Roses de Luis: subieron bien
+    a Supabase, el Telegram nunca llego): un solo fallo transitorio (wifi,
+    Telegram caido un instante) perdia el aviso PARA SIEMPRE, porque quien
+    decide si avisar es "es nuevo en la nube" -- y el puntaje ya habia
+    quedado guardado antes de este paso. Se evaluo reintentar en otro lado
+    (marcar "ya avisado" solo cuando de verdad se avisa) pero es peligroso
+    con varias maquinas compartiendo la misma nube -- ver el comentario
+    grande en procesar_y_subir(). El arreglo real va ACA: reintentar unas
+    pocas veces ANTE FALLAS TRANSITORIAS, dentro de la misma llamada, para
+    que la mayoria de los cortes cortos se resuelvan solos sin tocar nada
+    mas. NO reintenta errores permanentes (400/401/403, mensaje mal
+    formado) -- ahi insistir no arregla nada, solo demora el resto de los
+    avisos pendientes en la misma corrida.
     """
     if not TELEGRAM_TOKEN or TELEGRAM_TOKEN == "PONDRE_EL_TOKEN_AQUI" or not TELEGRAM_CHAT_ID or TELEGRAM_CHAT_ID == "PONDRE_EL_CHAT_ID_AQUI":
         try:
@@ -182,41 +197,79 @@ def mandar_whatsapp(mensaje):
         except Exception:
             pass
         return False
-        
-    try:
-        url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-        payload = json.dumps({
-            "chat_id": TELEGRAM_CHAT_ID,
-            "text": mensaje,
-            "parse_mode": "Markdown"
-        }).encode("utf-8")
-        
-        req = urllib.request.Request(
-            url,
-            data=payload,
-            headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}
-        )
-        with urllib.request.urlopen(req, timeout=15) as response:
-            res_body = response.read().decode("utf-8", errors="replace")
-            res_json = json.loads(res_body)
-            if res_json.get("ok"):
+
+    url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+    payload = json.dumps({
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": mensaje,
+        "parse_mode": "Markdown"
+    }).encode("utf-8")
+
+    for intento in range(1, intentos + 1):
+        try:
+            req = urllib.request.Request(
+                url,
+                data=payload,
+                headers={"Content-Type": "application/json", "User-Agent": "Mozilla/5.0"}
+            )
+            with urllib.request.urlopen(req, timeout=10) as response:
+                res_body = response.read().decode("utf-8", errors="replace")
+                res_json = json.loads(res_body)
+                if res_json.get("ok"):
+                    try:
+                        print("💬 Alerta enviada correctamente a Telegram.")
+                    except Exception:
+                        pass
+                    return True
+                else:
+                    # Respuesta valida pero "ok": false -- no es una falla
+                    # transitoria de red, es un rechazo real. No reintentar.
+                    print(f"⚠️ Telegram devolvio error: {res_body}")
+                    log_evento(f"Telegram devolvio error (sin excepcion): {res_body}")
+                    return False
+        except urllib.error.HTTPError as e:
+            cuerpo = ""
+            try:
+                cuerpo = e.read().decode("utf-8", errors="replace")
+            except Exception:
+                pass
+            log_evento(f"Telegram HTTP {e.code} (intento {intento}/{intentos}): {cuerpo}")
+            if e.code == 429:
+                # Rate limit del grupo: respeta Retry-After si es corto.
+                espera = 3
                 try:
-                    print("💬 Alerta enviada correctamente a Telegram.")
+                    espera = int(e.headers.get("Retry-After", "3"))
                 except Exception:
                     pass
-                return True
-            else:
+                if espera > 10 or intento == intentos:
+                    print(f"⚠️ Telegram rate limit (429), no se reintenta mas")
+                    return False
+                time.sleep(espera)
+                continue
+            if 500 <= e.code < 600:
+                # Error del lado de Telegram: transitorio, vale reintentar.
+                if intento == intentos:
+                    print(f"⚠️ Telegram error {e.code} tras {intentos} intentos")
+                    return False
+                time.sleep(2 * intento)
+                continue
+            # 400/401/403/etc: error permanente (token malo, mensaje mal
+            # formado para Markdown, chat_id invalido). Reintentar no arregla nada.
+            print(f"⚠️ Telegram devolvio error {e.code} (no se reintenta): {cuerpo}")
+            return False
+        except Exception as e:
+            # Error de red (timeout, DNS, conexion caida): transitorio.
+            log_evento(f"Error de red enviando a Telegram (intento {intento}/{intentos}): {e}")
+            if intento == intentos:
                 try:
-                    print(f"⚠️ Telegram devolvio error: {res_body}")
+                    print(f"⚠️ Error enviando alerta a Telegram tras {intentos} intentos: {e}")
                 except Exception:
                     pass
                 return False
-    except Exception as e:
-        try:
-            print(f"⚠️ Error enviando alerta a Telegram: {e}")
-        except Exception:
-            pass
-        return False
+            time.sleep(2 * intento)
+            continue
+
+    return False
 
 # ============================================================
 # ALIAS DE ROMS (VPMAlias.txt) - "origen,destino" por linea.
@@ -395,6 +448,20 @@ def archivos_de_la_mesa(mesa):
     return pares
 
 
+def tiempos_mesa(archivos):
+    """Separa el mtime mas reciente de una mesa en real / en vivo / total.
+    Se usa para poder tratar distinto un cambio del .nv REAL (la mesa se
+    cerro, evento raro, sincronizar siempre al toque) de un cambio que
+    viene SOLO del volcado en vivo (ver COOLDOWN_VIVO en el loop principal)."""
+    reales = [fp for fp, origen in archivos if origen is None]
+    vivos = [fp for fp, origen in archivos if origen is not None]
+    t_real = max((os.path.getmtime(fp) for fp in reales), default=None)
+    t_vivo = max((os.path.getmtime(fp) for fp in vivos), default=None)
+    candidatos = [t for t in (t_real, t_vivo) if t is not None]
+    t_total = max(candidatos) if candidatos else None
+    return t_real, t_vivo, t_total
+
+
 # ============================================================
 # MOTOR UNICO: PINemHi (El Salvador)
 # ============================================================
@@ -551,7 +618,86 @@ MESAS_CONFIG = [
     {"prefijo": "xmn_",   "nombre": "X-Men"},
     {"prefijo": "gw_",    "nombre": "The Getaway: High Speed II"},
     {"prefijo": "cycln_",  "nombre": "Cyclone"},
+    {"prefijo": "acd_",   "nombre": "AC/DC"},
+    # === Agregadas 3-sep-2026: encontradas revisando Tables\ (313 .vpx
+    # instalados vs 38 trackeados) y verificadas una por una con pinemhi.exe
+    # directo contra el .nv real antes de agregarlas (ver CAMBIOS_RECIENTES.md) ===
+    {"prefijo": "diner_l4", "nombre": "Diner"},
+    {"prefijo": "radcl_l1", "nombre": "Radical!"},
+    {"prefijo": "whirl_l3", "nombre": "Whirlwind"},
+    {"prefijo": "btmn_106", "nombre": "Batman (Data East)"},
+    {"prefijo": "gi_l9", "nombre": "Gilligan's Island"},
+    {"prefijo": "hurr_l2", "nombre": "Hurricane"},
+    {"prefijo": "surfnsaf", "nombre": "Surf 'N Safari"},
+    {"prefijo": "cueball", "nombre": "Cue Ball Wizard"},
+    {"prefijo": "smb", "nombre": "Super Mario Bros"},
+    {"prefijo": "gladiatr", "nombre": "Gladiators"},
+    {"prefijo": "jd_l1", "nombre": "Judge Dredd"},
+    {"prefijo": "sfight2", "nombre": "Street Fighter II"},
+    {"prefijo": "sttng_l7", "nombre": "Star Trek: The Next Generation"},
+    {"prefijo": "rab_320", "nombre": "Rocky and Bullwinkle"},
+    {"prefijo": "corv_21", "nombre": "Corvette"},
+    {"prefijo": "dm_lx4", "nombre": "Demolition Man"},
+    {"prefijo": "freddy", "nombre": "Freddy: A Nightmare on Elm Street"},
+    {"prefijo": "mav_402", "nombre": "Maverick"},
+    {"prefijo": "pop_lx5", "nombre": "Popeye Saves the Earth"},
+    {"prefijo": "wwfr_106", "nombre": "WWF Royal Rumble"},
+    {"prefijo": "apollo13", "nombre": "Apollo 13"},
+    {"prefijo": "baywatch", "nombre": "Baywatch"},
+    {"prefijo": "bighurt", "nombre": "Big Hurt"},
+    {"prefijo": "nf_23x", "nombre": "No Fear"},
+    {"prefijo": "shaqattq", "nombre": "Shaq Attaq"},
+    {"prefijo": "waterwld", "nombre": "WaterWorld"},
+    {"prefijo": "barbwire", "nombre": "Barb Wire"},
+    {"prefijo": "bbb109", "nombre": "Big Bang Bar"},
+    {"prefijo": "id4", "nombre": "Independence Day"},
+    {"prefijo": "totan_14", "nombre": "Tales of the Arabian Nights"},
+    {"prefijo": "twst_405", "nombre": "Twister"},
+    {"prefijo": "mm_109b", "nombre": "Medieval Madness"},
+    {"prefijo": "xfiles", "nombre": "X-Files"},
+    {"prefijo": "cp_16", "nombre": "Champion Pub"},
+    {"prefijo": "godzilla", "nombre": "Godzilla"},
+    {"prefijo": "lostspc", "nombre": "Lost in Space"},
+    {"prefijo": "viprsega", "nombre": "Viper Night Drivin'"},
+    {"prefijo": "shrkysht", "nombre": "Sharkey's Shootout"},
+    {"prefijo": "strikext", "nombre": "Striker Xtreme"},
+    {"prefijo": "austin", "nombre": "Austin Powers"},
+    {"prefijo": "hirolcas", "nombre": "High Roller Casino"},
+    {"prefijo": "monopoly", "nombre": "Monopoly"},
+    {"prefijo": "rctycn", "nombre": "Rollercoaster Tycoon"},
+    {"prefijo": "lotr", "nombre": "Lord of the Rings"},
+    {"prefijo": "elvis", "nombre": "Elvis"},
+    {"prefijo": "gprix", "nombre": "Grand Prix"},
+    {"prefijo": "nascar", "nombre": "NASCAR"},
+    {"prefijo": "sopranos", "nombre": "The Sopranos"},
+    {"prefijo": "potc_600as", "nombre": "Pirates of the Caribbean"},
+    {"prefijo": "sman_261", "nombre": "Spider-Man"},
+    {"prefijo": "wof_500", "nombre": "Wheel of Fortune"},
+    {"prefijo": "bdk_294", "nombre": "Batman: The Dark Knight"},
+    {"prefijo": "csi_240", "nombre": "CSI"},
+    {"prefijo": "shr_141", "nombre": "Shrek"},
+    {"prefijo": "nba_802", "nombre": "NBA"},
+    {"prefijo": "rsn_110h", "nombre": "The Rolling Stones"},
+    {"prefijo": "trn_174h", "nombre": "Tron Legacy"},
+    {"prefijo": "avs_170", "nombre": "Avengers"},
+    {"prefijo": "st_161h", "nombre": "Star Trek"},
 ]
+
+# QUITADO 2-sep-2026: hubo un filtro de estabilidad aca (confirmar un
+# puntaje 2 veces seguidas antes de subirlo, mas una memoria de "ya
+# subido") para tolerar el ruido de la lectura en vivo en Walking Dead
+# (ver CAMBIOS_RECIENTES.md, "el ruido en Walking Dead" y "faltaba
+# acordarse de lo que YA se habia subido"). La lectura en vivo se
+# desactivo por completo (decision final: se prioriza la fluidez de las
+# mesas), asi que ese ruido ya no existe -- y el filtro se saco porque
+# tenia un bug real: se aplicaba a CUALQUIER sync dirigida (solo_mesas),
+# incluida la del cierre normal de una mesa, retrasando records genuinos
+# hasta 10 minutos (la proxima sincronizacion periodica, que no tiene
+# este filtro) en vez de subirlos al toque como corresponde. Sin la
+# lectura en vivo generando ruido, no hace falta ningun filtro: una
+# sincronizacion dirigida vuelve a subir lo que encuentra, directo,
+# como siempre funciono antes de todo esto.
+
 
 # ============================================================
 # LOGICA DE SINCRONIZACION PRINCIPAL
@@ -772,8 +918,36 @@ def procesar_y_subir(solo_mesas=None):
 
     if archivos_encontrados == 0:
         print("🤷‍♂️ No se encontro NINGUN archivo .nv de las mesas configuradas.")
-    elif not nuevos_puntajes: 
+    elif not nuevos_puntajes:
         print("🤷‍♂️ No hay nuevos récords detectados localmente (todos pertenecen a la linea base).")
+
+    # ENCONTRADO 1-sep-2026 con el diagnostico real de Her (lagazo cada
+    # ~10s jugando Walking Dead): esta funcion, aunque no hubiera NINGUN
+    # puntaje nuevo, SIEMPRE hacia un viaje completo a Supabase -- traia
+    # la tabla ENTERA de puntajes (GET) y la volvia a subir ENTERA
+    # (upsert), solo para terminar sin cambiar nada. Con el enganche en
+    # vivo disparando una sincronizacion dirigida (solo_mesas) cada pocos
+    # segundos mientras se juega -- la mayoria de las veces por un
+    # contador interno del ROM, no por un puntaje -- eso significaba un
+    # ida y vuelta de red completo (GET + POST de TODA la tabla) cada
+    # pocos segundos sin parar, aunque no hubiera nada que subir. Eso es
+    # lo que muy probablemente generaba el lagazo periodico, mas que
+    # cualquier cosa del lado de core.vbs.
+    #
+    # Si esto es una sincronizacion DIRIGIDA (solo_mesas, la que dispara
+    # el enganche en vivo o el cierre de una mesa) y no se encontro NINGUN
+    # puntaje nuevo localmente, no hace falta tocar la nube para nada --
+    # se corta aca. La sincronizacion COMPLETA (solo_mesas=None: al
+    # arrancar, cada 10 minutos, al apagar) sigue haciendo el viaje
+    # completo siempre, como red de seguridad (detecta records borrados a
+    # mano en la web, etc.).
+    if solo_mesas and not nuevos_puntajes:
+        print("☁️ Nada nuevo para subir -- no hace falta tocar la nube esta vez.")
+        log_evento("  -> nada nuevo, NO se toco la nube (solo PINemHi local)")
+        return
+
+    if solo_mesas:
+        log_evento("  -> SI hay algo nuevo, sincronizando con Supabase (GET + upsert)")
 
     try:
         print("\n☁️ Conectando a Supabase...")
@@ -901,6 +1075,35 @@ def procesar_y_subir(solo_mesas=None):
                 # Mas abajo igual se sube y se ve en la pagina, pero no se
                 # anuncia: si no, cualquier partida floja llena el grupo.
                 # No importa quien sea el jugador (autorizados e invitados).
+                #
+                # ENCONTRADO 16-sep-2026: si mandar_whatsapp() falla (wifi,
+                # Telegram caido, rate limit), el puntaje YA quedo guardado
+                # en Supabase (paso separado y anterior) pero el aviso se
+                # perdia para siempre -- en la proxima sincronizacion el
+                # mismo record ya no es "nuevo en la nube", asi que nunca se
+                # volvia a intentar avisar. Le paso a Luis con Guns N' Roses.
+                #
+                # Se probo agregar una mesa "cola de reintento" separada
+                # basada en si YA SE AVISO de verdad (en vez de si es nuevo
+                # en la nube) -- pero eso es PELIGROSO: hay varias maquinas
+                # (Luis, Her, Ariel) corriendo esta misma sincronizacion en
+                # paralelo contra la MISMA nube compartida, cada una con su
+                # propio avisos_enviados.json LOCAL. Si la maquina A avisa un
+                # record de la maquina B, el archivo local de A nunca se
+                # entera -- la proxima vez que A revise esa mesa (sync
+                # periodica cada 10 min, TODAS las mesas) reenviaria el
+                # mismo aviso de nuevo, duplicado. Y peor: la primera vez que
+                # se activara este cambio en cada maquina, se re-avisaria TODO
+                # el historial de top-10 de las 97 mesas que esa maquina en
+                # particular nunca habia avisado ella misma -- inundacion.
+                #
+                # Se mantiene el gatillo original (nuevo en la nube = unico
+                # que no depende de que maquina lo procese, evita duplicados
+                # entre maquinas). El arreglo real va del lado de
+                # mandar_whatsapp(): reintento acotado ante fallas
+                # transitorias (ver esa funcion), asi la mayoria de los
+                # casos como el de Luis se resuelven solos, sin tocar este
+                # gatillo ni arriesgar duplicados cruzados entre maquinas.
                 if i < TOPE_AVISO and r["ID_Record"] not in ids_nube:
                     nuevos_top5.append((r, pos))
         
@@ -969,53 +1172,154 @@ def avisos_ya_enviados():
 
 AVISOS_ENVIADOS_MEMORIA = set(avisos_ya_enviados())
 
+# ============================================================
+# COLA DE AVISOS PENDIENTES (agregado 16-sep-2026)
+#
+# PROBLEMA REAL que resuelve: el record se sube a Supabase PRIMERO y
+# recien despues se manda el Telegram (son dos pasos separados, a
+# proposito: nunca avisar algo que no quedo guardado). Si el programa
+# se muere justo en el medio, el aviso se perdia PARA SIEMPRE: al
+# arrancar de nuevo, ese record ya no era "nuevo en la nube", que es
+# el gatillo que decide si hay que avisar.
+#
+# No es teoria: el 16-sep-2026 Luis hizo varios records en The
+# Flintstones, subieron todos bien a la web, y no llego ni un Telegram.
+# En el log quedo el patron exacto, tres veces seguidas:
+#     18:15:45  Cambio detectado: The Flintstones
+#     18:15:46    -> sincronizando con Supabase      (el record sube OK)
+#     18:16:46  Script iniciado                      (se murio, el watchdog lo revivio)
+# Sin rastro en vp3_crash_log.txt, o sea que no fue un error de Python
+# sino algo que lo mato desde afuera (ver project_defender_mata_exe).
+#
+# SOLUCION: anotar en disco lo que hay que avisar ANTES de intentar
+# mandarlo. Si el programa muere, al arrancar encuentra la cola y lo
+# manda. Un aviso solo sale de la cola cuando Telegram confirmo que lo
+# recibio.
+#
+# POR QUE NO DUPLICA ENTRE MAQUINAS: la cola se llena UNICAMENTE con lo
+# que ya paso el gatillo de siempre ("es nuevo en la nube"), que es la
+# unica senal compartida entre las tres maquinas. Esto no cambia quien
+# decide avisar, solo evita que ese aviso se pierda por el camino.
+# ============================================================
+ARCHIVO_PENDIENTES = "avisos_pendientes.json"
+
+
+def _leer_pendientes():
+    try:
+        with open(ARCHIVO_PENDIENTES, "r", encoding="utf-8") as f:
+            datos = json.load(f)
+        return [x for x in datos if isinstance(x, dict) and x.get("id")]
+    except Exception:
+        return []
+
+
+def _guardar_pendientes(cola):
+    try:
+        with open(ARCHIVO_PENDIENTES, "w", encoding="utf-8") as f:
+            json.dump(cola[-200:], f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print("Aviso: no pude guardar la cola de avisos pendientes: " + str(e))
+
+
+def _marcar_como_enviado(id_rec):
+    """Se guarda en disco apenas Telegram confirma, uno por uno y no al
+    final del lote: si el programa se muere en la mitad de una rafaga,
+    lo ya mandado no se vuelve a mandar."""
+    AVISOS_ENVIADOS_MEMORIA.add(id_rec)
+    try:
+        lista_disco = avisos_ya_enviados()
+        if id_rec not in lista_disco:
+            lista_disco.append(id_rec)
+            with open(ARCHIVO_AVISOS, "w", encoding="utf-8") as f:
+                json.dump(lista_disco[-500:], f, indent=2)
+    except Exception as e:
+        print("Aviso: no pude guardar la lista de avisos: " + str(e))
+
+
+def _texto_aviso(item):
+    salto = chr(10)
+    pf = format(int(item["puntaje"]), ",").replace(",", ".")
+    return ("🚨 *¡NUEVO RÉCORD VP3!* 🚨" + salto + salto
+            + "🎰 Mesa: *" + str(item["mesa"]) + "*" + salto
+            + "🏅 Posición: *" + str(item["pos"]) + "*" + salto
+            + "👤 Jugador: *" + str(item["jugador"]) + "*" + salto
+            + "💥 Puntaje: *" + pf + "*")
+
+
+def enviar_avisos_pendientes():
+    """Manda todo lo que haya en la cola. Lo que no sale, queda para la
+    proxima. Si la cola esta vacia no hace nada (barato de llamar)."""
+    cola = _leer_pendientes()
+    if not cola:
+        return
+
+    ya_enviados = set(avisos_ya_enviados()) | AVISOS_ENVIADOS_MEMORIA
+    quedan = []
+    for idx, item in enumerate(cola):
+        id_rec = item.get("id")
+        if id_rec in ya_enviados:
+            continue  # ya se habia avisado: se descarta de la cola
+        try:
+            mensaje = _texto_aviso(item)
+        except Exception as e:
+            # Un item mal formado no puede trabar la cola para siempre.
+            log_evento(f"Aviso pendiente descartado por estar mal formado ({id_rec}): {e}")
+            continue
+
+        if mandar_whatsapp(mensaje):
+            _marcar_como_enviado(id_rec)
+            ya_enviados.add(id_rec)
+        else:
+            quedan.append(item)
+
+        # Pequeña pausa entre avisos DISTINTOS (no entre reintentos, eso ya
+        # lo maneja mandar_whatsapp solo) -- si una racha de sincronizacion
+        # junta varios records nuevos de golpe, evita pegarle al limite de
+        # mensajes por minuto que tiene un grupo de Telegram.
+        if idx < len(cola) - 1:
+            time.sleep(1.5)
+
+    _guardar_pendientes(quedan)
+    if quedan:
+        log_evento(f"Quedaron {len(quedan)} avisos de Telegram pendientes, se reintentan despues")
+
 
 def avisar_records_nuevos(nuevos, es_primera_carga, total_filas):
     """Manda el Telegram DESPUES de que el record quedo guardado en Supabase."""
-    global AVISOS_ENVIADOS_MEMORIA
     # Sincronizar memoria con lo que haya en disco
     for id_ya in avisos_ya_enviados():
         AVISOS_ENVIADOS_MEMORIA.add(id_ya)
-
-    salto = chr(10)
 
     if es_primera_carga:
         mandar_whatsapp("🚀 *VP3 System:* Base de datos inicializada. Se subieron "
                         + str(total_filas) + " records.")
         return
 
-    enviados_ahora = []
+    # PRIMERO anotar en disco, DESPUES mandar (ver explicacion arriba).
+    nuevos_items = []
     for r, pos in nuevos:
         id_rec = r["ID_Record"]
         if id_rec in AVISOS_ENVIADOS_MEMORIA:
             print("Ya se habia avisado " + id_rec + ", no lo repito.")
             continue
+        nuevos_items.append({
+            "id": id_rec,
+            "mesa": r["Mesa"],
+            "pos": pos,
+            "jugador": r["Jugador"],
+            "puntaje": r["Puntaje"],
+        })
 
-        # Reservar inmediatamente en memoria para evitar duplicados en rafagas
-        AVISOS_ENVIADOS_MEMORIA.add(id_rec)
+    if nuevos_items:
+        cola = _leer_pendientes()
+        ya_en_cola = {c.get("id") for c in cola}
+        for item in nuevos_items:
+            if item["id"] not in ya_en_cola:
+                cola.append(item)
+                ya_en_cola.add(item["id"])
+        _guardar_pendientes(cola)
 
-        pf = format(r["Puntaje"], ",").replace(",", ".")
-        mensaje = ("🚨 *¡NUEVO RÉCORD VP3!* 🚨" + salto + salto
-                   + "🎰 Mesa: *" + r["Mesa"] + "*" + salto
-                   + "🏅 Posición: *" + pos + "*" + salto
-                   + "👤 Jugador: *" + r["Jugador"] + "*" + salto
-                   + "💥 Puntaje: *" + pf + "*")
-        if mandar_whatsapp(mensaje):
-            enviados_ahora.append(id_rec)
-        else:
-            # Si fallo el envio, permitir reintento
-            AVISOS_ENVIADOS_MEMORIA.discard(id_rec)
-
-    if enviados_ahora:
-        try:
-            lista_disco = avisos_ya_enviados()
-            for x in enviados_ahora:
-                if x not in lista_disco:
-                    lista_disco.append(x)
-            with open(ARCHIVO_AVISOS, "w", encoding="utf-8") as f:
-                json.dump(lista_disco[-500:], f, indent=2)
-        except Exception as e:
-            print("Aviso: no pude guardar la lista de avisos: " + str(e))
+    enviar_avisos_pendientes()
 
 
 def escribir_heartbeat(estado="ALIVE"):
@@ -1077,6 +1381,18 @@ if __name__ == "__main__":
         copiar_vp_alias_automatico()
         tiempos_mod = {}
 
+        # Si la corrida anterior se murio con avisos de Telegram a medio
+        # mandar, quedaron anotados en avisos_pendientes.json. Se mandan
+        # aca, antes que nada. (Ver el comentario largo de la COLA DE
+        # AVISOS PENDIENTES mas arriba.)
+        try:
+            pendientes_al_arrancar = _leer_pendientes()
+            if pendientes_al_arrancar:
+                log_evento(f"Habia {len(pendientes_al_arrancar)} avisos de Telegram sin mandar de la corrida anterior, mandandolos ahora")
+                enviar_avisos_pendientes()
+        except Exception as e:
+            log_evento(f"Error mandando los avisos pendientes al arrancar: {e}")
+
         # Sincronizacion inicial (procesar TODO al arrancar)
         log_evento("Sincronizacion inicial")
         procesar_y_subir()
@@ -1087,8 +1403,9 @@ if __name__ == "__main__":
             archivos = archivos_de_la_mesa(m)
             if archivos:
                 # Se guarda el mtime mas reciente entre TODOS los .nv de la mesa
-                # (puede haber varias versiones de ROM instaladas, y el volcado en vivo)
-                tiempos_mod[m["nombre"]] = max(os.path.getmtime(fp) for fp, _ in archivos)
+                # (puede haber varias versiones de ROM instaladas)
+                _, _, t_total = tiempos_mesa(archivos)
+                tiempos_mod[m["nombre"]] = t_total
 
         print("👀 Monitoreando cambios en NVRAM... (Ctrl+C para salir)")
         log_evento("Entrando en modo monitoreo")
@@ -1098,40 +1415,38 @@ if __name__ == "__main__":
         # Sincronizacion forzada cada 10 minutos como red de seguridad
         contador_sync_periodico = 0
 
-        # Cada cuanto se mira la NVRAM. El enganche nativo en core.vbs ya
-        # empuja el cambio apenas se guardan las iniciales (instantaneo, sin
-        # esperar este ciclo); este intervalo es solo la red de respaldo por
-        # si la mesa no tiene el enganche activo o el jugador sale/apaga.
+        # Cada cuanto se mira la NVRAM en busca de un cierre de mesa
+        # (VPinMAME escribe el .nv real recien ahi). Con este intervalo,
+        # el record llega a la nube en 1-2 segundos desde que se cierra.
         INTERVALO = 2
         CICLOS_HEARTBEAT = 150      # 5 minutos
         CICLOS_SYNC_COMPLETO = 300  # 10 minutos
 
+        # QUITADO 2-sep-2026: habia un enfriamiento (COOLDOWN_VIVO) y un
+        # seguimiento aparte de tiempos_reales/vivo_ultimo_sync para tolerar
+        # el ruido de la lectura en vivo mientras se jugaba. Con la lectura
+        # en vivo desactivada (decision final: se prioriza la fluidez), ya
+        # no hay ruido que tolerar -- cualquier cambio detectado es un
+        # cierre de mesa real, y vuelve a sincronizar al toque, como
+        # funcionaba antes de todo esto.
         while True:
             try:
-                # --- 1. LECTURA EN VIVO (enganche nativo de core.vbs) ---
+                # --- LECTURA POR ARCHIVOS EN DISCO (SALIDA DE MESA / APAGADO) ---
                 convertir_volcados_en_vivo()
-
-                # --- 2. LECTURA POR ARCHIVOS EN DISCO (SALIDA DE MESA / APAGADO) ---
                 mesas_cambiadas = []
                 for m in MESAS_CONFIG:
                     archivos = archivos_de_la_mesa(m)
                     if archivos:
-                        t = max(os.path.getmtime(fp) for fp, _ in archivos)
-                        if tiempos_mod.get(m["nombre"]) != t:
+                        _, _, t_total = tiempos_mesa(archivos)
+                        if tiempos_mod.get(m["nombre"]) != t_total:
                             mesas_cambiadas.append(m["nombre"])
-                            tiempos_mod[m["nombre"]] = t
+                            tiempos_mod[m["nombre"]] = t_total
 
                 if mesas_cambiadas:
                     print("Cambio detectado en NVRAM de disco. Sincronizando...")
                     log_evento("Cambio detectado en disco: " + ", ".join(mesas_cambiadas))
                     time.sleep(1)
                     procesar_y_subir(solo_mesas=mesas_cambiadas)
-                    for m_nombre in mesas_cambiadas:
-                        m_cfg = next((m for m in MESAS_CONFIG if m["nombre"] == m_nombre), None)
-                        if m_cfg:
-                            archs = archivos_de_la_mesa(m_cfg)
-                            if archs:
-                                tiempos_mod[m_nombre] = max(os.path.getmtime(fp) for fp, _ in archs)
                     escribir_heartbeat("SYNCED")
 
                 contador_heartbeat += 1
@@ -1147,6 +1462,11 @@ if __name__ == "__main__":
                     procesar_y_subir()
                     escribir_heartbeat("PERIODIC_SYNC_OK")
                     contador_sync_periodico = 0
+                    # Red de seguridad para los avisos: si alguno quedo
+                    # trabado (Telegram caido, sin internet un rato), se
+                    # reintenta aca sin esperar a que se reinicie el
+                    # programa. Si no hay nada pendiente, no cuesta nada.
+                    enviar_avisos_pendientes()
 
                 time.sleep(INTERVALO)
             except KeyboardInterrupt:

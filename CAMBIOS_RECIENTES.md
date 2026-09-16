@@ -364,6 +364,40 @@ Nada nuevo — la próxima vez que Her y Ariel corran `ACTUALIZAR_VP3.bat`, si t
 
 ---
 
+## 📵 28. POR FIN LA CAUSA REAL de los Telegram perdidos: el programa se muere en el medio (16 septiembre 2026)
+
+### Lo que pasó:
+Luis hizo varios récords en Los Picapiedras. **Subieron todos bien a la web** (verificado en Supabase: su Gran Campeón de 317.622.060 estaba ahí), pero no llegó **ni un** Telegram.
+
+### La causa, encontrada en el log:
+El récord se sube a Supabase **primero**, y el Telegram se manda **después** — dos pasos separados, a propósito, para nunca anunciar algo que no quedó guardado. El problema es lo que pasa si el programa se muere justo en el medio. Y se estaba muriendo. Tres veces en una tarde, siempre con el mismo patrón:
+
+```
+18:15:45  Cambio detectado: The Flintstones
+18:15:46    -> sincronizando con Supabase      <- el record sube OK
+18:16:46  Script iniciado                      <- se murió, el watchdog lo revivió
+```
+
+Cuando volvía a arrancar, ese récord **ya no era "nuevo en la nube"** — que es justamente el gatillo que decide si hay que avisar. Resultado: el aviso se perdía **para siempre**, aunque el puntaje quedara perfecto en la página.
+
+Sin rastro en `vp3_crash_log.txt`, o sea que no fue un error del programa sino algo que lo mató desde afuera (sigue en pie la sospecha del antivirus — ver la sección del Defender más abajo).
+
+### El arreglo (de fondo, no importa por qué se muera):
+Ahora los avisos se **anotan en disco ANTES de intentar mandarlos** (`avisos_pendientes.json`). Un aviso solo sale de esa lista cuando Telegram confirma que lo recibió. Si el programa se muere, al arrancar de nuevo encuentra lo que quedó y lo manda. Además se reintenta cada 10 minutos, por si el que falló fue internet.
+
+También se cambió un detalle fino: lo enviado se anota en disco **uno por uno**, apenas Telegram confirma, en vez de todo junto al final. Así, si se muere en la mitad de una ráfaga de récords, lo que ya salió no se manda dos veces.
+
+### Por qué esto NO duplica avisos entre las tres máquinas:
+La lista de pendientes se llena **únicamente** con lo que ya pasó el filtro de siempre ("es nuevo en la nube"), que es la única señal que las tres máquinas comparten. No cambia *quién* decide avisar — solo evita que ese aviso se pierda por el camino. (Esta es la misma trampa que se había detectado y descartado el día anterior; ver sección 25.)
+
+### Probado antes de publicar:
+Test aislado de 19 chequeos, sin tocar Telegram ni Supabase reales: récord nuevo, récord repetido, Telegram caído, recuperación del atrasado, **simulacro de muerte del programa en el medio**, ráfaga con uno fallado entre medio, y un dato corrupto en la cola. Todos OK.
+
+### Bonus:
+Se dejaron anotados a mano los 4 avisos de Picapiedras de hoy que se habían perdido, así salen solos cuando Luis actualice.
+
+---
+
 ## ⏪ 27. MARCHA ATRÁS del arreglo de Flintstones — el archivo tiene un sello de integridad (16 septiembre 2026)
 
 ### Lo que pasó:

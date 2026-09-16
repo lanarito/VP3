@@ -1172,60 +1172,154 @@ def avisos_ya_enviados():
 
 AVISOS_ENVIADOS_MEMORIA = set(avisos_ya_enviados())
 
+# ============================================================
+# COLA DE AVISOS PENDIENTES (agregado 16-sep-2026)
+#
+# PROBLEMA REAL que resuelve: el record se sube a Supabase PRIMERO y
+# recien despues se manda el Telegram (son dos pasos separados, a
+# proposito: nunca avisar algo que no quedo guardado). Si el programa
+# se muere justo en el medio, el aviso se perdia PARA SIEMPRE: al
+# arrancar de nuevo, ese record ya no era "nuevo en la nube", que es
+# el gatillo que decide si hay que avisar.
+#
+# No es teoria: el 16-sep-2026 Luis hizo varios records en The
+# Flintstones, subieron todos bien a la web, y no llego ni un Telegram.
+# En el log quedo el patron exacto, tres veces seguidas:
+#     18:15:45  Cambio detectado: The Flintstones
+#     18:15:46    -> sincronizando con Supabase      (el record sube OK)
+#     18:16:46  Script iniciado                      (se murio, el watchdog lo revivio)
+# Sin rastro en vp3_crash_log.txt, o sea que no fue un error de Python
+# sino algo que lo mato desde afuera (ver project_defender_mata_exe).
+#
+# SOLUCION: anotar en disco lo que hay que avisar ANTES de intentar
+# mandarlo. Si el programa muere, al arrancar encuentra la cola y lo
+# manda. Un aviso solo sale de la cola cuando Telegram confirmo que lo
+# recibio.
+#
+# POR QUE NO DUPLICA ENTRE MAQUINAS: la cola se llena UNICAMENTE con lo
+# que ya paso el gatillo de siempre ("es nuevo en la nube"), que es la
+# unica senal compartida entre las tres maquinas. Esto no cambia quien
+# decide avisar, solo evita que ese aviso se pierda por el camino.
+# ============================================================
+ARCHIVO_PENDIENTES = "avisos_pendientes.json"
+
+
+def _leer_pendientes():
+    try:
+        with open(ARCHIVO_PENDIENTES, "r", encoding="utf-8") as f:
+            datos = json.load(f)
+        return [x for x in datos if isinstance(x, dict) and x.get("id")]
+    except Exception:
+        return []
+
+
+def _guardar_pendientes(cola):
+    try:
+        with open(ARCHIVO_PENDIENTES, "w", encoding="utf-8") as f:
+            json.dump(cola[-200:], f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        print("Aviso: no pude guardar la cola de avisos pendientes: " + str(e))
+
+
+def _marcar_como_enviado(id_rec):
+    """Se guarda en disco apenas Telegram confirma, uno por uno y no al
+    final del lote: si el programa se muere en la mitad de una rafaga,
+    lo ya mandado no se vuelve a mandar."""
+    AVISOS_ENVIADOS_MEMORIA.add(id_rec)
+    try:
+        lista_disco = avisos_ya_enviados()
+        if id_rec not in lista_disco:
+            lista_disco.append(id_rec)
+            with open(ARCHIVO_AVISOS, "w", encoding="utf-8") as f:
+                json.dump(lista_disco[-500:], f, indent=2)
+    except Exception as e:
+        print("Aviso: no pude guardar la lista de avisos: " + str(e))
+
+
+def _texto_aviso(item):
+    salto = chr(10)
+    pf = format(int(item["puntaje"]), ",").replace(",", ".")
+    return ("🚨 *¡NUEVO RÉCORD VP3!* 🚨" + salto + salto
+            + "🎰 Mesa: *" + str(item["mesa"]) + "*" + salto
+            + "🏅 Posición: *" + str(item["pos"]) + "*" + salto
+            + "👤 Jugador: *" + str(item["jugador"]) + "*" + salto
+            + "💥 Puntaje: *" + pf + "*")
+
+
+def enviar_avisos_pendientes():
+    """Manda todo lo que haya en la cola. Lo que no sale, queda para la
+    proxima. Si la cola esta vacia no hace nada (barato de llamar)."""
+    cola = _leer_pendientes()
+    if not cola:
+        return
+
+    ya_enviados = set(avisos_ya_enviados()) | AVISOS_ENVIADOS_MEMORIA
+    quedan = []
+    for idx, item in enumerate(cola):
+        id_rec = item.get("id")
+        if id_rec in ya_enviados:
+            continue  # ya se habia avisado: se descarta de la cola
+        try:
+            mensaje = _texto_aviso(item)
+        except Exception as e:
+            # Un item mal formado no puede trabar la cola para siempre.
+            log_evento(f"Aviso pendiente descartado por estar mal formado ({id_rec}): {e}")
+            continue
+
+        if mandar_whatsapp(mensaje):
+            _marcar_como_enviado(id_rec)
+            ya_enviados.add(id_rec)
+        else:
+            quedan.append(item)
+
+        # Pequeña pausa entre avisos DISTINTOS (no entre reintentos, eso ya
+        # lo maneja mandar_whatsapp solo) -- si una racha de sincronizacion
+        # junta varios records nuevos de golpe, evita pegarle al limite de
+        # mensajes por minuto que tiene un grupo de Telegram.
+        if idx < len(cola) - 1:
+            time.sleep(1.5)
+
+    _guardar_pendientes(quedan)
+    if quedan:
+        log_evento(f"Quedaron {len(quedan)} avisos de Telegram pendientes, se reintentan despues")
+
 
 def avisar_records_nuevos(nuevos, es_primera_carga, total_filas):
     """Manda el Telegram DESPUES de que el record quedo guardado en Supabase."""
-    global AVISOS_ENVIADOS_MEMORIA
     # Sincronizar memoria con lo que haya en disco
     for id_ya in avisos_ya_enviados():
         AVISOS_ENVIADOS_MEMORIA.add(id_ya)
-
-    salto = chr(10)
 
     if es_primera_carga:
         mandar_whatsapp("🚀 *VP3 System:* Base de datos inicializada. Se subieron "
                         + str(total_filas) + " records.")
         return
 
-    enviados_ahora = []
-    for idx, (r, pos) in enumerate(nuevos):
+    # PRIMERO anotar en disco, DESPUES mandar (ver explicacion arriba).
+    nuevos_items = []
+    for r, pos in nuevos:
         id_rec = r["ID_Record"]
         if id_rec in AVISOS_ENVIADOS_MEMORIA:
             print("Ya se habia avisado " + id_rec + ", no lo repito.")
             continue
+        nuevos_items.append({
+            "id": id_rec,
+            "mesa": r["Mesa"],
+            "pos": pos,
+            "jugador": r["Jugador"],
+            "puntaje": r["Puntaje"],
+        })
 
-        # Reservar inmediatamente en memoria para evitar duplicados en rafagas
-        AVISOS_ENVIADOS_MEMORIA.add(id_rec)
+    if nuevos_items:
+        cola = _leer_pendientes()
+        ya_en_cola = {c.get("id") for c in cola}
+        for item in nuevos_items:
+            if item["id"] not in ya_en_cola:
+                cola.append(item)
+                ya_en_cola.add(item["id"])
+        _guardar_pendientes(cola)
 
-        pf = format(r["Puntaje"], ",").replace(",", ".")
-        mensaje = ("🚨 *¡NUEVO RÉCORD VP3!* 🚨" + salto + salto
-                   + "🎰 Mesa: *" + r["Mesa"] + "*" + salto
-                   + "🏅 Posición: *" + pos + "*" + salto
-                   + "👤 Jugador: *" + r["Jugador"] + "*" + salto
-                   + "💥 Puntaje: *" + pf + "*")
-        if mandar_whatsapp(mensaje):
-            enviados_ahora.append(id_rec)
-        else:
-            # Si fallo el envio, permitir reintento
-            AVISOS_ENVIADOS_MEMORIA.discard(id_rec)
-
-        # Pequeña pausa entre avisos DISTINTOS (no entre reintentos, eso ya
-        # lo maneja mandar_whatsapp solo) -- si una racha de sincronizacion
-        # junta varios records nuevos de golpe, evita pegarle al limite de
-        # mensajes por minuto que tiene un grupo de Telegram.
-        if idx < len(nuevos) - 1:
-            time.sleep(1.5)
-
-    if enviados_ahora:
-        try:
-            lista_disco = avisos_ya_enviados()
-            for x in enviados_ahora:
-                if x not in lista_disco:
-                    lista_disco.append(x)
-            with open(ARCHIVO_AVISOS, "w", encoding="utf-8") as f:
-                json.dump(lista_disco[-500:], f, indent=2)
-        except Exception as e:
-            print("Aviso: no pude guardar la lista de avisos: " + str(e))
+    enviar_avisos_pendientes()
 
 
 def escribir_heartbeat(estado="ALIVE"):
@@ -1286,6 +1380,18 @@ if __name__ == "__main__":
     try:
         copiar_vp_alias_automatico()
         tiempos_mod = {}
+
+        # Si la corrida anterior se murio con avisos de Telegram a medio
+        # mandar, quedaron anotados en avisos_pendientes.json. Se mandan
+        # aca, antes que nada. (Ver el comentario largo de la COLA DE
+        # AVISOS PENDIENTES mas arriba.)
+        try:
+            pendientes_al_arrancar = _leer_pendientes()
+            if pendientes_al_arrancar:
+                log_evento(f"Habia {len(pendientes_al_arrancar)} avisos de Telegram sin mandar de la corrida anterior, mandandolos ahora")
+                enviar_avisos_pendientes()
+        except Exception as e:
+            log_evento(f"Error mandando los avisos pendientes al arrancar: {e}")
 
         # Sincronizacion inicial (procesar TODO al arrancar)
         log_evento("Sincronizacion inicial")
@@ -1356,6 +1462,11 @@ if __name__ == "__main__":
                     procesar_y_subir()
                     escribir_heartbeat("PERIODIC_SYNC_OK")
                     contador_sync_periodico = 0
+                    # Red de seguridad para los avisos: si alguno quedo
+                    # trabado (Telegram caido, sin internet un rato), se
+                    # reintenta aca sin esperar a que se reinicie el
+                    # programa. Si no hay nada pendiente, no cuesta nada.
+                    enviar_avisos_pendientes()
 
                 time.sleep(INTERVALO)
             except KeyboardInterrupt:
