@@ -364,6 +364,34 @@ Nada nuevo — la próxima vez que Her y Ariel corran `ACTUALIZAR_VP3.bat`, si t
 
 ---
 
+## ⏪ 27. MARCHA ATRÁS del arreglo de Flintstones — el archivo tiene un sello de integridad (16 septiembre 2026)
+
+### Lo que pasó:
+Horas después de aplicar el arreglo anterior, Luis avisó que Los Picapiedras le tiraba un cartel NUEVO que antes no aparecía:
+
+> *"This file is corrupt and some data may be invalid or even crashing VPX. Be careful, especially when re-saving this file."*
+
+### Causa (lo que yo no sabía):
+Un archivo `.vpx` no es solo un contenedor de datos: adentro tiene un **sello de integridad** (un hash guardado en `GameStg/MAC`) que Visual Pinball verifica cada vez que abre la mesa. Al cambiar el script "a mano", ese sello quedó con el valor viejo y VPX pasó a creer que el archivo estaba dañado. Confirmado leyendo el sello del archivo y comparándolo contra el del backup: **idénticos**, cuando el contenido ya no lo era.
+
+O sea: el arreglo funcionaba (el cartel de `PinCab_Blades` se había ido), pero a cambio apareció un cartel peor.
+
+### Qué se hizo:
+1. **Se restauró la mesa de Luis desde el backup**, y se verificó que quedó exactamente como venía (mismo tamaño de script, mismos 1125 componentes internos, sin rastro del parche).
+2. **Se dio vuelta `arreglar_mesas.exe`:** ahora, en vez de aplicar ese parche, lo **deshace**. Así, la máquina que alcanzó a aplicarlo vuelve sola al original cuando corra `ACTUALIZAR_VP3.bat`, y la que nunca lo aplicó no toca nada.
+3. **Probado antes de publicar**, sobre una copia: se aplicó el parche malo y después la marcha atrás, y el archivo volvió **byte por byte idéntico** al original (mismo hash). Correrlo dos veces tampoco hace nada.
+
+### Resultado:
+Vuelve el cartel viejo de `PinCab_Blades` (molesto pero inofensivo, se le da Aceptar y se juega igual), y desaparece el de "archivo corrupto", que era el grave — ese avisa que VPX puede llegar a crashear.
+
+### Para arreglarlo bien a futuro:
+La vía correcta es abrir la mesa en el **editor de Visual Pinball** y guardarla desde ahí con el arreglo hecho — el editor recalcula el sello solo. Eso lo puede hacer Her, que es el que maneja VPX.
+
+### Para los chicos:
+Se corrige con `ACTUALIZAR_VP3.bat` de siempre.
+
+---
+
 ---
 
 ## 🔴 PISTA FUERTE: EL ANTIVIRUS PUEDE ESTAR MATANDO EL PROGRAMA (sin confirmar aún)

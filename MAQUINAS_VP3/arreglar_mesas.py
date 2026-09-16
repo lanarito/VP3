@@ -21,13 +21,28 @@
 #   - Antes de tocar el archivo real, se guarda un backup con fecha
 #     (una sola vez por dia).
 #
-# ENCONTRADO 16-sep-2026: "The Flintstones" tira un cartel de error
-# ("PinCab_Blades ... unavailable") porque su script usa un objeto de
-# luces de cabinet (PinCab_Blades) sin fijarse primero si existe. La
-# mayoria de las maquinas no tiene ese hardware, asi que explota.
-# Probado en una copia antes de tocar el archivo real; el arreglo solo
-# agrega un manejo de error alrededor de esas 2 lineas, no cambia nada
-# del juego.
+# ============================================================
+# IMPORTANTE - LECCION APRENDIDA 16-sep-2026 (leer antes de agregar
+# cualquier parche nuevo a este archivo):
+#
+# Un .vpx NO es solo un contenedor de datos: adentro tiene un SELLO DE
+# INTEGRIDAD (el stream "GameStg/MAC", un hash del contenido). Visual
+# Pinball lo verifica al abrir la mesa. Si se cambia el script "a mano"
+# sin recalcular ese sello, VPX abre igual pero tira el cartel:
+#   "This file is corrupt and some data may be invalid or even
+#    crashing VPX. Be careful, especially when re-saving this file."
+#
+# Eso fue exactamente lo que paso con "The Flintstones": el parche del
+# script funciono (el cartel de PinCab_Blades se fue), pero aparecio ese
+# cartel nuevo, peor que el original. Por eso ahora esta herramienta
+# DESHACE ese parche en vez de aplicarlo: devuelve el script a su texto
+# original, con lo cual el sello vuelve a coincidir solo y el archivo
+# queda EXACTAMENTE como venia de fabrica.
+#
+# CONCLUSION: no volver a parchear el script de un .vpx por este camino
+# hasta que se sepa recalcular el MAC. La via correcta para arreglar el
+# script de una mesa es abrirla en el EDITOR de Visual Pinball y
+# guardarla desde ahi -- el editor recalcula el sello solo.
 # ============================================================
 import os
 import struct
@@ -74,10 +89,10 @@ def parchear(ruta_vpx, viejo, nuevo):
 
         # Idempotente: si el texto NUEVO ya esta, no hacer nada.
         if nuevo in script:
-            return "OK: ya estaba aplicado"
+            return "OK: ya estaba bien, no hizo falta tocar nada"
 
         if viejo not in script:
-            return "SALTEADO: no se encontro el texto esperado (version de mesa distinta), no se toco nada"
+            return "SALTEADO: no se encontro el texto esperado (mesa distinta o ya estaba bien), no se toco nada"
         if script.count(viejo) != 1:
             return "SALTEADO: el texto aparece mas de una vez, no se toca por seguridad"
 
@@ -99,24 +114,31 @@ def parchear(ruta_vpx, viejo, nuevo):
         gamestg.Commit(0)
         storage.Commit(0)
 
-        return f"OK: parche aplicado ({largo} -> {len(script_nuevo)} bytes)"
+        return f"OK: arreglado ({largo} -> {len(script_nuevo)} bytes)"
     except Exception as e:
-        return f"ERROR aplicando el parche ({e}) -- puede haber quedado a medio aplicar, revisar backup"
+        return f"ERROR al arreglar ({e}) -- puede haber quedado a medio hacer, revisar backup"
 
 
 # ============================================================
-# LISTA DE PARCHES CONOCIDOS
+# LISTA DE ARREGLOS
+#
+# Formato: (archivo, texto_a_buscar, texto_de_reemplazo)
+#
+# HOY esta lista tiene UNA sola entrada, y NO es un parche: es la
+# MARCHA ATRAS del parche de Flintstones que se publico el 16-sep-2026
+# y resulto tirar el cartel de "archivo corrupto" (ver explicacion
+# arriba). Busca el texto parcheado y lo devuelve al original.
+#
+# Efecto en cada maquina:
+#   - La que alcanzo a aplicar el parche  -> vuelve al original, el
+#     cartel de "archivo corrupto" desaparece.
+#   - La que nunca lo aplico              -> no encuentra el texto y no
+#     toca nada (se saltea sola, sin error).
 # ============================================================
 PARCHES = [
     (
         "The Flintstones (Williams 1994).vpx",
-        (
-            b"Sub SetRails(Opt)\r\n\tSelect Case Opt\r\n\t\tCase 0:\r\n"
-            b"\t\t\t'Ramp15.Visible = 0\r\n\t\t\t'Ramp16.Visible = 0\r\n"
-            b"\t\t\tPinCab_Blades.visible = 1\r\n\t\tCase 1:\r\n"
-            b"\t\t\t'Ramp15.Visible = 1\r\n\t\t\t'Ramp16.Visible = 1\r\n"
-            b"\t\t\tPinCab_Blades.visible = 0\r\n\tEnd Select\r\nEnd Sub"
-        ),
+        # Buscar: el script CON el parche que hay que deshacer.
         (
             b"Sub SetRails(Opt)\r\n\tSelect Case Opt\r\n\t\tCase 0:\r\n"
             b"\t\t\t'Ramp15.Visible = 0\r\n\t\t\t'Ramp16.Visible = 0\r\n"
@@ -125,6 +147,14 @@ PARCHES = [
             b"\t\t\t'Ramp15.Visible = 1\r\n\t\t\t'Ramp16.Visible = 1\r\n"
             b"\t\t\tOn Error Resume Next\r\n\t\t\tPinCab_Blades.visible = 0\r\n"
             b"\t\t\tOn Error Goto 0\r\n\tEnd Select\r\nEnd Sub"
+        ),
+        # Reemplazar por: el texto ORIGINAL de fabrica de la mesa.
+        (
+            b"Sub SetRails(Opt)\r\n\tSelect Case Opt\r\n\t\tCase 0:\r\n"
+            b"\t\t\t'Ramp15.Visible = 0\r\n\t\t\t'Ramp16.Visible = 0\r\n"
+            b"\t\t\tPinCab_Blades.visible = 1\r\n\t\tCase 1:\r\n"
+            b"\t\t\t'Ramp15.Visible = 1\r\n\t\t\t'Ramp16.Visible = 1\r\n"
+            b"\t\t\tPinCab_Blades.visible = 0\r\n\tEnd Select\r\nEnd Sub"
         ),
     ),
 ]
