@@ -21,13 +21,25 @@
 # ============================================================
 import json
 import os
+import sys
 import urllib.request
 import urllib.parse
 import urllib.error
 import configparser
 from datetime import datetime
 
-carpeta = os.path.dirname(os.path.abspath(__file__))
+# OJO: compilado con PyInstaller, __file__ apunta a una carpeta temporal
+# (_MEI...), NO a donde esta el .exe. Por eso hay que usar sys.executable
+# cuando corre congelado -- si no, no encuentra config.ini. Mismo criterio
+# que usa subir_puntajes.py para su application_path.
+if getattr(sys, "frozen", False):
+    carpeta = os.path.dirname(sys.executable)
+else:
+    carpeta = os.path.dirname(os.path.abspath(__file__))
+
+# Modo automatico: lo usa ACTUALIZAR_VP3.bat. Sin preguntas ni ENTER final,
+# para que el actualizador no se quede esperando a nadie.
+AUTO = "--auto" in sys.argv
 _cfg = configparser.ConfigParser()
 _cfg.read(os.path.join(carpeta, "config.ini"), encoding="utf-8")
 SUPABASE_URL = _cfg.get("supabase", "url", fallback="").rstrip("/")
@@ -305,63 +317,88 @@ def pedir(url, metodo="GET"):
     return urllib.request.urlopen(req, timeout=20)
 
 
-print("=" * 62)
-print(" VP3 - LIMPIAR JUGADORES FANTASMA")
-print("=" * 62)
-print()
+def cerrar(codigo=0):
+    if not AUTO:
+        input("Apreta ENTER para cerrar...")
+    raise SystemExit(codigo)
+
+
+if not AUTO:
+    print("=" * 62)
+    print(" VP3 - LIMPIAR JUGADORES FANTASMA")
+    print("=" * 62)
+    print()
 
 if not SUPABASE_URL or not SUPABASE_KEY:
-    print("ERROR: no pude leer config.ini. Corre esto desde la carpeta MAQUINAS_VP3.")
-    input("Apreta ENTER para cerrar...")
-    raise SystemExit(1)
+    print("ERROR: no encontre config.ini al lado de este programa.")
+    cerrar(1)
 
-print("Se van a borrar " + str(len(A_BORRAR)) + " records que no son de nadie:")
-print()
-for x in A_BORRAR:
-    print("   " + x["j"].ljust(8) + str(x["p"]).rjust(14) + "   " + x["m"])
-print()
-print("NO se toca ningun record de HER, ARI, LAL, AGU ni MIK.")
-print()
-respuesta = input("Escribi SI y apreta ENTER para borrarlos (cualquier otra cosa cancela): ")
-if respuesta.strip().upper() != "SI":
-    print()
-    print("Cancelado, no se borro nada.")
-    input("Apreta ENTER para cerrar...")
-    raise SystemExit(0)
-
-print()
-print("Guardando copia de seguridad...")
-copia = []
+# Primero fijarse cuales siguen estando de verdad en la nube. Asi esto se
+# puede correr todas las veces que haga falta: si ya estan borrados (por
+# ejemplo, porque otra maquina actualizo antes), no hace nada y listo.
+pendientes = []
+sin_revisar = []
 for x in A_BORRAR:
     try:
         url = TABLA + "?id_record=eq." + urllib.parse.quote(x["id"], safe="") + "&select=*"
         with pedir(url) as r:
-            copia.extend(json.loads(r.read().decode("utf-8")))
+            filas = json.loads(r.read().decode("utf-8"))
+        if filas:
+            x["_fila"] = filas[0]
+            pendientes.append(x)
     except Exception as e:
-        print("   (no pude leer " + x["id"] + ": " + str(e) + ")")
-nombre_copia = os.path.join(carpeta, "respaldo_limpieza_" + datetime.now().strftime("%Y%m%d_%H%M%S") + ".json")
-with open(nombre_copia, "w", encoding="utf-8") as f:
-    json.dump(copia, f, indent=2, ensure_ascii=False)
-print("   Copia guardada en: " + os.path.basename(nombre_copia))
-print()
+        sin_revisar.append((x, e))
 
-print("Borrando...")
+if not pendientes:
+    print("Los records fantasma ya estaban borrados, no hay nada que hacer.")
+    cerrar(0)
+
+if not AUTO:
+    print("Se van a borrar " + str(len(pendientes)) + " records que no son de nadie:")
+    print()
+    for x in pendientes:
+        print("   " + x["j"].ljust(8) + str(x["p"]).rjust(14) + "   " + x["m"])
+    print()
+    print("NO se toca ningun record de HER, ARI, LAL, AGU ni MIK.")
+    print()
+    respuesta = input("Escribi SI y apreta ENTER para borrarlos (cualquier otra cosa cancela): ")
+    if respuesta.strip().upper() != "SI":
+        print()
+        print("Cancelado, no se borro nada.")
+        cerrar(0)
+    print()
+
+# Copia de seguridad de lo que se va a sacar, siempre (tambien en automatico).
+try:
+    nombre_copia = os.path.join(carpeta, "respaldo_limpieza_" + datetime.now().strftime("%Y%m%d_%H%M%S") + ".json")
+    with open(nombre_copia, "w", encoding="utf-8") as f:
+        json.dump([x["_fila"] for x in pendientes], f, indent=2, ensure_ascii=False)
+    if not AUTO:
+        print("Copia de seguridad guardada en: " + os.path.basename(nombre_copia))
+        print()
+except Exception as e:
+    print("Aviso: no pude guardar la copia de seguridad (" + str(e) + ")")
+
 ok = 0
-fallos = []
-for x in A_BORRAR:
+fallos = 0
+for x in pendientes:
     try:
         pedir(TABLA + "?id_record=eq." + urllib.parse.quote(x["id"], safe=""), "DELETE")
         ok += 1
-        print("   borrado: " + x["j"] + " (" + x["m"] + ")")
+        if not AUTO:
+            print("   borrado: " + x["j"] + " (" + x["m"] + ")")
     except Exception as e:
-        fallos.append((x, e))
+        fallos += 1
         print("   FALLO:   " + x["j"] + " (" + x["m"] + ") -> " + str(e))
 
-print()
-print("=" * 62)
-print(" LISTO: " + str(ok) + " borrados, " + str(len(fallos)) + " fallaron")
-if fallos:
-    print(" Los que fallaron se pueden reintentar corriendo esto de nuevo.")
-print(" Actualiza la pagina de VP3 para ver el resultado.")
-print("=" * 62)
-input("Apreta ENTER para cerrar...")
+if AUTO:
+    print("Limpieza: " + str(ok) + " records fantasma borrados de la nube.")
+else:
+    print()
+    print("=" * 62)
+    print(" LISTO: " + str(ok) + " borrados, " + str(fallos) + " fallaron")
+    if fallos:
+        print(" Los que fallaron se arreglan corriendo esto de nuevo.")
+    print(" Actualiza la pagina de VP3 para ver el resultado.")
+    print("=" * 62)
+cerrar(0)

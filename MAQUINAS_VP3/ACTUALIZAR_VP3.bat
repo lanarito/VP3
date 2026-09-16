@@ -104,8 +104,8 @@ echo Empezando en 3 segundos...
 timeout /t 3 /nobreak >nul
 
 echo.
-echo [1/11] Cerrando procesos viejos...
-echo [%date% %time%] llegue a 1/11 >> "%TEMP%\vp3_debug.log"
+echo [1/12] Cerrando procesos viejos...
+echo [%date% %time%] llegue a 1/12 >> "%TEMP%\vp3_debug.log"
 REM Mata TODO lo relacionado (watchdogs + subir_puntajes.exe) y VERIFICA
 REM que de verdad quedo limpio. Antes era un intento unico y silencioso: si
 REM no llegaba a matar el watchdog viejo, quedaba corriendo PARA SIEMPRE, y
@@ -114,8 +114,8 @@ REM vigilando la NVRAM y mandando Telegram a la vez).
 powershell -NoProfile -ExecutionPolicy Bypass -File "%VP3_DESTINO%cerrar_procesos_viejos.ps1"
 echo.
 
-echo [2/11] Descargando ultima version desde GitHub...
-echo [%date% %time%] llegue a 2/11 >> "%TEMP%\vp3_debug.log"
+echo [2/12] Descargando ultima version desde GitHub...
+echo [%date% %time%] llegue a 2/12 >> "%TEMP%\vp3_debug.log"
 powershell -Command "& {try {Invoke-WebRequest -Uri 'https://lanarito.github.io/VP3/MAQUINAS_VP3.zip' -OutFile '%TEMP%\MAQUINAS_VP3_NUEVO.zip' -UseBasicParsing; exit 0} catch {exit 1}}"
 if not errorlevel 1 goto descarga_ok
 echo       ERROR: No se pudo descargar
@@ -128,8 +128,8 @@ exit /b 1
 echo       OK
 echo.
 
-echo [3/11] Extrayendo archivos...
-echo [%date% %time%] llegue a 3/11 >> "%TEMP%\vp3_debug.log"
+echo [3/12] Extrayendo archivos...
+echo [%date% %time%] llegue a 3/12 >> "%TEMP%\vp3_debug.log"
 if exist "%TEMP%\VP3_TEMP" rmdir /S /Q "%TEMP%\VP3_TEMP"
 mkdir "%TEMP%\VP3_TEMP" 2>nul
 powershell -Command "& {try {Expand-Archive -Path '%TEMP%\MAQUINAS_VP3_NUEVO.zip' -DestinationPath '%TEMP%\VP3_TEMP' -Force; exit 0} catch {exit 1}}"
@@ -141,8 +141,8 @@ exit /b 1
 echo       OK
 echo.
 
-echo [4/11] Copiando archivos nuevos...
-echo [%date% %time%] llegue a 4/11 >> "%TEMP%\vp3_debug.log"
+echo [4/12] Copiando archivos nuevos...
+echo [%date% %time%] llegue a 4/12 >> "%TEMP%\vp3_debug.log"
 REM Copia y VERIFICA por hash cada archivo, no solo si "algo" existe al
 REM final. El xcopy viejo podia saltear un archivo suelto en silencio (un
 REM antivirus que lo tiene agarrado un instante, por ejemplo): una maquina
@@ -184,14 +184,14 @@ pause
 exit /b 1
 :copia_ok
 echo [%date% %time%] copia OK, llegue a copia_ok >> "%TEMP%\vp3_debug.log"
-echo [5/11] Limpiando archivos temporales...
+echo [5/12] Limpiando archivos temporales...
 del "%TEMP%\MAQUINAS_VP3_NUEVO.zip" >nul 2>&1
 rmdir /S /Q "%TEMP%\VP3_TEMP" >nul 2>&1
 echo       OK
 echo.
 
-echo [%date% %time%] llegue a 5/11 >> "%TEMP%\vp3_debug.log"
-echo [6/11] Aplicando fix de error al apagar (registro Windows)...
+echo [%date% %time%] llegue a 5/12 >> "%TEMP%\vp3_debug.log"
+echo [6/12] Aplicando fix de error al apagar (registro Windows)...
 REM ErrorMode = 2: no muestra popup de error general
 reg add "HKLM\SYSTEM\CurrentControlSet\Control\Windows" /v "ErrorMode" /t REG_DWORD /d 2 /f >nul 2>&1
 reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows" /v "ErrorMode" /t REG_DWORD /d 2 /f >nul 2>&1
@@ -199,8 +199,8 @@ reg add "HKCU\Software\Microsoft\Windows\Windows Error Reporting" /v "DontShowUI
 echo       OK
 echo.
 
-echo [%date% %time%] llegue a 6/11 >> "%TEMP%\vp3_debug.log"
-echo [7/11] Configurando Windows Error Reporting y exclusiones del antivirus...
+echo [%date% %time%] llegue a 6/12 >> "%TEMP%\vp3_debug.log"
+echo [7/12] Configurando Windows Error Reporting y exclusiones del antivirus...
 REM Suprimir errores especificos del .exe
 reg add "HKLM\SOFTWARE\Microsoft\Windows\Windows Error Reporting" /v "Disabled" /t REG_DWORD /d 1 /f >nul 2>&1
 REM Exclusion de Windows Defender para subir_puntajes.exe. Encontrado
@@ -225,13 +225,13 @@ powershell -NoProfile -Command "try { Add-MpPreference -ExclusionPath 'C:\vPinba
 echo       OK
 echo.
 
-echo [%date% %time%] llegue a 7/11 >> "%TEMP%\vp3_debug.log"
-echo [8/11] Registrando sincronizacion final antes de apagar...
+echo [%date% %time%] llegue a 7/12 >> "%TEMP%\vp3_debug.log"
+echo [8/12] Registrando sincronizacion final antes de apagar...
 powershell -NoProfile -ExecutionPolicy Bypass -File "%VP3_DESTINO%registrar_sync_apagado.ps1" >nul 2>&1
 echo       OK
 echo.
 
-echo [%date% %time%] llegue a 8/11 >> "%TEMP%\vp3_debug.log"
+echo [%date% %time%] llegue a 8/12 >> "%TEMP%\vp3_debug.log"
 REM ENCONTRADO 16-sep-2026: mesas .vpx que ya se sabe que tiran un cartel
 REM de error (ej: "The Flintstones" y su objeto PinCab_Blades, que no
 REM existe si la maquina no tiene ese hardware de cabinet). En vez de
@@ -240,12 +240,12 @@ REM arreglar_mesas.exe aplica un parche puntual al SCRIPT interno de la
 REM mesa (via las mismas APIs de Windows que usa Visual Pinball) -- es
 REM seguro y no hace nada si la mesa no esta instalada o si ya esta
 REM arreglada. Ver arreglar_mesas.py para la lista completa de parches.
-echo [9/11] Arreglando carteles de error conocidos en mesas...
+echo [9/12] Arreglando carteles de error conocidos en mesas...
 "%VP3_DESTINO%arreglar_mesas.exe" >nul 2>&1
 echo       OK
 echo.
 
-echo [%date% %time%] llegue a 9/11 >> "%TEMP%\vp3_debug.log"
+echo [%date% %time%] llegue a 9/12 >> "%TEMP%\vp3_debug.log"
 REM DESACTIVADO 2-sep-2026: la lectura en vivo (subir sin salir de la mesa)
 REM causaba micro-cortes jugando mesas grandes (Walking Dead, Stern/SAM) --
 REM confirmado tanto en la maquina de Her como en la de Luis, incluso
@@ -256,19 +256,36 @@ REM al entrar a otra), que ya de por si tarda apenas ~1 segundo desde ahi
 REM (ver "SUBIDA INMEDIATA DE RECORDS" en CAMBIOS_RECIENTES.md). Se
 REM desactiva -- no se activa -- para que quede asi en TODAS las
 REM maquinas de ahora en mas, no solo en la que se actualice primero.
-echo [10/11] Verificando fluidez de las mesas (lectura en vivo desactivada)...
+echo [10/12] Verificando fluidez de las mesas (lectura en vivo desactivada)...
 powershell -NoProfile -ExecutionPolicy Bypass -File "%VP3_DESTINO%activar_lectura_en_vivo.ps1" -Auto -Quitar
 echo.
 
-echo [%date% %time%] llegue a 10/11 >> "%TEMP%\vp3_debug.log"
-echo [11/11] Iniciando watchdog actualizado...
+echo [%date% %time%] llegue a 10/12 >> "%TEMP%\vp3_debug.log"
+REM ENCONTRADO 16-sep-2026: al agregar 59 mesas nuevas se colaron en la
+REM nube 43 records que no son de ningun jugador (tablas de fabrica de
+REM las mesas nuevas, mas algunos con las iniciales mal grabadas). El
+REM filtro que los dejaba pasar ya esta arreglado en subir_puntajes.exe,
+REM pero los que YA habian subido hay que sacarlos de la nube.
+REM Corre aca, DESPUES de copiar los archivos nuevos y ANTES de arrancar
+REM el watchdog: asi el programa que los subia esta parado mientras se
+REM limpia, y cuando arranca ya tiene el filtro nuevo puesto.
+REM La lista de los 43 esta escrita adentro del programa, revisada uno
+REM por uno -- no decide nada solo. Si ya estan borrados (porque otra
+REM maquina actualizo antes), no hace nada. Guarda respaldo con fecha.
+echo [11/12] Limpiando jugadores fantasma de la nube...
+"%VP3_DESTINO%LIMPIAR_FANTASMAS.exe" --auto
+echo       OK
+echo.
+
+echo [%date% %time%] llegue a 11/12 >> "%TEMP%\vp3_debug.log"
+echo [12/12] Iniciando watchdog actualizado...
 start "" wscript.exe "%VP3_DESTINO%WATCHDOG_invisible.vbs"
 timeout /t 3 /nobreak >nul
 echo       OK
 echo.
 
 echo ===============================================
-echo [%date% %time%] llegue a 11/11, LISTO >> "%TEMP%\vp3_debug.log"
+echo [%date% %time%] llegue a 12/12, LISTO >> "%TEMP%\vp3_debug.log"
 echo    LISTO! Actualizacion completada
 echo ===============================================
 echo.

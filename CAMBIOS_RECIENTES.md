@@ -392,8 +392,15 @@ De los 43 registros sospechosos, **7 eran partidas REALES con las iniciales mal 
 ### Filtro extra por iniciales ilegibles:
 Como esas iniciales (`E//`, `K;;`, `#4`, `A__`, `0:`, `22,`, `=`) siguen estando en la memoria de las mesas, borrarlas de la nube no alcanzaba: la próxima sincronización las volvía a subir. Se agregó un filtro que descarta iniciales con caracteres que ninguna mesa deja escribir de verdad (se permiten letras, números, espacio, punto y apóstrofe — alcanza para cualquier inicial real, incluidas las de dos letras separadas tipo "G S").
 
-### Herramienta de limpieza (`LIMPIAR_FANTASMAS.exe`):
-El borrado en sí no lo pude hacer yo (el sistema de permisos no me deja borrar de la base compartida), así que quedó como una herramienta de **un solo uso** que corre Luis con doble click. Tiene la lista de los 43 escrita adentro, revisada uno por uno: no decide nada por su cuenta. Antes de borrar muestra todo, pide escribir "SI", y guarda una copia de respaldo con fecha de todo lo que saca.
+### La limpieza va DENTRO del actualizador (paso 11 de 12):
+El borrado en sí no lo puedo hacer yo (el sistema de permisos no me deja borrar de la base compartida). La primera versión fue una herramienta suelta que había que correr a mano — **mal**, va contra la regla número uno del proyecto. Luis lo marcó enseguida ("¿por qué no lo hacés de forma automática cuando actualizamos, así no hacemos nada nosotros?") y tenía razón.
+
+Ahora `LIMPIAR_FANTASMAS.exe --auto` es el **paso 11 de 12** de `ACTUALIZAR_VP3.bat`. Corre después de copiar los archivos nuevos y antes de arrancar el watchdog, a propósito: así el programa que subía los fantasmas está parado mientras se limpia, y cuando arranca ya tiene el filtro nuevo puesto.
+
+Es idempotente: primero se fija cuáles siguen estando en la nube, y si ya no hay ninguno (porque otra máquina actualizó antes) no hace nada. Guarda un respaldo con fecha de todo lo que saca. La lista de los 43 está escrita adentro, revisada uno por uno — no decide nada por su cuenta y no toca ningún récord de HER/ARI/LAL/AGU/MIK.
+
+### Bug encontrado al probarlo (gracias a la captura de Luis):
+La primera versión tiraba *"ERROR: no pude leer config.ini"*. Causa: usaba `os.path.dirname(__file__)` para saber dónde estaba parada, pero en un `.exe` compilado con PyInstaller `__file__` apunta a una carpeta temporal (`_MEI...`), **no** a donde está el `.exe`. Hay que usar `sys.executable` cuando corre congelado — el mismo criterio que ya usaba `subir_puntajes.py` para su `application_path`. Verificado compilando una prueba y corriéndola desde `C:\MAQUINAS_VP3`: ahora detecta bien la carpeta y lee el `config.ini`.
 
 ---
 
