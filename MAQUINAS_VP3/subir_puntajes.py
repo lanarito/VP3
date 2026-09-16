@@ -159,7 +159,30 @@ SIEMPRE_FABRICA = {
     # tabla de fabrica nunca antes leida por el camino de disco, capturada
     # primero por la lectura en vivo (que a proposito no arma linea base,
     # ver el fix de abajo en procesar_y_subir). Ver [[project_baseline_vivo_fabrica]].
-    "TOY", "ZAB"
+    "TOY", "ZAB",
+    # Confirmadas de fabrica el 16-sep-2026, al revisar por que la pagina
+    # habia pasado de 5 jugadores a 45. Son las tablas de fabrica de las 59
+    # mesas que se agregaron el 3-sep: entraron porque el filtro de "puntaje
+    # redondo" no contemplaba puntajes CHICOS (ver mas abajo).
+    "JDB", "MDK", "TEK", "JOS", "BFB", "EPC", "RON",          # The Walking Dead
+    "G S", "L R", "J R", "D T", "P P",                         # Avengers
+    "SPK", "PFZ", "MNY",                                       # Big Bang Bar
+    "KOZ", "MAX",                                              # Tales of the Arabian Nights
+    "ABC", "CGB", "DGH", "KEF", "ION", "TO", "J K",            # varias
+    "JCD", "JCD -", "CIN", "CIN -", "LFS -",                   # con guion de relleno
+    "0:", "22,", "=",                                          # basura de lectura
+}
+
+# Valores que NO son puntajes sino basura de memoria (centinelas). El caso
+# real: AC/DC subio un "record" de 4.294.967.295 el 4-sep-2026, que es
+# 0xFFFFFFFF -- todos los bits en 1, o sea memoria sin inicializar, no una
+# partida. Se bloquean por valor exacto y no por "mayor que X" a proposito:
+# hay mesas modernas donde un puntaje de miles de millones es real.
+PUNTAJES_BASURA = {
+    4294967295,   # 0xFFFFFFFF
+    4294967040,   # 0xFFFFFF00
+    16777215,     # 0xFFFFFF
+    65535,        # 0xFFFF
 }
 
 # Hasta que puesto de cada mesa se avisa por Telegram (1 = solo el Gran Campeon).
@@ -838,12 +861,37 @@ def procesar_y_subir(solo_mesas=None):
                             if not clon_detectado:
                                 if s["jugador"] in JUGADORES_AUTORIZADOS:
                                     continue
+                                # AGUJERO ENCONTRADO 16-sep-2026: la pagina
+                                # habia pasado de 5 jugadores a 45. Casi todos
+                                # los colados entraron el 3 y 4 de septiembre,
+                                # justo cuando se agregaron 59 mesas nuevas.
+                                # El motivo: este chequeo solo consideraba "de
+                                # fabrica" a los puntajes REDONDOS (millones),
+                                # que es como son las tablas de fabrica de las
+                                # mesas noventosas. Pero las mesas modernas
+                                # traen tablas de fabrica con numeros CHICOS
+                                # (Big Bang Bar: 40, 35, 30, 25, 20 / Pirates:
+                                # 25, 15 / Rocky: 1.593). Ninguno de esos es
+                                # multiplo de 100.000, asi que pasaban de largo
+                                # y se subian como si fueran records reales.
+                                #
+                                # Ahora tambien cuenta como de fabrica:
+                                #  - un puntaje menor a 100.000 (nadie hace 20
+                                #    puntos en un pinball de los que tenemos), y
+                                #  - los multiplos de 50.000, que es la escalera
+                                #    de fabrica de varias mesas (Tales of the
+                                #    Arabian Nights: 9.250.000 / 8.750.000).
+                                # Ojo: esto corre SOLO la primera vez que se lee
+                                # una mesa, y nunca para HER/ARI/LAL/AGU (ya
+                                # quedaron afuera arriba).
                                 es_puntaje_redondo = (
                                     s['puntaje'] % 1000000 == 0 or
                                     s['puntaje'] % 500000 == 0 or
-                                    s['puntaje'] % 100000 == 0
+                                    s['puntaje'] % 100000 == 0 or
+                                    s['puntaje'] % 50000 == 0
                                 )
-                                if not es_puntaje_redondo:
+                                es_puntaje_muy_chico = s['puntaje'] < 100000
+                                if not es_puntaje_redondo and not es_puntaje_muy_chico:
                                     continue
                             firma = f"{mesa['nombre']}-{s['jugador']}-{s['puntaje']}"
                             if firma not in base_records["signatures"]:
@@ -863,6 +911,12 @@ def procesar_y_subir(solo_mesas=None):
                 modificado_base_records = True
 
             for s in scores:
+
+                # FILTRO 0: valores que son basura de memoria, no puntajes
+                # (ver PUNTAJES_BASURA). Va primero porque no depende de las
+                # iniciales: sea quien sea, 0xFFFFFFFF no es una partida.
+                if s['puntaje'] in PUNTAJES_BASURA:
+                    continue
 
                 # FILTRO 1: Lista negra dinamica (records de fabrica ya identificados)
                 firma = f"{mesa['nombre']}-{s['jugador']}-{s['puntaje']}"

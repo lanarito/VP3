@@ -364,6 +364,33 @@ Nada nuevo — la próxima vez que Her y Ariel corran `ACTUALIZAR_VP3.bat`, si t
 
 ---
 
+## 👻 29. La página pasó de 5 jugadores a 45: el filtro no contemplaba puntajes CHICOS (16 septiembre 2026)
+
+### Lo que pasó:
+Luis avisó que en la página había como 45 jugadores, muchos claramente de fábrica.
+
+### Causa, encontrada mirando las fechas:
+**Casi todos entraron el 3 y 4 de septiembre** — exactamente cuando se agregaron las 59 mesas nuevas. Cuando el sistema lee una mesa por primera vez, guarda su tabla de fábrica como "línea base" para ignorarla. Pero ese filtro solo consideraba de fábrica a los puntajes **redondos** (millones), que es como son las tablas de las mesas noventosas.
+
+Las mesas modernas traen tablas de fábrica con números **chicos**: Big Bang Bar tiene 40, 35, 30, 25, 20. Pirates of the Caribbean, 25 y 15. Rocky and Bullwinkle, 1.593. Ninguno es múltiplo de 100.000, así que **pasaban de largo y se subían como si fueran récords reales**.
+
+Aparte apareció un caso distinto: AC/DC subió un "récord" de **4.294.967.295**, que no es un puntaje sino memoria sin inicializar (todos los bits en 1).
+
+### Arreglos:
+1. Al armar la línea base ahora también cuenta como de fábrica un puntaje **menor a 100.000** (nadie hace 20 puntos en estas mesas) y los múltiplos de **50.000** (la escalera de fábrica de varias mesas, tipo 9.250.000 / 8.750.000).
+2. Filtro nuevo de **valores basura** por valor exacto (0xFFFFFFFF y compañía). Se bloquean por valor exacto y no por "mayor que X", porque en mesas modernas un puntaje de miles de millones puede ser real.
+3. Se agregaron a la lista negra las iniciales de fábrica confirmadas de las mesas nuevas (JDB, MDK, TEK, SPK, PFZ, KOZ, MAX, etc.).
+
+Todo esto corre **solo la primera vez que se lee una mesa**, y nunca para HER/ARI/LAL/AGU.
+
+### Probado antes de publicar:
+25 chequeos con los datos reales de los colados: los 15 casos que se habían escapado ahora quedan filtrados, los récords de los 4 jugadores reales siguen pasando (incluso uno redondo de 100.000.000), y un invitado real con puntaje específico sigue entrando sin problema.
+
+### Ojo — no todos eran de fábrica:
+De los 43 registros sospechosos, **7 son partidas REALES con las iniciales mal grabadas**. Se confirmó leyendo la memoria de la mesa: en Guns N' Roses, `K;;` con 636.229.200 está en el puesto #6 de la tabla real, abajo de cinco de LAL. Esos quedaron pendientes de decisión de Luis, no se tocaron.
+
+---
+
 ## 📵 28. POR FIN LA CAUSA REAL de los Telegram perdidos: el programa se muere en el medio (16 septiembre 2026)
 
 ### Lo que pasó:
