@@ -512,6 +512,21 @@ def tiempos_mesa(archivos):
 # ============================================================
 # MOTOR UNICO: PINemHi (El Salvador)
 # ============================================================
+def formatear_cuando(mtime):
+    """Convierte la fecha de modificacion de un archivo (mtime) a texto
+    legible, en la hora local de la maquina donde corre este programa.
+
+    Es la hora REAL en que se hizo el record (cuando VPinMAME escribio el
+    archivo), no la hora en que se subio a la nube.
+    """
+    if not mtime:
+        return None
+    try:
+        return datetime.fromtimestamp(mtime).strftime("%d/%m %H:%M")
+    except Exception:
+        return None
+
+
 def leer_con_pinemhi(nombre_archivo, carpeta_origen=None):
     """Lee los puntajes de un .nv con PINemHi.
 
@@ -848,6 +863,17 @@ def procesar_y_subir(solo_mesas=None):
                     print(f"⚠️ Pinemhi no devolvio puntajes para: {archivo_base}")
                     continue
 
+                # Fecha/hora en que VPinMAME escribio este archivo: es el
+                # momento REAL en que se hizo el record en la maquina, no
+                # cuando se sube a la nube (que puede ser antes, con la
+                # lectura en vivo, o mucho despues si el sistema estuvo caido).
+                try:
+                    mtime_archivo = os.path.getmtime(filepath)
+                except Exception:
+                    mtime_archivo = None
+                for s in scores_archivo:
+                    s["_mtime"] = mtime_archivo
+
                 clave_archivo = archivo_base.lower()
                 # BUG ENCONTRADO 1-sep-2026 (records "TOY"/"ZAB" que subieron
                 # sin ser de nadie): antes esto decia "if carpeta_origen is
@@ -989,7 +1015,9 @@ def procesar_y_subir(solo_mesas=None):
                 id_unico = f"{siglas}-{s['jugador']}-{s['puntaje']}"
                 nuevos_puntajes.append({
                     "ID_Record": id_unico, "Mesa": mesa["nombre"],
-                    "Jugador": s["jugador"], "Puntaje": s["puntaje"], "Fecha": datetime.now().strftime("%Y-%m-%d")
+                    "Jugador": s["jugador"], "Puntaje": s["puntaje"],
+                    "Fecha": datetime.now().strftime("%Y-%m-%d"),
+                    "Cuando": formatear_cuando(s.get("_mtime"))
                 })
 
     if modificado_base_records:
@@ -1323,11 +1351,18 @@ def _marcar_como_enviado(id_rec):
 def _texto_aviso(item):
     salto = chr(10)
     pf = format(int(item["puntaje"]), ",").replace(",", ".")
-    return ("🚨 *¡NUEVO RÉCORD VP3!* 🚨" + salto + salto
-            + "🎰 Mesa: *" + str(item["mesa"]) + "*" + salto
-            + "🏅 Posición: *" + str(item["pos"]) + "*" + salto
-            + "👤 Jugador: *" + str(item["jugador"]) + "*" + salto
-            + "💥 Puntaje: *" + pf + "*")
+    texto = ("🚨 *¡NUEVO RÉCORD VP3!* 🚨" + salto + salto
+             + "🎰 Mesa: *" + str(item["mesa"]) + "*" + salto
+             + "🏅 Posición: *" + str(item["pos"]) + "*" + salto
+             + "👤 Jugador: *" + str(item["jugador"]) + "*" + salto
+             + "💥 Puntaje: *" + pf + "*")
+    # Fecha/hora REAL en que se hizo el record (mtime del .nv), no cuando
+    # se subio ni cuando se manda este mensaje. Si no esta disponible
+    # (item viejo de la cola, guardado antes de este cambio), se omite.
+    cuando = item.get("cuando")
+    if cuando:
+        texto += salto + "🕐 Hecho: *" + str(cuando) + "*"
+    return texto
 
 
 def enviar_avisos_pendientes():
@@ -1392,6 +1427,7 @@ def avisar_records_nuevos(nuevos, es_primera_carga, total_filas):
             "pos": pos,
             "jugador": r["Jugador"],
             "puntaje": r["Puntaje"],
+            "cuando": r.get("Cuando"),
         })
 
     if nuevos_items:
