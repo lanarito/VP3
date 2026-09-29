@@ -17,15 +17,19 @@
 # maquina y en cualquier sistema operativo, incluido el servidor de GitHub.
 # ============================================================
 
-# Por defecto, que Git decida (texto normalizado en el repositorio)
-* text=auto
+# TODO lo que sea texto, con finales de Windows, en cualquier maquina y en
+# cualquier sistema operativo. Se hace con una sola regla en vez de listar
+# extensiones a proposito: con una lista, la primera extension que alguien
+# no haya anotado trae el problema de vuelta. Y aca eso tiene un efecto
+# extra: el servidor regenera MAQUINAS_VP3.zip cuando no coincide con la
+# carpeta, asi que un archivo con finales distintos en Windows y en Linux
+# no coincidia NUNCA, y el zip se regeneraba en cada push, de ida y de
+# vuelta, para siempre. Paso con los .txt y los .py el 29-sep-2026.
+* text=auto eol=crlf
 
-# Los que ejecuta Windows: SIEMPRE CRLF, en todos lados
-*.bat   text eol=crlf
-*.cmd   text eol=crlf
-*.vbs   text eol=crlf
-*.ps1   text eol=crlf
-*.ini   text eol=crlf
+# Excepcion: lo que corre EN el servidor de GitHub (Linux) se deja con
+# finales de Unix, que es lo natural ahi.
+.github/** text eol=lf
 
 # Binarios: que Git no los toque nunca
 *.exe   binary
