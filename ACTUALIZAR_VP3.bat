@@ -289,9 +289,19 @@ echo [%date% %time%] llegue a 12/12, LISTO >> "%TEMP%\vp3_debug.log"
 echo    LISTO! Actualizacion completada
 echo ===============================================
 echo.
+REM AGREGADO 29-sep-2026: mostrar la fecha del programa que quedo puesto.
+REM El 28-sep se publico un cambio sin regenerar MAQUINAS_VP3.zip, asi que
+REM el actualizador corria entero, decia LISTO, y dejaba el .exe de doce
+REM dias antes -- sin ninguna senal de que algo anduvo mal. Con la fecha a
+REM la vista, eso se nota de una: si dice una fecha vieja, el zip publicado
+REM quedo atrasado. (La red de seguridad automatica esta en
+REM .github/workflows/verificar-zip.yml, esto es solo para verlo aca.)
+for %%F in ("%VP3_DESTINO%subir_puntajes.exe") do set "VP3_FECHA_EXE=%%~tF"
 echo El sistema VP3 esta corriendo con la ultima version.
+echo Version instalada: %VP3_FECHA_EXE%
+echo [%date% %time%] version del exe instalada: %VP3_FECHA_EXE% >> "%TEMP%\vp3_debug.log"
 echo.
-timeout /t 3 /nobreak >nul
+timeout /t 4 /nobreak >nul
 
 REM ============================================================
 REM EASTER EGG - Aparece al final de CADA actualizacion (una vez)

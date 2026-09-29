@@ -1,0 +1,40 @@
+# ============================================================
+# FINALES DE LINEA - no es un detalle cosmetico aca
+#
+# Los .bat los ejecuta cmd.exe, que necesita finales de linea de Windows
+# (CRLF). Un .bat guardado con finales de Unix (LF) puede fallar de formas
+# raras, sobre todo con etiquetas y "goto" -- y ACTUALIZAR_VP3.bat esta
+# lleno de goto, justamente porque los bloques (...) largos resultaron
+# poco confiables.
+#
+# ENCONTRADO 29-sep-2026: el workflow que regenera MAQUINAS_VP3.zip corre
+# en Linux. Sin esta configuracion, Git le entregaba los .bat con LF, y el
+# zip publicado (el que baja ACTUALIZAR_VP3.bat de todas las maquinas)
+# quedaba con TODOS los .bat en LF. La red de seguridad del zip terminaba
+# siendo mas peligrosa que el problema que resolvia.
+#
+# Con esto, los archivos que ejecuta Windows salen con CRLF en cualquier
+# maquina y en cualquier sistema operativo, incluido el servidor de GitHub.
+# ============================================================
+
+# TODO lo que sea texto, con finales de Windows, en cualquier maquina y en
+# cualquier sistema operativo. Se hace con una sola regla en vez de listar
+# extensiones a proposito: con una lista, la primera extension que alguien
+# no haya anotado trae el problema de vuelta. Y aca eso tiene un efecto
+# extra: el servidor regenera MAQUINAS_VP3.zip cuando no coincide con la
+# carpeta, asi que un archivo con finales distintos en Windows y en Linux
+# no coincidia NUNCA, y el zip se regeneraba en cada push, de ida y de
+# vuelta, para siempre. Paso con los .txt y los .py el 29-sep-2026.
+* text=auto eol=crlf
+
+# Excepcion: lo que corre EN el servidor de GitHub (Linux) se deja con
+# finales de Unix, que es lo natural ahi.
+.github/** text eol=lf
+
+# Binarios: que Git no los toque nunca
+*.exe   binary
+*.zip   binary
+*.nv    binary
+*.vpx   binary
+*.png   binary
+*.jpg   binary

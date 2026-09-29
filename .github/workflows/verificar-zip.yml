@@ -1,0 +1,55 @@
+# ============================================================
+# RED DE SEGURIDAD: que MAQUINAS_VP3.zip nunca quede desactualizado
+#
+# POR QUE EXISTE (paso de verdad, dos veces):
+# ACTUALIZAR_VP3.bat no copia archivos del repo: descarga
+# MAQUINAS_VP3.zip desde GitHub Pages. Si alguien cambia algo dentro de
+# MAQUINAS_VP3/ y se olvida de regenerar el zip, el actualizador corre
+# entero, dice "LISTO!", y en la maquina no cambia nada. Es el peor tipo
+# de error: silencioso y con cara de exito.
+#
+# Paso el 28-sep-2026 con el feature de la fecha/hora en el Telegram
+# (commit 7074cb9): se recompilo el .exe y se actualizo MAQUINAS_VP3/,
+# pero no el zip. Luis actualizo, le dijo LISTO, y siguio con el .exe de
+# doce dias antes. Ya habia pasado algo parecido antes (ver el comentario
+# de publicar.ps1).
+#
+# QUE HACE: en cada push, compara el contenido del zip contra la carpeta
+# MAQUINAS_VP3/. Si algo no coincide, lo regenera y lo commitea solo.
+# Si esta todo bien, no toca nada (y no genera commits al pedo).
+#
+# NO reemplaza a publicar.ps1, que sigue siendo la forma normal de
+# publicar. Es la red por si se publica a mano desde cualquier maquina.
+# ============================================================
+name: Verificar MAQUINAS_VP3.zip
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'MAQUINAS_VP3/**'
+      - 'MAQUINAS_VP3.zip'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Comparar el zip contra la carpeta
+        id: comparar
+        run: python .github/workflows/verificar_zip.py
+
+      - name: Regenerar el zip si hacia falta
+        if: steps.comparar.outputs.desincronizado == 'true'
+        run: |
+          python .github/workflows/verificar_zip.py --regenerar
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add MAQUINAS_VP3.zip
+          git commit -m "Regenera MAQUINAS_VP3.zip (estaba desincronizado con MAQUINAS_VP3/)"
+          git push
