@@ -364,6 +364,35 @@ Nada nuevo — la próxima vez que Her y Ariel corran `ACTUALIZAR_VP3.bat`, si t
 
 ---
 
+## 📦 30. El actualizador decía "LISTO!" y no actualizaba nada: el ZIP quedó sin regenerar (29 septiembre 2026)
+
+### Lo que pasó:
+El 28 de septiembre se agregó al Telegram la línea `🕐 Hecho: DD/MM HH:MM` (la hora real en que se jugó el récord, sacada de la fecha del archivo `.nv`). Luis actualizó, hizo un récord, el Telegram llegó… **sin la línea de fecha**.
+
+### La causa:
+`ACTUALIZAR_VP3.bat` **no copia archivos del repositorio**: descarga `MAQUINAS_VP3.zip` desde GitHub Pages. El commit del feature (`7074cb9`) recompiló `subir_puntajes.exe` y actualizó la carpeta `MAQUINAS_VP3/`, pero **no regeneró el zip**. Entonces el actualizador bajaba el zip viejo, lo instalaba, decía "LISTO!" — y dejaba el programa del 16 de septiembre.
+
+Confirmado midiendo el archivo adentro del zip publicado: tenía el `.exe` de **8.589.185 bytes (16-sep)** en vez del de **8.586.290 (28-sep)**, exactamente el que estaba instalado en la máquina.
+
+Nada estaba roto: el código del feature está perfecto (probado con 8 chequeos, incluida la fecha real de un `.nv` de verdad). Simplemente nunca llegó a la máquina.
+
+### Lo peor del caso:
+Es un error **silencioso y con cara de éxito**. Todos los pasos del actualizador daban OK, el log llegaba a "12/12 LISTO", y no había ninguna señal de que se había instalado una versión de doce días antes.
+
+### Dos arreglos para que no se repita:
+
+**1. Red de seguridad automática (`.github/workflows/verificar-zip.yml`):** en cada cambio que se sube a GitHub, se compara el contenido del zip contra la carpeta `MAQUINAS_VP3/`. Si no coinciden, **lo regenera y lo sube solo**. Compara el contenido de cada archivo, no los bytes del zip, así no se pone a regenerarlo al pedo. Funciona desde cualquier máquina y sin depender de que alguien se acuerde — que es justo lo que falló (`publicar.ps1` ya regeneraba el zip, pero esa vez se publicó a mano).
+
+**2. Señal visible:** al terminar, el actualizador ahora muestra `Version instalada: DD/MM/AAAA HH:MM` (la fecha del programa que quedó puesto). Si dice una fecha vieja, se nota de una. También queda registrado en el log.
+
+### Probado antes de publicar:
+El verificador se probó en los tres casos: con todo sincronizado (dice OK), simulando el error del 28 (lo detecta y dice qué archivo), y regenerando (queda sincronizado). Además se confirmó que el zip regenerado por el workflow se extrae bien con `Expand-Archive` en Windows y que el `.exe` sale idéntico.
+
+### Para los chicos:
+Hay que correr `ACTUALIZAR_VP3.bat` una vez más — esta vez sí trae el programa nuevo.
+
+---
+
 ## 👻 29. La página pasó de 5 jugadores a 45: el filtro no contemplaba puntajes CHICOS (16 septiembre 2026)
 
 ### Lo que pasó:
