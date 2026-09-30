@@ -404,7 +404,15 @@ En una mesa de más de 32 KB, la lectura en vivo **se apaga sola** apenas arranc
 ### Probado en banco, todavía NO publicado como activo:
 Se armó un banco de pruebas con un controlador falso (sin tocar VPX) y se confirmó: una mesa de 8 KB sigue funcionando y volcando el archivo; una de 128 KB se apaga sola y queda anotado en `_tiempos.log`.
 
-**La v18 está activada SOLO en la máquina de Luis, para probar jugando.** El actualizador sigue desactivando la lectura en vivo en todas las máquinas — no cambia nada para Her ni Ariel. Si Luis confirma que en las mesas chicas no se nota nada, recién ahí se publica para todos. Si molesta, se corre `ACTUALIZAR_VP3.bat` y vuelve todo atrás solo.
+### Publicado para las tres máquinas, a pedido de Luis:
+La primera idea fue activarlo solo en la máquina de Luis y esperar su confirmación. Luis pidió publicarlo directamente para que Her y Ariel también lo prueben jugando, con el acuerdo de volver atrás si molesta — y tiene sentido: tres máquinas distintas dan mejor información que una, y el problema original se había detectado justamente en la de Her.
+
+Así que `ACTUALIZAR_VP3.bat` vuelve a **activar** la lectura en vivo (paso 10 de 12).
+
+**Para volver atrás:** cambiar `-Auto` por `-Auto -Quitar` en el paso 10, publicar, y que los tres corran `ACTUALIZAR_VP3.bat`. Mismo esfuerzo para ellos que cualquier otra actualización.
+
+### Un bug más, encontrado al probarlo:
+La línea que engancha la llamada dentro del timer tenía el número de versión **escrito a mano** (`v17`), así que al subir a v18 el bloque quedaba etiquetado v18 y la llamada seguía diciendo v17. No rompía nada (la llamada apunta al mismo Sub), pero al diagnosticar confunde: parece que quedó mezcla de dos versiones. Ahora sale de `$VERSION`, el único lugar donde se cambia el número. Verificado en la máquina: bloque y llamada dicen v18, una sola vez en cada copia de `core.vbs`.
 
 ---
 
