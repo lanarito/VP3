@@ -1,5 +1,5 @@
 # ============================================================
-# VP3 - LECTURA EN VIVO (v17 - sondeo directo, sin ChangedNVRAM)
+# VP3 - LECTURA EN VIVO (sondeo directo, sin ChangedNVRAM). Version actual: ver $VERSION
 #
 # HISTORIA (por que se llego a esta version):
 #
@@ -110,7 +110,13 @@ $VERSION = "v18"
 $ini = "' ===== VP3 LECTURA EN VIVO $VERSION INICIO ====="
 $fin = "' ===== VP3 LECTURA EN VIVO $VERSION FIN ====="
 $carpetaLive = "C:\vPinball\VP3_LIVE"
-$marcaLlamada = "	VP3EnVivoTick ' VP3 lectura en vivo (v17)"
+# BUG ENCONTRADO 30-sep-2026: esto tenia el numero de version escrito a
+# mano ("v17"), asi que al subir a v18 el bloque quedaba etiquetado v18
+# pero la llamada adentro del timer seguia diciendo v17. No rompia nada
+# (la llamada apunta al Sub igual), pero al diagnosticar confunde: parece
+# que quedo mezcla de dos versiones. Ahora sale de $VERSION, que es el
+# unico lugar donde se cambia el numero.
+$marcaLlamada = "	VP3EnVivoTick ' VP3 lectura en vivo ($VERSION)"
 
 function Buscar-Core {
     $cand = @(

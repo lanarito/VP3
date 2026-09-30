@@ -246,18 +246,29 @@ echo       OK
 echo.
 
 echo [%date% %time%] llegue a 9/12 >> "%TEMP%\vp3_debug.log"
-REM DESACTIVADO 2-sep-2026: la lectura en vivo (subir sin salir de la mesa)
-REM causaba micro-cortes jugando mesas grandes (Walking Dead, Stern/SAM) --
-REM confirmado tanto en la maquina de Her como en la de Luis, incluso
-REM despues de varias rondas de optimizacion (v9 a v17) y la exclusion de
-REM Windows Defender. Se prioriza la fluidez de las mesas por sobre la
-REM subida instantanea: el record vuelve a subir al salir de la mesa (o
-REM al entrar a otra), que ya de por si tarda apenas ~1 segundo desde ahi
-REM (ver "SUBIDA INMEDIATA DE RECORDS" en CAMBIOS_RECIENTES.md). Se
-REM desactiva -- no se activa -- para que quede asi en TODAS las
-REM maquinas de ahora en mas, no solo en la que se actualice primero.
-echo [10/12] Verificando fluidez de las mesas (lectura en vivo desactivada)...
-powershell -NoProfile -ExecutionPolicy Bypass -File "%VP3_DESTINO%activar_lectura_en_vivo.ps1" -Auto -Quitar
+REM HISTORIA: la lectura en vivo (subir el puntaje sin salir de la mesa)
+REM se DESACTIVO el 2-sep-2026 porque causaba micro-cortes jugando mesas
+REM grandes (Walking Dead, Stern/SAM), confirmado en la maquina de Her Y
+REM en la de Luis, aun despues de 8 rondas de optimizacion (v9 a v17) y
+REM de excluir la carpeta del antivirus.
+REM
+REM REACTIVADO 30-sep-2026 con la v18, que arregla el problema de raiz:
+REM se midio (VBScript real, repitiendo cada operacion cientos de veces)
+REM que el costo es PROPORCIONAL al tamaño de la memoria de la mesa --
+REM 2 KB cuesta 0,5 ms y 128 KB cuesta 32,8 ms, o sea DOS frames enteros.
+REM Eso no se arregla optimizando. Pero de las 323 mesas instaladas, 291
+REM son de menos de 24 KB y solo 32 son de 64/128 KB (las Stern/SAM
+REM modernas), sin ninguna en el medio. Asi que la v18 se APAGA SOLA en
+REM las mesas grandes: esas siguen igual que hasta ahora (el puntaje sube
+REM al salir), y el 90% del catalogo recupera el puntaje al instante --
+REM que es lo que hace falta para que el Telegram muestre la hora REAL
+REM del record y no la del cierre de mesa.
+REM
+REM Luis pidio publicarlo asi para que Her y Ariel lo prueben jugando.
+REM PARA VOLVER ATRAS si molesta: cambiar "-Auto" por "-Auto -Quitar" en
+REM la linea de abajo, publicar, y que los tres corran Actualizar VP3.
+echo [10/12] Activando subida instantanea del puntaje (mesas chicas)...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%VP3_DESTINO%activar_lectura_en_vivo.ps1" -Auto
 echo.
 
 echo [%date% %time%] llegue a 10/12 >> "%TEMP%\vp3_debug.log"
