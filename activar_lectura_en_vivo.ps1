@@ -106,7 +106,7 @@
 # ============================================================
 param([switch]$Auto, [switch]$Quitar)
 
-$VERSION = "v17"
+$VERSION = "v18"
 $ini = "' ===== VP3 LECTURA EN VIVO $VERSION INICIO ====="
 $fin = "' ===== VP3 LECTURA EN VIVO $VERSION FIN ====="
 $carpetaLive = "C:\vPinball\VP3_LIVE"
@@ -178,11 +178,16 @@ $ini
 ' NO usa Controller.ChangedNVRAM (comprobado que no avisa cambios en
 ' vivo durante el juego, solo cuando VPinMAME ya escribio a disco).
 ' Se saca solo con activar_lectura_en_vivo.ps1 -Quitar.
-Dim vp3_nv, vp3_iniciado, vp3_ult, vp3_rom, vp3_fso, vp3_ultimo_chequeo, vp3_bufHex, vp3_intervalo
+Dim vp3_nv, vp3_iniciado, vp3_ult, vp3_rom, vp3_fso, vp3_ultimo_chequeo, vp3_bufHex, vp3_intervalo, vp3_apagado
 
 Sub VP3EnVivoTick
     On Error Resume Next
     Err.Clear
+
+    ' v18 (30-sep-2026): en una mesa grande esto se apaga solo y no vuelve
+    ' a hacer NADA hasta que se cierre la mesa. Ver el porque abajo, en la
+    ' primera lectura.
+    If vp3_apagado = True Then Exit Sub
 
     If IsEmpty(Controller) Or Controller Is Nothing Then Exit Sub
 
@@ -229,16 +234,49 @@ Sub VP3EnVivoTick
         For i = 0 To UBound(vp3_nv)
             vp3_bufHex(i) = Right("0" & Hex(vp3_nv(i)), 2)
         Next
-        ' v15 (1-sep-2026): en una mesa grande (Stern/SAM, +20KB de NVRAM --
-        ' Walking Dead, X-Men) el costo de LEER y COMPARAR la memoria entera
-        ' (aun con el parche incremental de v14, que ya evita reconvertir
-        ' todo a texto) sigue siendo mayor que en una mesa chica, y Luis
-        ' confirmo jugando que en Walking Dead todavia se notaba algo con el
-        ' chequeo cada 2 segundos. En vez de bajarle la velocidad a TODAS
-        ' las mesas, solo las grandes chequean mas espaciado (cada 5
-        ' segundos) -- las demas (la gran mayoria del catalogo, mesas
-        ' chicas de los 90s) siguen a 2 segundos, que ya se probo fluido.
-        If UBound(vp3_nv) + 1 > 20000 Then vp3_intervalo = 5
+        ' v18 (30-sep-2026): EN LAS MESAS GRANDES ESTO SE APAGA SOLO.
+        '
+        ' Se midio en VBScript real (el mismo motor que usa la mesa) cuanto
+        ' cuesta el trabajo de cada vuelta segun el tamaño de la memoria,
+        ' repitiendo cada operacion cientos de veces (el reloj de VBScript
+        ' salta de a 15ms: sin repetir, todo lo chico da "0"):
+        '
+        '     2 KB -> 0,5 ms      32 KB ->  8,0 ms
+        '     8 KB -> 1,9 ms      64 KB -> 16,2 ms   <- un frame entero
+        '    24 KB -> 5,9 ms     128 KB -> 32,8 ms   <- DOS frames
+        '
+        ' Un frame a 60 cuadros por segundo dura 16,7 ms. En una mesa de
+        ' 128 KB el mecanismo se come dos frames enteros cada vez que
+        ' corre: eso es exactamente el tironcito que Luis y Her sentian, y
+        ' no se arregla optimizando, porque el costo es proporcional al
+        ' tamaño y en VBScript no hay forma de recorrer 131.072 bytes
+        ' gratis.
+        '
+        ' Lo importante: el catalogo se parte limpio en dos. De las 323
+        ' mesas instaladas, 291 son de menos de 24 KB (cuestan menos de
+        ' 6 ms, o sea un tercio de frame) y 32 son de 64 o 128 KB (las
+        ' Stern/SAM modernas: Walking Dead, X-Men, AC/DC, Metallica...).
+        ' NO hay ninguna en el medio. Asi que alcanza con dejar afuera a
+        ' esas 32 para que el 90% del catalogo tenga el puntaje al
+        ' instante sin que se note nada.
+        '
+        ' En las grandes se apaga del todo (no chequea mas, ni siquiera
+        ' vuelve a leer la memoria) y el puntaje sube al salir de la mesa,
+        ' como viene funcionando ahora. El limite esta en 32 KB porque no
+        ' hay mesas entre 24 y 64 KB: cualquier valor ahi adentro deja el
+        ' mismo corte, y 32 KB da margen por si aparece alguna nueva.
+        If UBound(vp3_nv) + 1 > 32768 Then
+            vp3_apagado = True
+            If vp3_fso Is Nothing Then Set vp3_fso = CreateObject("Scripting.FileSystemObject")
+            If Not vp3_fso.FolderExists("$carpetaLive") Then vp3_fso.CreateFolder "$carpetaLive"
+            Dim archG
+            Set archG = vp3_fso.OpenTextFile("$carpetaLive\_tiempos.log", 8, True)
+            archG.WriteLine Now & " | mesa de " & (UBound(vp3_nv) + 1) & " bytes: lectura en vivo APAGADA para esta mesa (es grande, se notaria)"
+            archG.Close
+            Set archG = Nothing
+            Err.Clear
+            Exit Sub
+        End If
     ElseIf UBound(nvActual) = UBound(vp3_nv) Then
         ' PROBADO 1-sep-2026: VBScript NO tiene la sentencia Mid(...) =
         ' valor para parchear un string en el lugar (eso es de VBA/VB6
@@ -305,7 +343,25 @@ Sub VP3EnVivoTick
 
     If Not hayCambios Then Exit Sub
 
+    ' v18 (30-sep-2026): ESTA LINEA ERA LA MAS CARA Y NADIE LA ESTABA
+    ' MIDIENDO. Quedaba justo en el medio de las dos mediciones (despues
+    ' de anotar "lectura", antes de arrancar el reloj de "escritura"), y
+    ' el comentario de abajo decia que ya estaba contada en "lectura" --
+    ' no era cierto. Por eso en v16/v17 los numeros daban bajos y no
+    ' cerraba de donde salia la tildada.
+    ' Medido aparte: rearmar el texto entero con Join cuesta 17,6 ms en
+    ' una mesa de 128 KB (mas que la comparacion byte por byte, que son
+    ' 15,2 ms). Ahora se mide y se anota por separado.
+    Dim vp3_tJ
+    vp3_tJ = Timer
     vp3_ult = Join(vp3_bufHex, "")
+    Dim vp3_msJ
+    vp3_msJ = (Timer - vp3_tJ) * 1000
+    Set archT = vp3_fso.OpenTextFile("$carpetaLive\_tiempos.log", 8, True)
+    archT.WriteLine Now & " | " & vp3_rom & " | armar texto=" & FormatNumber(vp3_msJ, 1) & "ms"
+    archT.Close
+    Set archT = Nothing
+    Err.Clear
 
     Dim vp3_t1
     vp3_t1 = Timer
@@ -322,9 +378,9 @@ Sub VP3EnVivoTick
     Set arch = Nothing
     Err.Clear
 
-    ' Log de tiempos, segunda parte: SOLO la escritura del .hex a disco
-    ' (Join ya se conto arriba en "lectura", separado a proposito para
-    ' aislar el costo de la escritura en si de todo lo demas).
+    ' Log de tiempos, tercera parte: SOLO la escritura del .hex a disco.
+    ' (El armado del texto con Join se mide aparte, arriba -- ver el
+    ' comentario de v18: antes no se medía en ningún lado.)
     Dim vp3_ms2
     vp3_ms2 = (Timer - vp3_t1) * 1000
     Set archT = vp3_fso.OpenTextFile("$carpetaLive\_tiempos.log", 8, True)

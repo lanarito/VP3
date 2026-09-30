@@ -364,6 +364,50 @@ Nada nuevo — la próxima vez que Her y Ariel corran `ACTUALIZAR_VP3.bat`, si t
 
 ---
 
+## 🔬 31. Encontrado el costo real de la lectura en vivo — y por qué se puede recuperar en el 90% de las mesas (30 septiembre 2026)
+
+### De dónde viene:
+El Telegram ya muestra la hora del récord, pero es **la hora en que se cerró la mesa**, no la del puntaje. Con la lectura en vivo apagada no hay forma de saber la hora real: VPinMAME no toca el archivo hasta que salís de la mesa. Para tener la hora exacta hay que volver a prender la lectura en vivo — que se había apagado el 2-sep porque trababa las mesas grandes.
+
+### Se midió lo que faltaba medir:
+Se corrió VBScript de verdad (el mismo motor que usa la mesa) midiendo cada parte del mecanismo, repitiendo cada operación cientos de veces — porque el reloj de VBScript salta de a 15 ms y sin repetir todo lo chico da "0", que fue justamente lo que despistó antes.
+
+| Operación | 128 KB |
+|---|---|
+| Bucle de comparación byte por byte | 15,2 ms |
+| Convertir a hex solo lo que cambió | 0,0 ms |
+| **Rearmar el texto completo (`Join`)** | **17,6 ms** |
+
+**El `Join` era el más caro y no lo estaba midiendo nadie.** Quedaba justo entre las dos mediciones que existían (después de anotar "lectura", antes de arrancar el reloj de "escritura"), y un comentario del propio código afirmaba que ya estaba contado en "lectura" — no era cierto. Por eso en v16 y v17 los números daban bajos y no cerraba de dónde salía la tildada. Ahora se mide y se anota aparte.
+
+De paso queda descartada la sospecha del bucle que convierte byte por byte a hexadecimal: **ese ya estaba optimizado desde v14** y sale gratis (0,0 ms), porque solo toca los bytes que cambiaron.
+
+### Lo que cambia todo: cómo escala
+| Memoria de la mesa | Costo | En frames (16,7 ms) |
+|---|---|---|
+| 2 KB | 0,47 ms | 0,03 |
+| 8 KB | 1,88 ms | 0,11 |
+| 24 KB | 5,92 ms | 0,35 |
+| 64 KB | 16,19 ms | **0,97** |
+| 128 KB | 32,81 ms | **1,96** |
+
+En una mesa de 128 KB el mecanismo se come **dos frames enteros** cada vez que corre. Ese es el tironcito. Y no se arregla optimizando: el costo es proporcional al tamaño, y en VBScript no hay forma de recorrer 131.072 bytes gratis.
+
+### Pero el catálogo se parte limpio en dos:
+De las **323 mesas instaladas**, **291 son de menos de 24 KB** (cuestan menos de 6 ms, un tercio de frame) y **32 son de 64 o 128 KB** — las Stern/SAM modernas: Walking Dead, X-Men, AC/DC, Metallica, Star Trek, Spider-Man… **No hay ninguna en el medio.**
+
+Así que alcanza con dejar afuera a esas 32 para que el **90% del catálogo** tenga el puntaje al instante sin que se note nada.
+
+### v18: se apaga sola en las mesas grandes
+En una mesa de más de 32 KB, la lectura en vivo **se apaga sola** apenas arranca: lee la memoria una única vez para ver el tamaño y no vuelve a hacer nada hasta que se cierre la mesa (medido en banco de pruebas: **segunda vuelta 0,0 ms**). Esas mesas siguen exactamente como hoy — el puntaje sube al salir. El límite está en 32 KB porque no hay mesas entre 24 y 64 KB: cualquier valor ahí adentro da el mismo corte, y 32 KB deja margen.
+
+### Probado en banco, todavía NO publicado como activo:
+Se armó un banco de pruebas con un controlador falso (sin tocar VPX) y se confirmó: una mesa de 8 KB sigue funcionando y volcando el archivo; una de 128 KB se apaga sola y queda anotado en `_tiempos.log`.
+
+**La v18 está activada SOLO en la máquina de Luis, para probar jugando.** El actualizador sigue desactivando la lectura en vivo en todas las máquinas — no cambia nada para Her ni Ariel. Si Luis confirma que en las mesas chicas no se nota nada, recién ahí se publica para todos. Si molesta, se corre `ACTUALIZAR_VP3.bat` y vuelve todo atrás solo.
+
+---
+
 ## 📦 30. El actualizador decía "LISTO!" y no actualizaba nada: el ZIP quedó sin regenerar (29 septiembre 2026)
 
 ### Lo que pasó:
