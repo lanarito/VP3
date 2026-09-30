@@ -364,6 +364,50 @@ Nada nuevo — la próxima vez que Her y Ariel corran `ACTUALIZAR_VP3.bat`, si t
 
 ---
 
+## 🎯 32. Lo caro no era el script: era el OTRO programa (v19, 30 septiembre 2026)
+
+### Lo que probó Luis:
+Jugó Dirty Harry (mesa chica, 12 KB) con la v18: *"me subió el puntaje enseguida con la hora y la fecha, peeeeero se veía por ahí la bola media trabada"*.
+
+### Lo que mostraron los números de esa partida:
+El script en sí es barato, tal como se había medido:
+
+| | Dirty Harry (12 KB) |
+|---|---|
+| leer + comparar | 0–3,9 ms |
+| armar el texto | 0–3,9 ms |
+| **escribir el archivo** | **7,8–11,7 ms** |
+
+Dos cosas que no estaban en el análisis anterior:
+
+**1. Escribir un archivo cuesta casi un frame, sin importar el tamaño.** Son 24 KB y cuesta 8–12 ms: no es el tamaño, es el costo fijo de abrir y cerrar un archivo en Windows.
+
+**2. Y el propio log de mediciones agregaba TRES aperturas más por vuelta.** O sea que la instrumentación puesta para medir la tildada estaba causando más tildada que la que medía. Ahora el log **solo escribe si alguien crea a mano un archivo `_medir.txt`** en la carpeta `VP3_LIVE`. Sin ese archivo, cero escrituras.
+
+### Pero la causa de fondo estaba AFUERA del script:
+Cada vez que el script toca el archivo, `subir_puntajes.exe` lo ve cambiar y arranca a leer la memoria con PINemHi y a consultar por internet. En el log de la partida quedó clarísimo: **eso pasaba cada 4 segundos durante toda la partida**.
+
+```
+11:08:15  Cambio detectado: Dirty Harry  ->  sincronizando con Supabase
+11:08:20  Cambio detectado: Dirty Harry  ->  sincronizando con Supabase
+11:08:24  Cambio detectado: Dirty Harry  ->  sincronizando con Supabase
+```
+
+Un programa entero trabajando en paralelo mientras se juega pesa muchísimo más que los milisegundos del script.
+
+**v19: el chequeo pasa de cada 2 segundos a cada 10.** Con eso, ese trabajo de afuera baja a la quinta parte. El aviso sigue llegando prácticamente al toque (10 segundos como mucho, contra tener que salir de la mesa), y la hora que se guarda es la del archivo, así que el Telegram sigue mostrando la hora real.
+
+### Y el bug que explicaba lo del récord de Hernán:
+Hernán hizo 475.929.760 en Dirty Harry cerca de las 14:23, salió de la mesa 14:31, y el Telegram mostró **14:31** — la hora del mensaje, no la del récord.
+
+Causa encontrada: cuando llega un volcado en vivo, el programa lo convierte y **crea un archivo nuevo** — que nace con la fecha de ese momento. Después esa fecha se usaba como "la hora en que se hizo el récord". O sea que quedaba la hora en que se procesó.
+
+La hora buena es la del volcado (`.hex`), que lo escribió la mesa cuando el puntaje cambió de verdad. Ahora se le copia esa hora al archivo convertido. Probado: un volcado de hace 8 minutos ahora sale como **14:32** en vez de 14:40.
+
+**Ojo:** esto solo aplica si la máquina tiene la lectura en vivo activa. Si Hernán todavía no corrió `ACTUALIZAR_VP3.bat`, en su máquina el archivo se escribe recién al salir de la mesa, y esa es la única hora que existe — no hay nada más temprano para leer.
+
+---
+
 ## 🔬 31. Encontrado el costo real de la lectura en vivo — y por qué se puede recuperar en el 90% de las mesas (30 septiembre 2026)
 
 ### De dónde viene:

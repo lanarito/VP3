@@ -476,6 +476,19 @@ def convertir_volcados_en_vivo():
                 if anterior != crudo:
                     with open(destino, "wb") as f:
                         f.write(crudo)
+                    # BUG ENCONTRADO 30-sep-2026: este archivo lo estamos
+                    # creando NOSOTROS recien ahora, asi que nace con la fecha
+                    # de este momento. Mas adelante se usa esa fecha como "la
+                    # hora en que se hizo el record" para el Telegram -- y
+                    # quedaba la hora en que se proceso, no la de la partida.
+                    # La hora buena es la del .hex: ese lo escribio la mesa en
+                    # el momento en que el puntaje cambio de verdad. Se la
+                    # copiamos al archivo convertido.
+                    try:
+                        ts = os.path.getmtime(ruta_hex)
+                        os.utime(destino, (ts, ts))
+                    except Exception as e:
+                        print("Aviso: no pude copiar la hora del volcado: " + str(e))
                     convertidos.append(destino)
                     print("Volcado EN VIVO recibido: " + nombre_archivo + " (" + str(len(crudo)) + " bytes)")
             except Exception as e:

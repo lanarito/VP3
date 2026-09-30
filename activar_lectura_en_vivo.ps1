@@ -106,7 +106,7 @@
 # ============================================================
 param([switch]$Auto, [switch]$Quitar)
 
-$VERSION = "v18"
+$VERSION = "v19"
 $ini = "' ===== VP3 LECTURA EN VIVO $VERSION INICIO ====="
 $fin = "' ===== VP3 LECTURA EN VIVO $VERSION FIN ====="
 $carpetaLive = "C:\vPinball\VP3_LIVE"
@@ -197,7 +197,24 @@ Sub VP3EnVivoTick
 
     If IsEmpty(Controller) Or Controller Is Nothing Then Exit Sub
 
-    If IsEmpty(vp3_intervalo) Then vp3_intervalo = 2
+    ' v19 (30-sep-2026): de 2 segundos a 10. Luis probo la v18 en Dirty
+    ' Harry (mesa chica, 12 KB): el puntaje subio al instante y con la hora
+    ' bien, pero "por ahi la bola media trabada".
+    '
+    ' Los numeros de esa partida mostraron que el script en si es barato
+    ' (leer+comparar 0-4 ms, armar el texto 0-4 ms), pero el problema real
+    ' estaba AFUERA: cada vez que este script toca el archivo,
+    ' subir_puntajes.exe lo ve cambiar y arranca a leer la memoria con
+    ' PINemHi y a consultar por internet. Con el chequeo cada 2 segundos,
+    ' eso pasaba CADA 4 SEGUNDOS durante toda la partida -- un programa
+    ' entero trabajando en paralelo mientras se juega. Eso pesa mucho mas
+    ' que los milisegundos del script.
+    '
+    ' Con 10 segundos, ese trabajo de afuera baja a la quinta parte. El
+    ' aviso sigue llegando practicamente al toque (10 segundos como mucho,
+    ' contra tener que salir de la mesa), y la hora que se guarda es la del
+    ' archivo, asi que el Telegram sigue mostrando la hora real del record.
+    If IsEmpty(vp3_intervalo) Then vp3_intervalo = 10
 
     ' Auto-limite: por defecto cada 2 segundos (ajustado abajo segun el
     ' tamaño de la mesa, ver comentario en la primera lectura). Se usa
@@ -340,11 +357,26 @@ Sub VP3EnVivoTick
     vp3_ms = (Timer - vp3_t0) * 1000
     If vp3_fso Is Nothing Then Set vp3_fso = CreateObject("Scripting.FileSystemObject")
     If Not vp3_fso.FolderExists("$carpetaLive") Then vp3_fso.CreateFolder "$carpetaLive"
+
+    ' v19 (30-sep-2026): EL LOG DE TIEMPOS AHORA ES OPCIONAL.
+    ' Medido jugando Dirty Harry: el trabajo del script en si es barato
+    ' (leer+comparar 0-4 ms, armar el texto 0-4 ms), pero ESCRIBIR un
+    ' archivo cuesta 8-12 ms aunque sean 24 KB -- no es el tamaño, es el
+    ' costo fijo de abrir y cerrar un archivo en Windows. Y este log
+    ' agregaba TRES aperturas mas por vuelta, o sea que la instrumentacion
+    ' para medir la tildada estaba causando mas tildada que lo que medía.
+    ' Ahora solo escribe si alguien crea a mano el archivo _medir.txt en
+    ' la carpeta VP3_LIVE. Sin ese archivo, cero escrituras de log.
+    Dim vp3_medir
+    vp3_medir = vp3_fso.FileExists("$carpetaLive\_medir.txt")
+
     Dim archT
-    Set archT = vp3_fso.OpenTextFile("$carpetaLive\_tiempos.log", 8, True)
-    archT.WriteLine Now & " | " & vp3_rom & " | lectura=" & FormatNumber(vp3_ms, 1) & "ms | hayCambios=" & hayCambios & " | bytes=" & (UBound(vp3_nv) + 1)
-    archT.Close
-    Set archT = Nothing
+    If vp3_medir Then
+        Set archT = vp3_fso.OpenTextFile("$carpetaLive\_tiempos.log", 8, True)
+        archT.WriteLine Now & " | " & vp3_rom & " | lectura=" & FormatNumber(vp3_ms, 1) & "ms | hayCambios=" & hayCambios & " | bytes=" & (UBound(vp3_nv) + 1)
+        archT.Close
+        Set archT = Nothing
+    End If
     Err.Clear
 
     If Not hayCambios Then Exit Sub
@@ -363,10 +395,12 @@ Sub VP3EnVivoTick
     vp3_ult = Join(vp3_bufHex, "")
     Dim vp3_msJ
     vp3_msJ = (Timer - vp3_tJ) * 1000
+    If vp3_medir Then
     Set archT = vp3_fso.OpenTextFile("$carpetaLive\_tiempos.log", 8, True)
-    archT.WriteLine Now & " | " & vp3_rom & " | armar texto=" & FormatNumber(vp3_msJ, 1) & "ms"
-    archT.Close
-    Set archT = Nothing
+        archT.WriteLine Now & " | " & vp3_rom & " | armar texto=" & FormatNumber(vp3_msJ, 1) & "ms"
+        archT.Close
+        Set archT = Nothing
+    End If
     Err.Clear
 
     Dim vp3_t1
@@ -389,10 +423,12 @@ Sub VP3EnVivoTick
     ' comentario de v18: antes no se medía en ningún lado.)
     Dim vp3_ms2
     vp3_ms2 = (Timer - vp3_t1) * 1000
+    If vp3_medir Then
     Set archT = vp3_fso.OpenTextFile("$carpetaLive\_tiempos.log", 8, True)
-    archT.WriteLine Now & " | " & vp3_rom & " | escritura=" & FormatNumber(vp3_ms2, 1) & "ms (" & (Len(vp3_ult) + 40) & " bytes en disco)"
-    archT.Close
-    Set archT = Nothing
+        archT.WriteLine Now & " | " & vp3_rom & " | escritura=" & FormatNumber(vp3_ms2, 1) & "ms (" & (Len(vp3_ult) + 40) & " bytes en disco)"
+        archT.Close
+        Set archT = Nothing
+    End If
     Err.Clear
 End Sub
 $fin
