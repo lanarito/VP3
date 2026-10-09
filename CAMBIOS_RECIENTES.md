@@ -364,6 +364,41 @@ Nada nuevo — la próxima vez que Her y Ariel corran `ACTUALIZAR_VP3.bat`, si t
 
 ---
 
+## 👥 33. El mismo récord subía 3 veces con nombres distintos (9 octubre 2026)
+
+### Lo que pasó:
+En el grupo de Telegram llegaron tres avisos seguidos:
+
+```
+Tom & Jerry - 2ro - LB  - 495.410 - Hecho 08/10 15:42
+Tom & Jerry - 2ro - LA  - 495.410 - Hecho 08/10 15:42
+Tom & Jerry - 2ro - LAL - 495.410 - Hecho 08/10 15:42
+```
+
+Mismo puntaje, misma mesa, misma hora. Nacho lo marcó enseguida: *"Qué raro 3 records iguales pero con distinto nombre, me suena a estafa"*. Le pasó a Luis y a Her el mismo día.
+
+### Causa:
+No eran tres récords: era **uno solo, capturado mientras el jugador escribía sus iniciales letra por letra** en la máquina. Con la lectura en vivo andando, cada estado intermedio (`L` → `LA` → `LAL`) se leía como si fuera un jugador distinto y se subía por separado.
+
+Es un efecto colateral directo de la lectura en vivo: antes esto no pasaba porque la memoria se leía recién al salir de la mesa, cuando las iniciales ya estaban definidas.
+
+En la base quedaron **4 registros falsos**: `LB` y `LA` (495.410), `LA` (372.050) y `AG` (330.570). Los buenos son `LAL` y `AGU`.
+
+### Arreglo: esperar a que la memoria quede quieta
+Ahora un volcado en vivo no se procesa apenas cambia. Se espera a que la memoria quede **20 segundos sin moverse**: mientras el jugador escribe (o sigue jugando), cambia todo el tiempo y el reloj se reinicia; cuando termina y deja de tocar, recién ahí se procesa — **una sola vez y con las iniciales definitivas**.
+
+No puede hacer que se pierda un récord: si el jugador sale de la mesa, VPinMAME escribe el archivo de verdad y ese camino no pasa por acá. La espera es solo para el volcado en vivo. (Un intento anterior de "enfriamiento", del 2-sep, sí tocaba el camino de disco y causó que no subiera nada ni al salir de la mesa — ver sección 22. Por eso ahora se aplica únicamente a los volcados.)
+
+### Y de regalo, ataca la bola trabada:
+Antes el programa procesaba cada vez que el archivo cambiaba — medido: **cada 4 segundos durante toda la partida**, corriendo PINemHi y saliendo a internet. Ahora corre **una vez por partida**, cuando el jugador termina. Es la misma causa que se había identificado en la sección 32, atacada de raíz en vez de solo espaciarla.
+
+### Probado antes de publicar:
+7 chequeos reproduciendo el caso real: escribir `L` → `LA` → `LAL` no sube nada; después de la calma sube una sola vez; no repite; una partida nueva vuelve a funcionar; y la hora que queda es la del récord, no la de procesamiento.
+
+Los 4 registros falsos se agregaron a la limpieza automática que ya corre dentro del actualizador (paso 11 de 12), con un chequeo que confirma que ningún récord bueno quedó en esa lista.
+
+---
+
 ## 🎯 32. Lo caro no era el script: era el OTRO programa (v19, 30 septiembre 2026)
 
 ### Lo que probó Luis:

@@ -1,4 +1,5 @@
 import os, sys, subprocess, time, re
+import hashlib
 import urllib.request
 import urllib.parse
 import urllib.error
@@ -426,6 +427,46 @@ def identificar_mesa_por_contenido(crudo):
     return None
 
 
+# ============================================================
+# ESPERAR A QUE EL JUGADOR TERMINE DE ESCRIBIR LAS INICIALES
+#
+# PROBLEMA REAL (8-oct-2026): con la lectura en vivo andando, el mismo
+# record se anuncio TRES veces por Telegram, con tres nombres distintos:
+#
+#     Tom & Jerry - 2ro - LB  - 495.410 - Hecho 15:42
+#     Tom & Jerry - 2ro - LA  - 495.410 - Hecho 15:42
+#     Tom & Jerry - 2ro - LAL - 495.410 - Hecho 15:42
+#
+# Mismo puntaje, misma mesa, misma hora. No eran tres records: era UNO
+# solo, capturado mientras el jugador escribia sus iniciales letra por
+# letra en la maquina. Cada estado intermedio se subia como si fuera un
+# jugador nuevo. Le paso a Luis y a Her el mismo dia. ("Me suena a
+# estafa", escribio Nacho en el grupo, con razon.)
+#
+# SOLUCION: no procesar un volcado apenas cambia. Esperar a que la
+# memoria quede QUIETA unos segundos: mientras el jugador escribe (o
+# sigue jugando), cambia todo el tiempo y el reloj se reinicia; cuando
+# termina y deja de tocar, recien ahi se procesa, una sola vez y con las
+# iniciales definitivas.
+#
+# Esto NO puede hacer que se pierda un record: si el jugador sale de la
+# mesa, VPinMAME escribe el .nv de verdad y ese camino (el de siempre) no
+# pasa por aca. La espera es solo para el volcado en vivo.
+# Ojo con esto: un intento anterior de "enfriamiento" (2-sep-2026) si
+# toco el camino de disco y causo que no subiera NADA ni al salir de la
+# mesa. Por eso aca se aplica unicamente a los .hex.
+#
+# Efecto de regalo: antes esto procesaba cada vez que el archivo cambiaba
+# (cada 4 segundos jugando, medido), lo que hacia correr PINemHi y salir
+# a internet sin parar mientras se jugaba -- justo lo que trababa la
+# bola. Ahora corre una vez por partida, cuando se termina.
+# ============================================================
+SEGUNDOS_QUIETO = 20
+
+# Por cada volcado: (huella del contenido, desde cuando esta asi)
+_vivo_ultimo_visto = {}
+
+
 def convertir_volcados_en_vivo():
     """Devuelve la lista de .nv que cambiaron. Vacia si no hay nada nuevo."""
     convertidos = []
@@ -436,6 +477,18 @@ def convertir_volcados_en_vivo():
             try:
                 with open(ruta_hex, "r", encoding="ascii", errors="ignore") as f:
                     contenido = f.read()
+
+                # ¿Sigue cambiando? Entonces el jugador esta en el medio de
+                # algo (escribiendo las iniciales, o jugando todavia).
+                huella = hashlib.md5(contenido.encode("ascii", "ignore")).hexdigest()
+                ahora = time.time()
+                visto = _vivo_ultimo_visto.get(ruta_hex)
+                if visto is None or visto[0] != huella:
+                    _vivo_ultimo_visto[ruta_hex] = (huella, ahora)
+                    continue
+                if ahora - visto[1] < SEGUNDOS_QUIETO:
+                    continue
+
                 rom, datos = "", ""
                 for linea in contenido.splitlines():
                     linea = linea.strip()
