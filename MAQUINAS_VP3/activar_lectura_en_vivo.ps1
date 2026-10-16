@@ -106,7 +106,7 @@
 # ============================================================
 param([switch]$Auto, [switch]$Quitar)
 
-$VERSION = "v20"
+$VERSION = "v21"
 $ini = "' ===== VP3 LECTURA EN VIVO $VERSION INICIO ====="
 $fin = "' ===== VP3 LECTURA EN VIVO $VERSION FIN ====="
 $carpetaLive = "C:\vPinball\VP3_LIVE"
@@ -222,7 +222,7 @@ Sub VP3EnVivoTick
     ' que corre una vez por partida sin importar cada cuanto se vuelque.
     ' Liberado de eso, se puede volcar mas seguido sin costo real (son 12 a
     ' 19 ms cada vez, menos de un frame) y el aviso llega antes.
-    If IsEmpty(vp3_intervalo) Then vp3_intervalo = 5
+    If IsEmpty(vp3_intervalo) Then vp3_intervalo = 10
 
     ' Auto-limite: por defecto cada 2 segundos (ajustado abajo segun el
     ' tamaño de la mesa, ver comentario en la primera lectura). Se usa
