@@ -364,6 +364,44 @@ Nada nuevo — la próxima vez que Her y Ariel corran `ACTUALIZAR_VP3.bat`, si t
 
 ---
 
+## 🕵️ 34. El Telegram tardaba minutos: la pista que llevó a todos por el camino equivocado (16 octubre 2026)
+
+### El síntoma:
+A los tres les tardaba mucho el aviso de Telegram después de un récord — a veces varios minutos.
+
+### La pista falsa:
+`REVISAR_VP3.bat` avisaba **"HAY 2 COPIAS CORRIENDO A LA VEZ"**. Sobre ese dato se construyó una investigación completa: se sospechó de un choque de niveles de integridad de Windows (UAC) entre dos instancias, con el mutex fallando con error 5 en vez de 183.
+
+**Era un falso positivo.** `subir_puntajes.exe` **siempre** aparece dos veces en la lista de procesos, y eso es normal: al estar compilado en un solo archivo, arranca un proceso lanzador que descomprime el programa y después corre el programa real como **hijo suyo**. Los dos se llaman igual.
+
+Confirmado con datos de la máquina:
+
+```
+pid 4444  →  su padre es powershell (el watchdog)   CPU: 0,15    6 MB
+pid 5600  →  su padre es el pid 4444                CPU: 147    30 MB
+```
+
+El uso de CPU lo delata solo: el lanzador no hace nada, el programa real trabaja. Nunca hubo dos instancias, así que no había ningún choque de mutex que arreglar.
+
+La revisión ahora mira la **relación** entre procesos (si uno es padre del otro, es una sola instancia) en vez de contar por nombre.
+
+### La causa real, encontrada siguiendo la cadena de procesos:
+
+```
+subir_puntajes.exe  ←  powershell (watchdog)  ←  cmd.exe  ←  editor  ←  explorer
+```
+
+El watchdog quedó **colgando de la terminal de un editor**. Cuando esa ventana se cierra, Windows mata todo el árbol: se mueren el watchdog y el programa **juntos**.
+
+La prueba está en el log del watchdog: tiene líneas de *"Iniciando subir_puntajes.exe"* pero **ninguna** de *"se cerró (código...)"*. Si el programa hubiera muerto solo, el watchdog lo habría registrado y lo habría revivido en 5 segundos. No lo registró porque murió con él.
+
+Y eso explica el retraso exacto: el récord sube a la nube, el proceso muere antes de mandar el Telegram, el aviso queda en la cola (que para eso se hizo, ver sección 28) y **sale recién cuando se vuelve a abrir el VP3**.
+
+### Lo que hay que arreglar todavía:
+Que el watchdog no cuelgue de quien lo lanzó. La vía más prolija es crearlo de forma desacoplada (que el proceso no quede como hijo de la ventana que lo disparó), así sobrevive aunque se cierre esa terminal. Pendiente de implementar y probar — toca el arranque en las tres máquinas, así que no se publica sin probarlo.
+
+---
+
 ## 👥 33. El mismo récord subía 3 veces con nombres distintos (9 octubre 2026)
 
 ### Lo que pasó:
