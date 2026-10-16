@@ -397,8 +397,20 @@ La prueba está en el log del watchdog: tiene líneas de *"Iniciando subir_punta
 
 Y eso explica el retraso exacto: el récord sube a la nube, el proceso muere antes de mandar el Telegram, el aviso queda en la cola (que para eso se hizo, ver sección 28) y **sale recién cuando se vuelve a abrir el VP3**.
 
-### Lo que hay que arreglar todavía:
-Que el watchdog no cuelgue de quien lo lanzó. La vía más prolija es crearlo de forma desacoplada (que el proceso no quede como hijo de la ventana que lo disparó), así sobrevive aunque se cierre esa terminal. Pendiente de implementar y probar — toca el arranque en las tres máquinas, así que no se publica sin probarlo.
+### Por qué les pasa a los tres:
+Luis confirmó cómo arranca cada máquina: **la suya prende directo en PinUP Popper** (ni se ve Windows), y **Her y Ariel entran a Windows y abren el VP3 a mano**. En los dos casos, quien termina lanzando el watchdog es Popper — y el watchdog quedaba colgando de él.
+
+Entonces la secuencia era siempre la misma: se hace el récord → sube bien a la nube → **se sale del VP3** → Popper se cierra y se lleva puesto al watchdog y al programa → el aviso queda en la cola → sale recién al volver a prender, que a veces es al día siguiente.
+
+### El arreglo:
+`WATCHDOG_invisible.vbs` usaba `WScript.Shell.Run`, que crea el proceso como **hijo** de quien lo llamó. Ahora lo crea a través de WMI (`Win32_Process.Create`): lo que cambia es quién queda como padre — el servicio de Windows, no Popper ni la ventana que lo disparó. Así el watchdog **sobrevive a que se cierre el VP3** y sigue mandando los avisos pendientes.
+
+Funciona igual venga de donde venga (Popper, el actualizador o un doble click), y el mutex del supervisor sigue garantizando que nunca haya dos watchdogs a la vez. Si WMI no estuviera disponible, se lanza como antes — es preferible eso a que el watchdog no arranque.
+
+**Probado de verdad, no en teoría:** se armó un banco con un "Popper falso" que lanza el watchdog y después se lo mata, igual que al cerrar el VP3. Resultado: el watchdog **sigue vivo**, y cuelga del servicio de Windows (`WmiPrvSE`) en vez de la ventana.
+
+### Red de seguridad extra:
+La sincronización que corre **al apagar la máquina** ahora también vacía la cola de avisos. Si por lo que sea quedó alguno trabado, sale antes de apagar en vez de esperar al día siguiente.
 
 ---
 

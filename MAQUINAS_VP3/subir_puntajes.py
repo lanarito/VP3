@@ -1554,6 +1554,17 @@ if __name__ == "__main__":
         except Exception as e:
             log_evento(f"Error en sincronizacion de apagado: {e}")
             escribir_heartbeat(f"SHUTDOWN_SYNC_ERROR: {e}")
+        # AGREGADO 16-oct-2026: ultima oportunidad para los avisos que
+        # quedaron trabados. Si el watchdog murio antes de mandar alguno
+        # (pasaba al cerrar el VP3, ver WATCHDOG_invisible.vbs), ese aviso
+        # esperaba hasta la proxima vez que se prendiera la maquina -- a
+        # veces al dia siguiente. Aca sale antes de apagar.
+        # Va DESPUES de la sincronizacion y en su propio try: si algo falla
+        # mandando avisos, el apagado sigue igual, que es lo importante.
+        try:
+            enviar_avisos_pendientes()
+        except Exception as e:
+            log_evento(f"Error mandando avisos pendientes antes de apagar: {e}")
         sys.exit(0)
 
     # Evitar que se acumulen copias en memoria
