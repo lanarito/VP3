@@ -106,7 +106,7 @@
 # ============================================================
 param([switch]$Auto, [switch]$Quitar)
 
-$VERSION = "v19"
+$VERSION = "v20"
 $ini = "' ===== VP3 LECTURA EN VIVO $VERSION INICIO ====="
 $fin = "' ===== VP3 LECTURA EN VIVO $VERSION FIN ====="
 $carpetaLive = "C:\vPinball\VP3_LIVE"
@@ -214,7 +214,15 @@ Sub VP3EnVivoTick
     ' aviso sigue llegando practicamente al toque (10 segundos como mucho,
     ' contra tener que salir de la mesa), y la hora que se guarda es la del
     ' archivo, asi que el Telegram sigue mostrando la hora real del record.
-    If IsEmpty(vp3_intervalo) Then vp3_intervalo = 10
+    ' AJUSTADO 16-oct-2026: de 10 segundos a 5. El 10 se habia puesto para
+    ' bajarle el trabajo a subir_puntajes.exe, que en ese momento procesaba
+    ' CADA VEZ que este archivo cambiaba -- eso era lo que trababa la bola.
+    ' Pero despues ese problema se ataco de raiz por el otro lado: ahora el
+    ' programa espera a que la memoria quede quieta antes de procesar, asi
+    ' que corre una vez por partida sin importar cada cuanto se vuelque.
+    ' Liberado de eso, se puede volcar mas seguido sin costo real (son 12 a
+    ' 19 ms cada vez, menos de un frame) y el aviso llega antes.
+    If IsEmpty(vp3_intervalo) Then vp3_intervalo = 5
 
     ' Auto-limite: por defecto cada 2 segundos (ajustado abajo segun el
     ' tamaño de la mesa, ver comentario en la primera lectura). Se usa

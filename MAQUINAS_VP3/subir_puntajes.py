@@ -461,7 +461,24 @@ def identificar_mesa_por_contenido(crudo):
 # a internet sin parar mientras se jugaba -- justo lo que trababa la
 # bola. Ahora corre una vez por partida, cuando se termina.
 # ============================================================
-SEGUNDOS_QUIETO = 20
+# AJUSTADO 16-oct-2026: era 20 segundos. Luis marco que antes el aviso
+# llegaba "a los pocos segunditos" de hacer el record y que esa espera se
+# la saco. Tenia razon: la espera entro el 9-oct para arreglar los records
+# triples (LB/LA/LAL), y de paso mato la inmediatez.
+#
+# Los dos problemas son el mismo tira y afloje: si avisa MUY rapido, agarra
+# al jugador a mitad de escribir las iniciales y manda un record por cada
+# letra; si espera DEMASIADO, llega tarde. Escribir tres iniciales con los
+# flippers lleva unos 5 a 10 segundos, asi que 8 segundos de calma deberia
+# alcanzar para que ya esten completas.
+#
+# Sumado al volcado de la mesa (cada 5 segundos, ver activar_lectura_en_vivo),
+# el aviso tiene que llegar unos 8 a 13 segundos despues de grabar las
+# iniciales, en vez de los 20 a 30 de antes.
+#
+# SI VUELVEN LOS RECORDS REPETIDOS con nombres cortos (LA, AG, LB...),
+# subir este numero de nuevo: es el unico que controla eso.
+SEGUNDOS_QUIETO = 8
 
 # Por cada volcado: (huella del contenido, desde cuando esta asi)
 _vivo_ultimo_visto = {}
